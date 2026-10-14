@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { Button, Card, Countdown, ProgressBar, Row } from "@/components/ui";
+import MenuPicker from "@/components/MenuPicker";
+import { Button, Countdown } from "@/components/ui";
 import { ME } from "@/lib/data";
-import { basketTotal, queueTotal } from "@/lib/requests";
-import { formatGBP } from "@/lib/split";
+import { queueTotal } from "@/lib/requests";
 import { myEntry, pickupById, restaurantById, useApp, useRequest } from "@/lib/store";
 
-/** Step 3: choose food, build your basket, finalise your queue entry. */
+/** Step 3 for joiners: choose food, build your basket, finalise your queue entry. */
 export default function OrderPage() {
   const { reqId } = useParams<{ reqId: string }>();
   const { now, dispatch } = useApp();
@@ -25,16 +25,13 @@ export default function OrderPage() {
   if (!request || !me) {
     return (
       <p className="text-sm">
-        You&apos;re not in this request. <Link href="/" className="underline">Back home</Link>
+        You&apos;re not in this party. <Link href="/" className="underline">Back to parties</Link>
       </p>
     );
   }
   if (done) return null;
 
   const restaurant = restaurantById(request.restaurantId)!;
-  const mine = basketTotal(me.basket, restaurant);
-  const queued = queueTotal(request, restaurant);
-  const qty = (itemId: string) => me.basket.find((l) => l.itemId === itemId)?.qty ?? 0;
   const item = (itemId: string, type: "ADD_ITEM" | "REMOVE_ITEM") => dispatch({ type, requestId: reqId, userId: ME.userId, itemId });
 
   function finalise() {
@@ -45,7 +42,7 @@ export default function OrderPage() {
 
   function leave() {
     dispatch({ type: "LEAVE", requestId: reqId, userId: ME.userId });
-    router.push(`/r/${restaurant.id}`);
+    router.push("/");
   }
 
   return (
@@ -56,57 +53,24 @@ export default function OrderPage() {
         </p>
         <h1 className="text-2xl font-bold">Choose your food</h1>
         <p className="text-xs text-stone-500">
-          Request closes in <Countdown until={request.expiresAt} now={now} label="" />
+          Party closes in <Countdown until={request.expiresAt} now={now} label="" />
         </p>
       </div>
 
-      <ul className="divide-y divide-stone-100 rounded-2xl border border-stone-200">
-        {restaurant.menu.map((m) => (
-          <li key={m.id} className="flex items-center justify-between px-4 py-3">
-            <div>
-              <p className="font-medium">{m.name}</p>
-              <p className="text-sm text-stone-500">{formatGBP(m.price)}</p>
-            </div>
-            <div className="flex items-center gap-3">
-              {qty(m.id) > 0 && (
-                <>
-                  <button aria-label={`Remove ${m.name}`} className="h-8 w-8 rounded-full border border-stone-300" onClick={() => item(m.id, "REMOVE_ITEM")}>
-                    −
-                  </button>
-                  <span className="w-4 text-center tabular-nums">{qty(m.id)}</span>
-                </>
-              )}
-              <button aria-label={`Add ${m.name}`} className="h-8 w-8 rounded-full bg-emerald-600 text-white" onClick={() => item(m.id, "ADD_ITEM")}>
-                +
-              </button>
-            </div>
-          </li>
-        ))}
-      </ul>
-
-      <Card className="space-y-3">
-        <p className="font-semibold">Your basket</p>
-        {me.basket.length === 0 && <p className="text-sm text-stone-500">Nothing added yet.</p>}
-        {me.basket.map((l) => {
-          const m = restaurant.menu.find((x) => x.id === l.itemId)!;
-          return <Row key={l.itemId} left={`${l.qty} × ${m.name}`} right={formatGBP(m.price * l.qty)} />;
-        })}
-        <Row left="Your subtotal" right={formatGBP(mine)} strong />
-        <div className="space-y-1 pt-1">
-          <ProgressBar value={queued + mine} max={restaurant.deal.minTotal} />
-          <p className="text-xs text-stone-500">
-            With your basket the group reaches {formatGBP(queued + mine)} of {formatGBP(restaurant.deal.minTotal)} for &ldquo;
-            {restaurant.deal.label}&rdquo;.
-          </p>
-        </div>
-      </Card>
+      <MenuPicker
+        restaurant={restaurant}
+        basket={me.basket}
+        queued={queueTotal(request, restaurant)}
+        onAdd={(id) => item(id, "ADD_ITEM")}
+        onRemove={(id) => item(id, "REMOVE_ITEM")}
+      />
 
       <Button onClick={finalise} disabled={me.basket.length === 0}>
         Finalise queue entry
       </Button>
       {request.hostId !== ME.userId && (
         <Button variant="secondary" onClick={leave}>
-          Leave this request
+          Leave this party
         </Button>
       )}
     </div>

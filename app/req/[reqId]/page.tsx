@@ -38,7 +38,7 @@ export default function RequestPage() {
   if (!request) {
     return (
       <p className="text-sm">
-        Request not found. <Link href="/" className="underline">Back home</Link>
+        Request not found. <Link href="/" className="underline">Back to parties</Link>
       </p>
     );
   }
@@ -84,7 +84,7 @@ export default function RequestPage() {
             </p>
           </Card>
           <Card>
-            <p className="mb-2 font-semibold">In the lobby</p>
+            <p className="mb-2 font-semibold">In the party</p>
             <MemberList request={request} show={(p) => (p.finalised ? "✓ in queue" : "choosing food…")} />
           </Card>
           {!me && (
@@ -94,7 +94,7 @@ export default function RequestPage() {
                 router.push(`/req/${request.id}/order`);
               }}
             >
-              Join lobby
+              Join party
             </Button>
           )}
           {me && !me.finalised && <ButtonLink href={`/req/${request.id}/order`}>Continue choosing food</ButtonLink>}
@@ -155,7 +155,7 @@ export default function RequestPage() {
             The group reached {formatGBP(queued)} of {formatGBP(restaurant.deal.minTotal)} before time ran out. The deal wasn&apos;t
             reached, so <strong>nobody was charged</strong>.
           </p>
-          <ButtonLink href={`/r/${restaurant.id}`}>Back to {restaurant.name}</ButtonLink>
+          <ButtonLink href="/">Back to parties</ButtonLink>
         </div>
       );
 
@@ -169,7 +169,7 @@ export default function RequestPage() {
             Not everyone accepted in time ({missing.map((p) => (p.userId === ME.userId ? "you" : p.name)).join(", ")}). The whole order was
             cancelled and any payments were released, so <strong>nobody was charged</strong>.
           </p>
-          <ButtonLink href={`/r/${restaurant.id}`}>Back to {restaurant.name}</ButtonLink>
+          <ButtonLink href="/">Back to parties</ButtonLink>
         </div>
       );
     }
@@ -195,7 +195,7 @@ export default function RequestPage() {
             {request.participants.length} people.
           </p>
           <ButtonLink href="/" variant="secondary">
-            Back home
+            Back to parties
           </ButtonLink>
         </div>
       );
