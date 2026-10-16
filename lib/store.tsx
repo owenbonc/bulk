@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Logo } from "@/components/brand/Logo";
 import { CATALOG, ME, seedState } from "./data";
 import { type Action, isTerminal, notificationsFor, pendingAlerts, reduce } from "./requests";
 import { botAcceptActions, botJoinActions } from "./simulation";
@@ -53,9 +54,18 @@ function loadState(): AppState {
 const noopSubscribe = () => () => {};
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  // The app lives in localStorage and a live clock, so it only renders in the browser.
+  // The app lives in localStorage and a live clock, so it only renders in the browser. Until then (the
+  // server render and first paint) a full-height cream splash with the logo holds the column.
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
-  return mounted ? <ClientProvider>{children}</ClientProvider> : null;
+  return mounted ? <ClientProvider>{children}</ClientProvider> : <Splash />;
+}
+
+function Splash() {
+  return (
+    <div aria-busy="true" className="grid min-h-dvh place-items-center bg-bg">
+      <Logo size={40} />
+    </div>
+  );
 }
 
 function ClientProvider({ children }: { children: ReactNode }) {

@@ -2,7 +2,7 @@
 
 import { Check, CreditCard } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 import { Button, Countdown, EXIT, Price, Sheet, SPRING, formatPrice } from "@/components/ui";
 import type { Restaurant } from "@/lib/types";
 
@@ -15,6 +15,8 @@ export interface PaySheetProps {
   restaurant: Restaurant;
   /** Your exact share in pence. */
   amount: number;
+  /** Acceptance round (2 is the fallback round). A new round starts the sheet over. */
+  round: number;
   /** End of the acceptance round. */
   deadline: number;
   now: number;
@@ -26,31 +28,38 @@ export interface PaySheetProps {
  * Simulated payment sheet for the acceptance round: demo card •••• 4242, "Pay £x", and a quiet
  * "Decline" that asks for confirmation before removing you from the order.
  */
-export function PaySheet({ open, onOpenChange, restaurant, amount, deadline, now, onPay, onDecline }: PaySheetProps) {
+export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadline, now, onPay, onDecline }: PaySheetProps) {
   const [step, setStep] = useState<"pay" | "decline">("pay");
   const [paying, setPaying] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  // Each opening, and each new round, starts on a fresh "Pay" step. The sheet usually closes through `open`
+  // (after a payment, or when the round ends), which skips vaul's close callbacks, so the reset happens
+  // here. Closing keeps the state, so the sheet slides away exactly as it was.
+  const [session, setSession] = useState({ open, round });
+  if (session.open !== open || session.round !== round) {
+    setSession({ open, round });
+    if (open) {
+      setStep("pay");
+      setPaying(false);
+    }
+  }
 
-  const pay = () => {
-    setPaying(true);
-    timer.current = window.setTimeout(() => {
-      onPay();
-      onOpenChange(false);
-    }, PROCESSING_MS);
-  };
+  const complete = useEffectEvent(() => {
+    onPay();
+    onOpenChange(false);
+  });
 
-  const reset = () => {
-    window.clearTimeout(timer.current);
-    setStep("pay");
-    setPaying(false);
-  };
+  // The simulated card processes while the sheet is open. Closing the sheet or a new round cancels it.
+  useEffect(() => {
+    if (!open || !paying) return;
+    const timer = window.setTimeout(() => complete(), PROCESSING_MS);
+    return () => window.clearTimeout(timer);
+  }, [open, paying]);
 
   const footer =
     step === "pay" ? (
       <div className="flex flex-col gap-1">
-        <Button size="lg" block loading={paying} onClick={pay}>
+        <Button size="lg" block loading={paying} onClick={() => setPaying(true)}>
           Pay {formatPrice(amount)}
         </Button>
         <Button variant="danger" size="md" block disabled={paying} onClick={() => setStep("decline")}>
@@ -83,7 +92,6 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, deadline, now
         if (!paying) onOpenChange(next);
       }}
       dismissible={!paying}
-      onClosed={reset}
       title={step === "pay" ? "Accept and pay" : "Decline this order?"}
       description="Simulated payment, no real money"
       footer={footer}
@@ -93,8 +101,8 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, deadline, now
           <motion.div
             key="pay"
             className="flex flex-col gap-3"
-            initial={{ opacity: 0, transform: "translateX(-12px)" }}
-            animate={{ opacity: 1, transform: "translateX(0px)", transition: SPRING }}
+            initial={{ opacity: 0, x: -12 }}
+            animate={{ opacity: 1, x: 0, transition: SPRING }}
             exit={{ opacity: 0, transition: EXIT }}
           >
             <div className="flex items-baseline justify-between gap-4 rounded-card bg-surface-2 px-4 py-3.5">
@@ -125,8 +133,8 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, deadline, now
         ) : (
           <motion.div
             key="decline"
-            initial={{ opacity: 0, transform: "translateX(12px)" }}
-            animate={{ opacity: 1, transform: "translateX(0px)", transition: SPRING }}
+            initial={{ opacity: 0, x: 12 }}
+            animate={{ opacity: 1, x: 0, transition: SPRING }}
             exit={{ opacity: 0, transition: EXIT }}
           >
             <p className="text-body text-ink-2">

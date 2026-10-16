@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { Drawer } from "vaul";
 import { cn } from "./cn";
 import { IconButton } from "./IconButton";
+import { isPassThrough } from "./layers";
 
 export interface SheetProps {
   /** Controlled open state. Omit both `open` and `onOpenChange` and pass `trigger` for an uncontrolled sheet. */
@@ -63,6 +64,9 @@ export function Sheet({
         <Drawer.Overlay className="fixed inset-0 z-50 bg-scrim" />
         <Drawer.Content
           {...(description ? {} : { "aria-describedby": undefined })}
+          onPointerDownOutside={(e) => {
+            if (isPassThrough(e.target)) e.preventDefault();
+          }}
           className="fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] w-full max-w-column flex-col rounded-t-sheet bg-surface shadow-sheet outline-none"
         >
           <Drawer.Handle

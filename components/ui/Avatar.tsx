@@ -1,19 +1,13 @@
 import { cn } from "./cn";
 
-// Warm tints that sit with the cream palette; text colours clear 4.5:1 on their tint.
-const TINTS: Array<[bg: string, fg: string]> = [
-  ["#eef3cf", "#4a5706"],
-  ["#fbe4dd", "#9c3019"],
-  ["#e3edf3", "#2b5470"],
-  ["#f1e7cf", "#6b5020"],
-  ["#ebe5f3", "#54407a"],
-  ["#e1efe6", "#2c6a45"],
-];
+// Warm tints from the --tint-n tokens in globals.css; text colours clear 4.5:1 on their tint.
+const TINT_COUNT = 6;
 
 function tintFor(name: string): [string, string] {
   let h = 0;
   for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return TINTS[h % TINTS.length];
+  const n = (h % TINT_COUNT) + 1;
+  return [`var(--tint-${n}-bg)`, `var(--tint-${n}-fg)`];
 }
 
 export interface AvatarProps {

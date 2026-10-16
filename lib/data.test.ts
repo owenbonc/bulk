@@ -32,7 +32,7 @@ describe("catalog", () => {
     expect(r.deal.minTotal).toBeGreaterThanOrEqual(3500);
     expect(r.deal.minTotal).toBeLessThanOrEqual(5500);
     expect(r.deal.short).toBe(`${r.deal.discountPct}% off`);
-    expect(r.deal.label).toBe(`${r.deal.discountPct}% off a £${r.deal.minTotal / 100} group order`);
+    expect(r.deal.label).toBe(`${r.deal.discountPct}% off when the party spends £${r.deal.minTotal / 100}`);
   });
 
   it("follows the image path convention", () => {
@@ -47,10 +47,10 @@ describe("catalog", () => {
 
   it("has 4 collection points with access notes, the Student Centre first", () => {
     expect(CATALOG.pickupPoints.map((p) => p.name)).toEqual([
-      "UCL Student Centre entrance",
-      "Main Library entrance",
-      "Ramsay Hall reception",
-      "IOE Bedford Way lobby",
+      "Student Centre",
+      "Main Library",
+      "Ramsay Hall",
+      "IOE Bedford Way",
     ]);
     expect(CATALOG.pickupPoints.every((p) => p.access.length > 0)).toBe(true);
     expect(DEFAULT_LOCATION).toBe(CATALOG.pickupPoints[0].id);

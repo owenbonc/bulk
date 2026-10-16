@@ -4,12 +4,15 @@ import { Check } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRef } from "react";
-import { DealPill, ImageFrame, Pill, ProgressPie, SectionHeader, formatPrice } from "@/components/ui";
-import { Eta, Rating } from "./parts";
+import { DealPill, ImageFrame, Pill, ProgressPie, Rating, SectionHeader, formatPrice } from "@/components/ui";
+import { Eta } from "./parts";
 import { partyHref } from "./PartyListCard";
 import type { HomeParty } from "./useHomeParties";
 
 const GAP = 12;
+
+/** Cards at the start of the carousel whose images load eagerly (in view on first paint). */
+const PRIORITY_CARDS = 2;
 
 /** "Highlights · n": parties at 75%+ of their deal in a horizontal snap carousel. */
 export function Highlights({ parties }: { parties: HomeParty[] }) {
@@ -39,9 +42,9 @@ export function Highlights({ parties }: { parties: HomeParty[] }) {
         className="no-scrollbar mt-2 flex snap-x snap-mandatory scroll-px-4 overflow-x-auto overscroll-x-contain px-4 pb-1 [touch-action:pan-x_pan-y]"
         style={{ gap: GAP }}
       >
-        {parties.map((p) => (
+        {parties.map((p, i) => (
           <li key={p.request.id} className="w-[72%] max-w-[310px] shrink-0 snap-start">
-            <HighlightCard party={p} />
+            <HighlightCard party={p} priority={i < PRIORITY_CARDS} />
           </li>
         ))}
       </ul>
@@ -49,7 +52,7 @@ export function Highlights({ parties }: { parties: HomeParty[] }) {
   );
 }
 
-function HighlightCard({ party }: { party: HomeParty }) {
+function HighlightCard({ party, priority }: { party: HomeParty; priority: boolean }) {
   const { request, restaurant, progress, me } = party;
   const left = formatPrice(progress.left, { trim: true });
 
@@ -67,6 +70,7 @@ function HighlightCard({ party }: { party: HomeParty }) {
             radius="none"
             emoji={restaurant.emoji}
             sizes="(min-width: 431px) 310px, 72vw"
+            priority={priority}
           >
             {me && (
               <Pill tone="soft" icon={<Check aria-hidden />} className="absolute top-2.5 left-2.5 shadow-float">
@@ -75,16 +79,16 @@ function HighlightCard({ party }: { party: HomeParty }) {
             )}
           </ImageFrame>
         </div>
-        <DealPill label={restaurant.deal.short} size="sm" className="absolute right-3 -bottom-3 font-bold ring-3 ring-surface" />
+        <DealPill label={restaurant.deal.short} size="sm" className="absolute right-3 -bottom-3 ring-3 ring-surface" />
       </div>
 
       <div className="flex items-end justify-between gap-3 px-3.5 pt-3 pb-3.5">
         <div className="min-w-0">
           <h3 className="truncate text-emphasis font-semibold tracking-[-0.01em] text-ink">{restaurant.name}</h3>
-          <p className="mt-0.5 text-meta text-ink-2">
-            <Rating restaurant={restaurant} />
+          <p className="mt-0.5 flex">
+            <Rating value={restaurant.rating} count={restaurant.ratingCount} />
           </p>
-          <p className="text-meta text-ink-2">
+          <p className="flex">
             <Eta restaurant={restaurant} />
           </p>
         </div>

@@ -1,12 +1,11 @@
 "use client";
 
-import { RefreshCw, Tag } from "lucide-react";
-import { BottomBar, Countdown, SectionHeader, formatPrice } from "@/components/ui";
+import { CircleCheck, RefreshCw, Tag } from "lucide-react";
+import { BottomBar, Button, Countdown, SectionHeader, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { ACCEPT_WINDOW_MS } from "@/lib/requests";
 import { previewSplit, useApp } from "@/lib/store";
 import { CollectionPoint, type ViewProps } from "./FillingView";
-import { GlassAction, GlassStatus } from "./GlassAction";
 import { MemberList } from "./MemberList";
 import { OrderSummary } from "./OrderSummary";
 import { PartySection } from "./PartySection";
@@ -48,18 +47,15 @@ export function AcceptView({ request, restaurant, pickup, onPay }: ViewProps & {
               {secondRound ? (
                 <>
                   {dropped.length > 0 ? `${joinNames(dropped)} didn't accept. ` : ""}Totals updated, accept again in{" "}
-                  <Countdown until={deadline} now={now} className="font-semibold" />.
+                  <Countdown until={deadline} now={now} urgentTone="offer-ink" className="font-semibold" />.
                 </>
               ) : (
                 <>
-                  Everyone must accept in <Countdown until={deadline} now={now} className="font-semibold" />.
+                  Everyone must accept in <Countdown until={deadline} now={now} urgentTone="offer-ink" className="font-semibold" />.
                 </>
               )}
             </p>
-            <div
-              aria-hidden
-              className="mt-3 h-1.5 overflow-hidden rounded-full bg-accent-ink/15"
-            >
+            <div aria-hidden className="mt-3 h-1.5 overflow-hidden rounded-full bg-accent-ink/15">
               <div
                 className="h-full origin-left rounded-full bg-accent-ink transition-transform duration-1000 ease-linear motion-reduce:transition-none"
                 style={{ transform: `scaleX(${remaining / ACCEPT_WINDOW_MS})` }}
@@ -83,11 +79,23 @@ export function AcceptView({ request, restaurant, pickup, onPay }: ViewProps & {
 
       <BottomBar material={false}>
         {me.paid ? (
-          <GlassStatus>
-            {waitingOn > 0 ? `Paid, waiting for ${waitingOn} other${waitingOn === 1 ? "" : "s"}` : "Paid, placing the order…"}
-          </GlassStatus>
+          <div role="status" className="glass flex h-14 w-full items-center justify-center gap-2 rounded-full px-6">
+            <CircleCheck aria-hidden className="shrink-0 text-success" />
+            <span className="tnum truncate text-emphasis font-semibold text-ink">
+              {waitingOn > 0 ? `Paid, waiting for ${waitingOn} other${waitingOn === 1 ? "" : "s"}` : "Paid, placing the order…"}
+            </span>
+          </div>
         ) : (
-          <GlassAction label="Accept and pay" price={formatPrice(cost.total)} onClick={onPay} aria-haspopup="dialog" />
+          <Button
+            variant="glass"
+            block
+            chip={formatPrice(cost.total)}
+            onClick={onPay}
+            aria-haspopup="dialog"
+            aria-label={`Accept and pay, ${formatPrice(cost.total)}`}
+          >
+            Accept and pay
+          </Button>
         )}
       </BottomBar>
     </>

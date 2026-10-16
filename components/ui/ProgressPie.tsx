@@ -40,7 +40,7 @@ export function ProgressPie({ value, max = 100, contribution = 0, size = 28, lab
       height={size}
       className={cn("shrink-0 -rotate-90", className)}
     >
-      <circle cx={C} cy={C} r={16} fill="rgb(27 29 20 / 0.08)" />
+      <circle cx={C} cy={C} r={16} className="fill-ink/8" />
       {/* A circle of radius 8 stroked 16 wide paints a full disc; pathLength turns the stroke into a wedge. */}
       <motion.circle
         cx={C}
@@ -64,7 +64,7 @@ export function ProgressPie({ value, max = 100, contribution = 0, size = 28, lab
         animate={{ pathLength: c, pathOffset: p - c, opacity: c > 0 ? 1 : 0 }}
         transition={transition}
       />
-      <circle cx={C} cy={C} r={15.5} fill="none" stroke="rgb(27 29 20 / 0.12)" strokeWidth={1} />
+      <circle cx={C} cy={C} r={15.5} fill="none" strokeWidth={1} className="stroke-ink/12" />
     </svg>
   );
 }

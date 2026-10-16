@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
 import { IconButton } from "./IconButton";
+import { isPassThrough } from "./layers";
 import { EASE_OUT, EXIT, SPRING } from "./motion";
 
 export type PopupIconTone = "accent" | "offer" | "none";
@@ -73,7 +74,7 @@ export function Popup({
                   if (!dismissible) e.preventDefault();
                 }}
                 onPointerDownOutside={(e) => {
-                  if (!dismissible) e.preventDefault();
+                  if (!dismissible || isPassThrough(e.target)) e.preventDefault();
                 }}
               >
                 <motion.div

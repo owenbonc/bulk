@@ -5,8 +5,8 @@ Every photo in `public/images/` comes from Wikimedia Commons under the licence l
 | File | Source | Author | Licence |
 | --- | --- | --- | --- |
 | `restaurants/slice-house.jpg` | [Eq it-na pizza-margherita sep2005 sml.jpg](https://commons.wikimedia.org/wiki/File:Eq_it-na_pizza-margherita_sep2005_sml.jpg) | Valerio Capello at English Wikipedia | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
-| `restaurants/kumo-ramen.jpg` | [Soy Milk Ramen and Tonkotsu Miso Ramen by Goemon Ramen Bar.jpg](https://commons.wikimedia.org/wiki/File:Soy_Milk_Ramen_and_Tonkotsu_Miso_Ramen_by_Goemon_Ramen_Bar.jpg) | Andy Li | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
-| `restaurants/burger-yard.jpg` | [Burger and fries in Queensland, 2023.jpg](https://commons.wikimedia.org/wiki/File:Burger_and_fries_in_Queensland,_2023.jpg) | Kgbo | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `restaurants/kumo-ramen.jpg` | [Shoyu ramen - Goemon Ramen Bar 2024-01-26.jpg](https://commons.wikimedia.org/wiki/File:Shoyu_ramen_-_Goemon_Ramen_Bar_2024-01-26.jpg) | Andy Li | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
+| `restaurants/burger-yard.jpg` | [Beefburger and fries at Highgate Cricket Club, Crouch End London 02.jpg](https://commons.wikimedia.org/wiki/File:Beefburger_and_fries_at_Highgate_Cricket_Club,_Crouch_End_London_02.jpg) | Acabashi | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `restaurants/masala-lane.jpg` | [Indian Curry in Japan 20160217.jpg](https://commons.wikimedia.org/wiki/File:Indian_Curry_in_Japan_20160217.jpg) | Hal 0005 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `restaurants/pono-poke.jpg` | [Salmon Poke Bowl (S) with Spicy mayo sauce - Kitokito.jpg](https://commons.wikimedia.org/wiki/File:Salmon_Poke_Bowl_%28S%29_with_Spicy_mayo_sauce_-_Kitokito.jpg) | Andy Li | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |
 | `restaurants/taqueria-verde.jpg` | [001 Tacos de carnitas, carne asada y al pastor.jpg](https://commons.wikimedia.org/wiki/File:001_Tacos_de_carnitas,_carne_asada_y_al_pastor.jpg) | Larry Miller | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) |
@@ -35,14 +35,7 @@ Every photo in `public/images/` comes from Wikimedia Commons under the licence l
 | `items/ml-butter-chicken.jpg` | [Chicken makhani.jpg](https://commons.wikimedia.org/wiki/File:Chicken_makhani.jpg) | stu_spivack | [CC BY-SA 2.0](https://creativecommons.org/licenses/by-sa/2.0/) |
 | `items/ml-biryani.jpg` | [Chicken Hyderabadi Biryani.JPG](https://commons.wikimedia.org/wiki/File:Chicken_Hyderabadi_Biryani.JPG) | Dheerajk88 | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `items/ml-naan.jpg` | [Naan 2.jpg](https://commons.wikimedia.org/wiki/File:Naan_2.jpg) | Shisma | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
-| `items/ml-pilau.jpg` | [Bangladeshi Polao 1.jpg](https://commons.wikimedia.org/wiki/File:Bangladeshi_Polao_1.jpg) | Rocky Masum 
-
-
-
-
-
-
-This work was made by Masum-al-Hasan Rocky and released under the license(s) stated below. Please feel free to use it for any purpose as long as you credit Masum-al-Hasan Rocky as author and follow the terms of the chosen license. If you use this work outside of the Wikimedia projects, I would very much like to get a note from you. Thanks! | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
+| `items/ml-pilau.jpg` | [Bangladeshi Polao 1.jpg](https://commons.wikimedia.org/wiki/File:Bangladeshi_Polao_1.jpg) | Masum-al-Hasan Rocky | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `items/ml-samosas.jpg` | [Indian Samosa by clumsy home chef.jpg](https://commons.wikimedia.org/wiki/File:Indian_Samosa_by_clumsy_home_chef.jpg) | ClumsyHomeChef | [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) |
 | `items/ml-lassi.jpg` | [Mango Lassi .jpg](https://commons.wikimedia.org/wiki/File:Mango_Lassi_.jpg) | Misaochan | [CC BY-SA 3.0](https://creativecommons.org/licenses/by-sa/3.0/) |
 | `items/pp-salmon.jpg` | [Poke bowl - Cambridge, MA.jpg](https://commons.wikimedia.org/wiki/File:Poke_bowl_-_Cambridge,_MA.jpg) | Daderot | [CC0](https://creativecommons.org/publicdomain/zero/1.0/) |

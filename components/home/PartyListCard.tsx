@@ -2,11 +2,11 @@
 
 import { Check, Timer } from "lucide-react";
 import Link from "next/link";
-import { Avatar, Countdown, ImageFrame, Pill, ProgressPie, formatPrice } from "@/components/ui";
+import { Avatar, Countdown, DealPill, ImageFrame, Pill, ProgressPie, Rating, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { DELIVERY_STEPS } from "@/lib/requests";
 import { useApp } from "@/lib/store";
-import { DEAL_TAB_HEIGHT, DealTab, Eta, Rating } from "./parts";
+import { Eta } from "./parts";
 import type { HomeParty } from "./useHomeParties";
 
 /** Your parties open on their status page; any other party opens on its menu to join. */
@@ -23,8 +23,12 @@ function stageLabel(party: HomeParty): string {
 
 const MAX_FACES = 3;
 
-/** "Other parties" card (wireframe 1): image left, deal tab on the top-right edge, timer and people right, name and progress below. */
-export function PartyListCard({ party }: { party: HomeParty }) {
+/**
+ * "Other parties" card (wireframe 1): image left; timer, people and the deal pill stacked on the right;
+ * name, rating and delivery time below with the progress on the right. `priority` loads the image eagerly
+ * (the first cards in the list).
+ */
+export function PartyListCard({ party, priority = false }: { party: HomeParty; priority?: boolean }) {
   const { now } = useApp();
   const { request, restaurant, progress, me } = party;
   const open = request.status === "open";
@@ -34,10 +38,8 @@ export function PartyListCard({ party }: { party: HomeParty }) {
   return (
     <Link
       href={partyHref(party)}
-      className="relative block rounded-card border border-line bg-surface p-3 transition-transform duration-100 ease-out active:scale-[0.97]"
+      className="block rounded-card border border-line bg-surface p-3 transition-transform duration-100 ease-out active:scale-[0.97]"
     >
-      <DealTab label={restaurant.deal.short} className="right-4" />
-
       <div className="flex gap-3">
         <ImageFrame
           src={restaurant.image}
@@ -46,6 +48,7 @@ export function PartyListCard({ party }: { party: HomeParty }) {
           radius="chip"
           emoji={restaurant.emoji}
           sizes="96px"
+          priority={priority}
           className="size-24 shrink-0"
         />
         <div className="flex min-w-0 flex-1 flex-col items-end gap-1.5 pt-0.5 text-right">
@@ -65,24 +68,29 @@ export function PartyListCard({ party }: { party: HomeParty }) {
             </span>
             <span className="tnum">{people.length} in party</span>
           </span>
-          {me && (
-            <Pill tone="soft" icon={<Check aria-hidden />} className="mt-auto">
-              You&apos;re in
-            </Pill>
-          )}
+          <span className="flex flex-wrap items-center justify-end gap-1.5">
+            {me && (
+              <Pill tone="soft" icon={<Check aria-hidden />}>
+                You&apos;re in
+              </Pill>
+            )}
+            <DealPill label={restaurant.deal.short} size="sm" />
+          </span>
         </div>
       </div>
 
-      <div className="mt-2.5 flex items-end justify-between gap-3">
+      <div className="mt-2.5 flex items-end justify-between gap-2">
         <div className="min-w-0">
           <h3 className="truncate text-emphasis font-semibold tracking-[-0.01em] text-ink">{restaurant.name}</h3>
-          <p className="flex flex-wrap items-center gap-x-1.5 text-meta text-ink-2">
-            <Rating restaurant={restaurant} />
-            <span aria-hidden>·</span>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-1">
+            <Rating value={restaurant.rating} count={restaurant.ratingCount} />
+            <span aria-hidden className="text-meta text-ink-2">
+              ·
+            </span>
             <Eta restaurant={restaurant} />
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2.5">
+        <div className="flex shrink-0 items-center gap-2">
           <span className="tnum text-body text-ink-2">
             <span className="font-semibold text-ink">{formatPrice(progress.total, { trim: true })}</span>
             {" / "}
@@ -99,6 +107,3 @@ export function PartyListCard({ party }: { party: HomeParty }) {
     </Link>
   );
 }
-
-/** Top padding each list item needs so its deal tab clears the item above. */
-export const LIST_ITEM_TOP = DEAL_TAB_HEIGHT;

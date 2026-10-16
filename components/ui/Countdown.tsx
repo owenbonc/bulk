@@ -8,15 +8,33 @@ export interface CountdownProps {
   now: number;
   /** Text after the clock, e.g. "left". */
   suffix?: string;
-  /** Below this many ms the clock turns --offer. Defaults to 60s. Pass 0 to never turn urgent. */
+  /** Below this many ms the clock turns urgent. Defaults to 60s. Pass 0 to never turn urgent. */
   urgentBelowMs?: number;
+  /**
+   * Urgent colour: `offer` (default) on white or cream, `offer-ink` on tinted surfaces such as --accent-soft
+   * where --offer misses 4.5:1. The urgent colour wins over a text colour passed in `className`.
+   */
+  urgentTone?: "offer" | "offer-ink";
   /** Use Geist Mono for the digits (PIN-like timers). */
   mono?: boolean;
   className?: string;
 }
 
-/** Live "m:ss" timer with tabular digits. Turns --offer in the final minute. */
-export function Countdown({ until, now, suffix, urgentBelowMs = 60_000, mono = false, className }: CountdownProps) {
+const urgentTones: Record<NonNullable<CountdownProps["urgentTone"]>, string> = {
+  offer: "data-urgent:text-offer",
+  "offer-ink": "data-urgent:text-offer-ink",
+};
+
+/** Live "m:ss" timer with tabular digits. Turns --offer (or --offer-ink) in the final minute. */
+export function Countdown({
+  until,
+  now,
+  suffix,
+  urgentBelowMs = 60_000,
+  urgentTone = "offer",
+  mono = false,
+  className,
+}: CountdownProps) {
   const remaining = Math.max(0, until - now);
   const urgent = urgentBelowMs > 0 && remaining < urgentBelowMs;
 
@@ -25,7 +43,7 @@ export function Countdown({ until, now, suffix, urgentBelowMs = 60_000, mono = f
       role="timer"
       aria-label={`${describeDuration(remaining)}${suffix ? ` ${suffix}` : ""}`}
       data-urgent={urgent || undefined}
-      className={cn("tnum transition-colors duration-300", mono && "font-mono", urgent && "text-offer", className)}
+      className={cn("tnum transition-colors duration-300", mono && "font-mono", urgentTones[urgentTone], className)}
     >
       {formatDuration(remaining)}
       {suffix ? ` ${suffix}` : null}

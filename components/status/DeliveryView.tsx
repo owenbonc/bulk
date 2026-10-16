@@ -2,10 +2,10 @@
 
 import { Check, House, MapPin } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { BottomBar, Button, Card, EASE_OUT, Pill, SectionHeader, cn } from "@/components/ui";
+import { BottomBar, Button, Card, Countdown, EASE_OUT, Pill, SectionHeader, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
-import { DELIVERY_STEPS } from "@/lib/requests";
-import { arrivesAt, deliveryStep, previewSplit } from "@/lib/store";
+import { DELIVERY_STAGES, DELIVERY_STEPS } from "@/lib/requests";
+import { deliveryStep, previewSplit, useApp } from "@/lib/store";
 import type { RequestStatus } from "@/lib/types";
 import type { ViewProps } from "./FillingView";
 import { LiveMap } from "./LiveMap";
@@ -33,16 +33,18 @@ function subline(status: RequestStatus, pickupName: string): string {
   }
 }
 
-const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
+/** Time from payment to "Ready to collect" in the simulated delivery. */
+const DELIVERED_AFTER_MS = DELIVERY_STAGES.find((s) => s.status === "delivered")?.afterMs ?? 0;
 
 /** W10: everyone paid. Delivery progress, live map while on its way, collection PIN, your order, the party. */
 export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
+  const { now } = useApp();
   const reduce = useReducedMotion();
   const me = request.participants.find((p) => p.userId === ME.userId)!;
   const cost = previewSplit(request, restaurant, ME.userId, me.basket);
   const step = deliveryStep(request.status);
   const delivered = request.status === "delivered";
-  const eta = arrivesAt(request, restaurant);
+  const readyAt = request.confirmedAt !== undefined ? request.confirmedAt + DELIVERED_AFTER_MS : undefined;
   const onItsWay = request.status === "out_for_delivery";
 
   return (
@@ -58,13 +60,13 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
             </div>
             {delivered ? (
               <Pill tone="success" size="md" icon={<Check strokeWidth={2.5} />} className="mt-1">
-                Arrived
+                Ready now
               </Pill>
             ) : (
-              eta !== undefined && (
+              readyAt !== undefined && (
                 <p className="mt-1 shrink-0 text-right">
-                  <span className="block text-caption text-ink-2">Arrives</span>
-                  <span className="tnum block text-emphasis font-semibold text-ink">~{clock.format(eta)}</span>
+                  <span className="block text-caption text-ink-2">Arrives in</span>
+                  <Countdown until={readyAt} now={now} urgentBelowMs={0} className="block text-emphasis font-semibold text-ink" />
                 </p>
               )
             )}

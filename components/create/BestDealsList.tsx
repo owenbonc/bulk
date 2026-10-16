@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import type { MouseEvent } from "react";
-import { ImageFrame, SectionHeader } from "@/components/ui";
+import { ImageFrame, Rating, SectionHeader } from "@/components/ui";
 import type { Restaurant } from "@/lib/types";
-import { OfferLine, PartyOpenPill, Rating, etaLabel } from "./bits";
+import { OfferLine, PartyOpenPill, etaLabel } from "./bits";
 import type { PartyMarker } from "./FeaturedCarousel";
+
+/** Rows in view on first paint under the Featured carousel; their photos load first. */
+const PRIORITY_ROWS = 3;
 
 export interface BestDealsListProps {
   /** Already sorted, best deal first. */
@@ -39,6 +42,7 @@ export function BestDealsList({ restaurants, count, partyAt, onChoose }: BestDea
                   emoji={r.emoji}
                   radius="card"
                   sizes="96px"
+                  priority={i < PRIORITY_ROWS}
                   className="size-24 shrink-0 transition-transform duration-100 ease-out group-active:scale-[0.97]"
                 />
                 <div className="flex min-w-0 flex-1 flex-col gap-0.5">

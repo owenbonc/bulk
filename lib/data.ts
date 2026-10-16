@@ -16,10 +16,10 @@ export const DEFAULT_LOCATION = "student-centre";
 
 export const CATALOG: Catalog = {
   pickupPoints: [
-    { id: "student-centre", name: "UCL Student Centre entrance", access: "Gordon Street doors, wait just inside by the bike racks", lat: 51.5249, lng: -0.1325 },
-    { id: "main-library", name: "Main Library entrance", access: "Under the Wilkins Building portico, next to the porters' lodge", lat: 51.5246, lng: -0.134 },
-    { id: "ramsay-hall", name: "Ramsay Hall reception", access: "Maple Street entrance, reception holds orders until 11pm", lat: 51.5226, lng: -0.1381 },
-    { id: "ioe-bedford-way", name: "IOE Bedford Way lobby", access: "Up the Bedford Way steps, by the security desk on level 2", lat: 51.5228, lng: -0.1289 },
+    { id: "student-centre", name: "Student Centre", access: "Gordon Street doors, just inside by the bike racks", lat: 51.5249, lng: -0.1325 },
+    { id: "main-library", name: "Main Library", access: "Main entrance under the Wilkins Building portico, next to the porters' lodge", lat: 51.5246, lng: -0.134 },
+    { id: "ramsay-hall", name: "Ramsay Hall", access: "Reception desk, Maple Street entrance. Holds orders until 11pm", lat: 51.5226, lng: -0.1381 },
+    { id: "ioe-bedford-way", name: "IOE Bedford Way", access: "Up the Bedford Way steps, by the security desk on level 2", lat: 51.5228, lng: -0.1289 },
   ],
   restaurants: [
     {
@@ -36,7 +36,7 @@ export const CATALOG: Catalog = {
       distanceMiles: 0.4,
       featured: true,
       deliveryFee: 349,
-      deal: { label: "20% off a £40 group order", short: "20% off", minTotal: 4000, discountPct: 20 },
+      deal: { label: "20% off when the party spends £40", short: "20% off", minTotal: 4000, discountPct: 20 },
       menu: [
         { id: "sh-margherita", name: "Margherita", price: 1050, category: "main", topPick: true, description: "San Marzano tomato, fior di latte and fresh basil", image: "/images/items/sh-margherita.jpg" },
         { id: "sh-pepperoni", name: "Hot Honey Pepperoni", price: 1350, originalPrice: 1550, category: "main", topPick: true, description: "Crispy-cupped pepperoni with a drizzle of chilli honey", image: "/images/items/sh-pepperoni.jpg" },
@@ -62,7 +62,7 @@ export const CATALOG: Catalog = {
       distanceMiles: 0.3,
       featured: true,
       deliveryFee: 299,
-      deal: { label: "15% off a £35 group order", short: "15% off", minTotal: 3500, discountPct: 15 },
+      deal: { label: "15% off when the party spends £35", short: "15% off", minTotal: 3500, discountPct: 15 },
       menu: [
         { id: "kr-tonkotsu", name: "Tonkotsu Ramen", price: 1350, category: "main", topPick: true, description: "18-hour pork broth, chashu, soft egg and nori", image: "/images/items/kr-tonkotsu.jpg" },
         { id: "kr-miso", name: "Spicy Miso Ramen", price: 1300, category: "main", topPick: true, description: "Red miso broth, minced pork, chilli oil and sweetcorn", image: "/images/items/kr-miso.jpg" },
@@ -88,7 +88,7 @@ export const CATALOG: Catalog = {
       etaMin: [15, 25],
       distanceMiles: 0.6,
       deliveryFee: 249,
-      deal: { label: "15% off a £35 group order", short: "15% off", minTotal: 3500, discountPct: 15 },
+      deal: { label: "15% off when the party spends £35", short: "15% off", minTotal: 3500, discountPct: 15 },
       menu: [
         { id: "by-classic", name: "Yard Classic", price: 1050, category: "main", topPick: true, description: "Double smashed beef, American cheese, pickles, yard sauce", image: "/images/items/by-classic.jpg" },
         { id: "by-hot-chicken", name: "Nashville Hot Chicken", price: 1150, category: "main", topPick: true, description: "Buttermilk-fried thigh, hot glaze, slaw and pickles", image: "/images/items/by-hot-chicken.jpg" },
@@ -113,7 +113,7 @@ export const CATALOG: Catalog = {
       etaMin: [30, 40],
       distanceMiles: 0.7,
       deliveryFee: 349,
-      deal: { label: "25% off a £50 group order", short: "25% off", minTotal: 5000, discountPct: 25 },
+      deal: { label: "25% off when the party spends £50", short: "25% off", minTotal: 5000, discountPct: 25 },
       menu: [
         { id: "ml-butter-chicken", name: "Butter Chicken", price: 1150, category: "main", topPick: true, description: "Charred tikka in a silky tomato and fenugreek sauce", image: "/images/items/ml-butter-chicken.jpg" },
         { id: "ml-biryani", name: "Chicken Biryani", price: 1250, category: "main", topPick: true, description: "Layered saffron basmati, crispy onions and raita", image: "/images/items/ml-biryani.jpg" },
@@ -139,7 +139,7 @@ export const CATALOG: Catalog = {
       etaMin: [15, 25],
       distanceMiles: 0.2,
       deliveryFee: 299,
-      deal: { label: "20% off a £40 group order", short: "20% off", minTotal: 4000, discountPct: 20 },
+      deal: { label: "20% off when the party spends £40", short: "20% off", minTotal: 4000, discountPct: 20 },
       menu: [
         { id: "pp-salmon", name: "Classic Salmon Bowl", price: 1195, category: "main", topPick: true, description: "Salmon, sushi rice, edamame, cucumber and sesame ponzu", image: "/images/items/pp-salmon.jpg" },
         { id: "pp-spicy-tuna", name: "Spicy Tuna Bowl", price: 1295, category: "main", topPick: true, description: "Yellowfin tuna, sriracha mayo, mango and crispy onions", image: "/images/items/pp-spicy-tuna.jpg" },
@@ -165,7 +165,7 @@ export const CATALOG: Catalog = {
       etaMin: [25, 35],
       distanceMiles: 0.9,
       deliveryFee: 329,
-      deal: { label: "20% off a £45 group order", short: "20% off", minTotal: 4500, discountPct: 20 },
+      deal: { label: "20% off when the party spends £45", short: "20% off", minTotal: 4500, discountPct: 20 },
       menu: [
         { id: "tv-burrito", name: "Carnitas Burrito", price: 1150, category: "main", topPick: true, description: "Slow-cooked pork, rice, black beans and salsa verde", image: "/images/items/tv-burrito.jpg" },
         { id: "tv-tacos", name: "Al Pastor Tacos (3)", price: 1050, category: "main", topPick: true, description: "Achiote pork, charred pineapple, onion and coriander", image: "/images/items/tv-tacos.jpg" },
@@ -191,7 +191,7 @@ export const CATALOG: Catalog = {
       etaMin: [30, 40],
       distanceMiles: 0.8,
       deliveryFee: 399,
-      deal: { label: "25% off a £55 group order", short: "25% off", minTotal: 5500, discountPct: 25 },
+      deal: { label: "25% off when the party spends £55", short: "25% off", minTotal: 5500, discountPct: 25 },
       menu: [
         { id: "gl-char-siu", name: "Char Siu Pork Rice", price: 1100, category: "main", topPick: true, description: "Honey-roast pork over steamed rice with pak choi", image: "/images/items/gl-char-siu.jpg" },
         { id: "gl-kung-pao", name: "Kung Pao Chicken", price: 1050, category: "main", topPick: true, description: "Wok-fired with peanuts, dried chilli and Sichuan pepper", image: "/images/items/gl-kung-pao.jpg" },
@@ -217,7 +217,7 @@ export const CATALOG: Catalog = {
       distanceMiles: 0.5,
       featured: true,
       deliveryFee: 299,
-      deal: { label: "20% off a £40 group order", short: "20% off", minTotal: 4000, discountPct: 20 },
+      deal: { label: "20% off when the party spends £40", short: "20% off", minTotal: 4000, discountPct: 20 },
       menu: [
         { id: "lk-shawarma", name: "Chicken Shawarma Wrap", price: 950, category: "main", topPick: true, description: "Garlic toum, pickles and fries rolled in saj bread", image: "/images/items/lk-shawarma.jpg" },
         { id: "lk-falafel", name: "Falafel Mezze Bowl", price: 1050, category: "main", topPick: true, description: "Herby falafel, hummus, tabbouleh and pickled turnip", image: "/images/items/lk-falafel.jpg" },

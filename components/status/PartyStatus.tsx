@@ -162,6 +162,7 @@ export function PartyStatus({ id }: { id: string }) {
         onOpenChange={setPayOpen}
         restaurant={restaurant}
         amount={myCost?.total ?? 0}
+        round={request.round}
         deadline={request.acceptDeadline ?? now}
         now={now}
         onPay={() => {

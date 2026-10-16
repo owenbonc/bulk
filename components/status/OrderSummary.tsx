@@ -64,7 +64,7 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
         />
         <SummaryRow
           label="Delivery share"
-          hint={members > 1 ? `${formatPrice(restaurant.deliveryFee)} ÷ ${members}` : undefined}
+          hint={members > 1 ? <span className="tnum">{`${formatPrice(restaurant.deliveryFee)} ÷ ${members}`}</span> : undefined}
           value={<Price pence={cost.delivery} />}
         />
       </div>

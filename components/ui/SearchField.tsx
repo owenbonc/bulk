@@ -12,8 +12,8 @@ export interface SearchFieldProps
   label?: string;
   /** md 44px (default), lg 48px. */
   size?: "md" | "lg";
-  /** Surface behind the field: white on the page, or material-friendly translucent white in bars. */
-  tone?: "surface" | "translucent";
+  /** Surface: white on the page, translucent white inside material bars, or clear glass (the Home search bar). */
+  tone?: "surface" | "translucent" | "glass";
 }
 
 /** Pill search input with a leading magnifier and a clear button. 16px text so iOS never zooms. */
@@ -32,10 +32,12 @@ export function SearchField({
   return (
     <div
       className={cn(
-        "relative flex min-w-0 items-center rounded-full ring-1 ring-line ring-inset transition-shadow duration-150",
+        "relative flex min-w-0 items-center rounded-full transition-shadow duration-150",
         "focus-within:ring-2 focus-within:ring-accent-ink",
         size === "lg" ? "h-12" : "h-11",
-        tone === "surface" ? "bg-surface" : "bg-white/70",
+        tone === "glass" ? "glass" : "ring-1 ring-line ring-inset",
+        tone === "surface" && "bg-surface",
+        tone === "translucent" && "bg-surface/70",
         className,
       )}
     >
