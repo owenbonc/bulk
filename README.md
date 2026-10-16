@@ -13,6 +13,10 @@ Bulk lets students nearby pool their food orders from one restaurant into a **pa
   <img src="docs/images/ready.png" alt="Your food is ready! Collect from Student Centre with your PIN" width="200">
 </p>
 
+**Product Demo:** https://bulk-theta.vercel.app/
+
+**Website:** https://bulk-landing-red.vercel.app/
+
 ## The problem
 
 Ordering alone is the most expensive way to get food delivered, and students do it all the time.
