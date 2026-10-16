@@ -47,7 +47,7 @@ Same food from the same restaurant, **23% less**. Prices come from the demo's sa
 
 Nothing open near you? **Create a party**: pick a restaurant, a collection point and how long it stays open.
 
-## Built for ordering with strangers, and turning them into regulars
+## Built for ordering with strangers, and turning them into friends
 
 Nobody holds anyone else's money or food, and drop-outs cost nothing.
 
