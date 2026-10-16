@@ -51,7 +51,7 @@ export function HomeBottomBar({ query, onQueryChange, mine, collected }: HomeBot
               label="Search parties by restaurant, cuisine or dish"
             />
           </div>
-          <IconButton aria-label="Create a party" iconColor="accent" href="/create">
+          <IconButton aria-label="Create a party" variant="glass-accent" href="/create">
             <Plus className="size-[22px]" strokeWidth={2.25} />
           </IconButton>
         </div>

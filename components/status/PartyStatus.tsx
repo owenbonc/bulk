@@ -7,7 +7,7 @@ import { useEffect, useState } from "react";
 import { EASE_OUT, EXIT, IconButton, Marquee, TopBar, formatPrice, scrollRootTo, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { CANCEL_REASONS } from "@/lib/requests";
-import { pickupById, previewSplit, progressOf, restaurantById, useApp } from "@/lib/store";
+import { myReleased, pickupById, previewSplit, progressOf, restaurantById, useApp } from "@/lib/store";
 import type { OrderRequest } from "@/lib/types";
 import { AcceptView } from "./AcceptView";
 import { ClosedView } from "./ClosedView";
@@ -17,18 +17,18 @@ import { FillingView } from "./FillingView";
 import { HANDOVER_MS, HandoverSheet, type HandoverPhase } from "./HandoverSheet";
 import { HelpSheet } from "./HelpSheet";
 import { PaySheet } from "./PaySheet";
+import { NewPartyCard } from "./NewPartyCard";
 
 type View = "filling" | "accept" | "delivery" | "collected" | "closed" | "removed" | "missed";
 
 function viewFor(request: OrderRequest): View {
   const me = request.participants.find((p) => p.userId === ME.userId);
-  // A host who declines cancels the party, so they see why it was cancelled rather than being "out".
-  if (request.status === "cancelled" && request.hostId === ME.userId) return "closed";
-  if (me?.declined || (!me && request.removedUserIds.includes(ME.userId))) return "removed";
   if (request.status === "expired" || request.status === "cancelled") return "closed";
+  if (me?.declined || (!me && request.removedUserIds.includes(ME.userId))) return "removed";
   if (request.status === "open") return "filling";
   if (!me) return "missed";
-  if (request.status === "delivered" && me.collected) return "collected";
+  // Your bag has been handed over (the order itself is `collected` once every bag has).
+  if (me.collectedAt !== undefined) return "collected";
   return request.status === "deal_achieved" ? "accept" : "delivery";
 }
 
@@ -38,8 +38,9 @@ function viewFor(request: OrderRequest): View {
  * stay mounted so they can animate closed when the status moves on underneath them.
  *
  * `?handover=1` (from the "ready" popup or notification) runs the simulated PIN handover as soon as the
- * order is ready to collect and you haven't collected it: the courier "accepts" the code after
- * HANDOVER_MS, COLLECT is dispatched and the param is dropped from the URL.
+ * order is ready to collect and you haven't collected it: the sheet shows your own pickup PIN, the courier
+ * "accepts" it after HANDOVER_MS, HANDOVER is dispatched with that PIN (your bag is handed over) and the
+ * param is dropped from the URL.
  */
 export function PartyStatus({ id }: { id: string }) {
   const { state, now, dispatch } = useApp();
@@ -55,7 +56,8 @@ export function PartyStatus({ id }: { id: string }) {
   const statusPath = `/party/${id}/status`;
   const wantsHandover = useSearchParams().get("handover") === "1";
   const mine = request?.participants.find((p) => p.userId === ME.userId);
-  const canCollect = request?.status === "delivered" && !!mine?.paid && !mine.collected;
+  const myPin = mine?.collectionCode;
+  const canCollect = request?.status === "delivered" && !!mine?.paid && !!myPin && mine.collectedAt === undefined;
   const [handover, setHandover] = useState<{ open: boolean; phase: HandoverPhase }>({ open: false, phase: "showing" });
 
   // The param arms one handover each time it appears in the URL (including on arrival).
@@ -87,11 +89,11 @@ export function PartyStatus({ id }: { id: string }) {
     if (!checking) return;
     const timer = window.setTimeout(() => {
       setHandover({ open: true, phase: "accepted" });
-      dispatch({ type: "COLLECT", requestId: id, userId: ME.userId });
+      if (myPin) dispatch({ type: "HANDOVER", requestId: id, code: myPin, now: Date.now() });
       if (new URLSearchParams(window.location.search).has("handover")) router.replace(statusPath, { scroll: false });
     }, HANDOVER_MS);
     return () => window.clearTimeout(timer);
-  }, [checking, dispatch, id, router, statusPath]);
+  }, [checking, dispatch, id, myPin, router, statusPath]);
 
   const view: View | "missing" = request && restaurant && pickup ? viewFor(request) : "missing";
 
@@ -111,6 +113,8 @@ export function PartyStatus({ id }: { id: string }) {
 
   const me = request.participants.find((p) => p.userId === ME.userId);
   const myCost = me ? previewSplit(request, restaurant, ME.userId, me.basket) : undefined;
+  const released = myReleased(request);
+  const retry = released && <NewPartyCard request={request} entry={released} restaurant={restaurant} pickup={pickup} />;
 
   let content;
   switch (view) {
@@ -133,12 +137,16 @@ export function PartyStatus({ id }: { id: string }) {
           tone="neutral"
           title="You're out of this order"
           reason={
-            declinedHere || me?.declined
-              ? "You declined this order."
-              : "You didn't accept within 60 seconds."
+            released?.reason === "payment_failed" || me?.declineReason === "payment_failed"
+              ? "Your demo payment didn't go through, so you were taken out of this order."
+              : declinedHere || me?.declined || released?.reason === "declined"
+                ? "You declined this order."
+                : "You didn't accept within 60 seconds."
           }
-          reassurance="Nothing was charged."
-        />
+          reassurance="Nothing was charged. The rest of the party carries on without you."
+        >
+          {retry}
+        </ClosedView>
       );
       break;
     case "missed":
@@ -168,6 +176,7 @@ export function PartyStatus({ id }: { id: string }) {
               The party reached {formatPrice(progress.total, { trim: true })} of {formatPrice(progress.target, { trim: true })}.
             </p>
           )}
+          {retry && <div className={expired ? "mt-5" : undefined}>{retry}</div>}
         </ClosedView>
       );
     }
@@ -204,12 +213,12 @@ export function PartyStatus({ id }: { id: string }) {
         </motion.main>
       </AnimatePresence>
 
-      {request.pin && (
+      {myPin && (
         <HandoverSheet
           open={handover.open}
           onOpenChange={(open) => (open ? startHandover() : closeHandover())}
           phase={handover.phase}
-          pin={request.pin}
+          pin={myPin}
           pickupName={pickup.name}
         />
       )}
@@ -224,7 +233,6 @@ export function PartyStatus({ id }: { id: string }) {
         round={request.round}
         deadline={request.acceptDeadline ?? now}
         now={now}
-        hosting={request.hostId === ME.userId}
         onPay={() => {
           const at = Date.now();
           if (request.acceptDeadline !== undefined && at >= request.acceptDeadline) {
@@ -235,12 +243,18 @@ export function PartyStatus({ id }: { id: string }) {
           const others = request.participants.filter((p) => p.userId !== ME.userId);
           const settles = others.every((p) => p.paid || p.declined);
           const someoneOut = others.some((p) => p.declined);
-          dispatch({ type: "ACCEPT_AND_PAY", requestId: request.id, userId: ME.userId, now: at });
+          const answer = { requestId: request.id, userId: ME.userId, round: request.round, now: at };
+          if (state.demo.myPaymentFails) {
+            dispatch({ type: "DECLINE", reason: "payment_failed", ...answer });
+            toast("Demo payment failed", { description: "Nothing was charged." });
+            return;
+          }
+          dispatch({ type: "ACCEPT_AND_PAY", ...answer });
           if (!(settles && someoneOut)) toast.success(`Paid ${formatPrice(myCost?.total ?? 0)}`);
         }}
         onDecline={() => {
           setDeclinedHere(true);
-          dispatch({ type: "DECLINE", requestId: request.id, userId: ME.userId, now: Date.now() });
+          dispatch({ type: "DECLINE", requestId: request.id, userId: ME.userId, round: request.round, now: Date.now() });
         }}
       />
     </>

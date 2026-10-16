@@ -42,8 +42,8 @@ export interface DeliveryViewProps extends ViewProps {
 }
 
 /**
- * W10: everyone paid. Delivery progress, live map while on its way, collection PIN, your order, the party.
- * Once it's ready to collect, "I've collected my food" runs the simulated PIN handover.
+ * W10: everyone paid. Delivery progress, live map while on its way, your own pickup PIN, your order, the
+ * party. Once it's ready to collect, "I've collected my food" shows your PIN to the courier (the handover sheet).
  */
 export function DeliveryView({ request, restaurant, pickup, onCollect }: DeliveryViewProps) {
   const { now } = useApp();
@@ -126,7 +126,7 @@ export function DeliveryView({ request, restaurant, pickup, onCollect }: Deliver
                   <Marquee>{pickup.name}</Marquee>
                 </p>
               </div>
-              {request.pin && <PinTiles pin={request.pin} ready={delivered} reduce={!!reduce} />}
+              {me.collectionCode && <PinTiles pin={me.collectionCode} ready={delivered} reduce={!!reduce} />}
             </div>
             <p className="text-meta text-ink-2">{pickup.access}</p>
           </div>
@@ -188,8 +188,8 @@ function StepBar({ step }: { step: number }) {
 }
 
 /**
- * Pickup PIN as four digit tiles. They turn lime with a single spring entrance once the order is ready to
- * collect. `size="lg"` is the handover sheet's larger set, without the label.
+ * Your own pickup PIN as four digit tiles: it releases only your labelled bag. They turn lime with a single
+ * spring entrance once the order is ready to collect. `size="lg"` is the handover sheet's larger set, without the label.
  */
 export function PinTiles({ pin, ready, reduce, size = "md" }: { pin: string; ready: boolean; reduce: boolean; size?: "md" | "lg" }) {
   const large = size === "lg";

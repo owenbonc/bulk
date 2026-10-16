@@ -4,14 +4,15 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { EXIT, SPRING, SectionHeader } from "@/components/ui";
 import { ME } from "@/lib/data";
+import { pendingInvites } from "@/lib/requests";
 import type { OrderRequest } from "@/lib/types";
 
-/** The Party section is hidden while you're the host and nobody else has joined. */
+/** The Party section is hidden while you're alone in the party (whether or not you created it) and nobody is invited. */
 export function showPartySection(request: OrderRequest): boolean {
-  return !(request.hostId === ME.userId && request.participants.length <= 1);
+  return request.participants.some((p) => p.userId !== ME.userId) || pendingInvites(request).length > 0;
 }
 
-/** "Party · n" section that animates in when the first person joins your party. */
+/** "Party · n" section that animates in when someone else is in the party with you. */
 export function PartySection({ request, children }: { request: OrderRequest; children: ReactNode }) {
   const show = showPartySection(request);
   return (

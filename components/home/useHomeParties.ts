@@ -80,7 +80,7 @@ export function useHomeParties(query: string): HomeParties {
     .filter(stillYours)
     .sort((a, b) => urgency(a) - urgency(b) || a.request.expiresAt - b.request.expiresAt);
 
-  const collected = all.filter((p) => p.request.status === "delivered" && hasCollected(p.request));
+  const collected = all.filter((p) => (p.request.status === "delivered" || p.request.status === "collected") && hasCollected(p.request));
 
   return { highlights, others, mine, collected, totalCount: listed.length };
 }

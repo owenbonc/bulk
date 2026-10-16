@@ -19,14 +19,15 @@ export interface HelpSheetProps {
 
 /**
  * The status page's "More information" sheet: party details (restaurant, deal terms, collection point and
- * access note), how the party works, then Share, Report and Leave (Leave only while open, never for the host).
+ * access note), how the party works, then Share, Report and Leave (Leave only while open; the host can leave too).
  */
 export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: HelpSheetProps) {
   const { dispatch } = useApp();
   const router = useRouter();
   const [confirmLeave, setConfirmLeave] = useState(false);
   const me = request.participants.find((p) => p.userId === ME.userId);
-  const canLeave = request.status === "open" && !!me && request.hostId !== ME.userId;
+  // Anyone can leave while the party is open, the host included; the party stays open for the rest.
+  const canLeave = request.status === "open" && !!me;
   const host = request.participants.find((p) => p.userId === request.hostId);
   const seconds = ACCEPT_WINDOW_MS / 1000;
   const threshold = formatPrice(restaurant.deal.minTotal, { trim: true });
@@ -85,8 +86,8 @@ export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: H
           <ol className="mt-3 flex flex-col gap-3">
             <Step n={1}>The party fills when everyone&apos;s baskets reach {threshold}.</Step>
             <Step n={2}>Everyone then has {seconds} seconds to accept and pay.</Step>
-            <Step n={3}>If someone drops out, the rest get one second round.</Step>
-            <Step n={4}>Otherwise the order is cancelled and nobody is charged.</Step>
+            <Step n={3}>If someone drops out, the rest get one repriced second round, if they still reach {threshold}.</Step>
+            <Step n={4}>Otherwise nobody is charged, and you can start a new party with your basket.</Step>
           </ol>
         </section>
 
@@ -103,7 +104,10 @@ export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: H
               <Divider className="ml-[68px]" />
               {confirmLeave ? (
                 <div className="flex flex-col gap-3 px-5 py-4">
-                  <p className="text-body text-ink-2">Leave the party? Your basket will be removed.</p>
+                  <p className="text-body text-ink-2">
+                    Leave the party? Your basket will be removed. The party stays open for everyone else
+                    {request.hostId === ME.userId ? ", even though you created it" : ""}. Nothing is charged.
+                  </p>
                   <div className="flex gap-2">
                     <Button variant="secondary" block onClick={() => setConfirmLeave(false)}>
                       Stay
