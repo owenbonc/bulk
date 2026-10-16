@@ -81,6 +81,27 @@ export interface Participant {
   cutlery: boolean;
   /** Declined in the current acceptance round; removed when the round resolves. */
   declined?: boolean;
+  /** Why they're out of the round: said no, or their demo payment failed. */
+  declineReason?: "declined" | "payment_failed";
+  /** Individual collection code for their own labelled bag, issued when the order is placed. */
+  collectionCode?: string;
+  /** When their bag was handed over at the collection point. */
+  collectedAt?: number;
+}
+
+export type ReleaseReason = "no_match" | "declined" | "timed_out" | "payment_failed" | "group_fell_through";
+
+/** Someone whose attempt ended. Their basket is kept until they choose to keep queueing or cancel. */
+export interface ReleasedEntry {
+  userId: string;
+  name: string;
+  isBot: boolean;
+  basket: BasketLine[];
+  cutlery: boolean;
+  reason: ReleaseReason;
+  choice: "pending" | "retried" | "cancelled";
+  /** The fresh party created when they chose to keep queueing. */
+  retriedAs?: string;
 }
 
 export type RequestStatus =
@@ -90,6 +111,7 @@ export type RequestStatus =
   | "preparing"
   | "out_for_delivery"
   | "delivered"
+  | "collected"
   | "expired"
   | "cancelled";
 
@@ -117,7 +139,14 @@ export interface OrderRequest {
   confirmedAt?: number;
   /** When the party became `cancelled` or `expired`. */
   closedAt?: number;
-  pin?: string;
+  /** When every bag had been handed over (`collected`). */
+  completedAt?: number;
+  /** 1 for a new party; "keep queueing" creates a fresh party with attempt + 1. */
+  attempt: number;
+  /** The party this one was retried from. */
+  retryOf?: string;
+  /** People whose attempt ended here, with their baskets kept for keep-queueing or cancel. */
+  released: ReleasedEntry[];
 }
 
 /** The host's party-in-progress before it is created (create flow). */
@@ -131,10 +160,19 @@ export interface Draft {
 
 export interface DemoSettings {
   botsPaused: boolean;
+  /** One bot declines the first quote (bots join with spare capacity, so the fallback can succeed). */
   botWontAccept: boolean;
+  /** That bot also declines the fallback quote, so the fallback fails. */
+  botDeclinesAgain: boolean;
+  /** One bot never answers, so the acceptance window times out. */
+  botSilent: boolean;
+  /** Your demo payment fails when you accept. */
+  myPaymentFails: boolean;
 }
 
 export interface AppState {
+  /** Persisted-state version. Saved state from another version is replaced with a fresh demo. */
+  version: number;
   requests: OrderRequest[];
   demo: DemoSettings;
   draft?: Draft;

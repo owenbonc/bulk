@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { CATALOG, DEFAULT_LOCATION, ME, seedState } from "./data";
-import { type Action, queueTotal, reduce, stubbornBot } from "./requests";
+import { CATALOG, DEFAULT_DEMO, DEFAULT_LOCATION, ME, seedState, STATE_VERSION } from "./data";
+import { CANCEL_REASONS, type Action, queueTotal, reduce, stubbornBot } from "./requests";
 import { botAcceptActions, botJoinActions, botTarget } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
@@ -19,7 +19,8 @@ function party(s: AppState, id = "r1"): OrderRequest {
 function emptyState(demo: Partial<AppState["demo"]> = {}): AppState {
   return {
     requests: [],
-    demo: { botsPaused: false, botWontAccept: false, ...demo },
+    version: STATE_VERSION,
+    demo: { ...DEFAULT_DEMO, ...demo },
     friends: [],
     seenAlerts: [],
     location: DEFAULT_LOCATION,
@@ -102,7 +103,7 @@ describe("botAcceptActions", () => {
   });
 
   it("everyone paying confirms the order", () => {
-    const s = run(dealState(), [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, now: T0 + 500 }]);
+    const s = run(dealState(), [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, round: 1, now: T0 + 500 }]);
     expect(party(respond(s, 1)).status).toBe("confirmed");
   });
 
@@ -122,13 +123,13 @@ describe("botAcceptActions", () => {
     expect(party(s).participants.filter((p) => p.declined).map((p) => p.userId)).toEqual([stubborn.userId]);
 
     // You pay last: the round resolves early and the fallback round starts without the stubborn bot.
-    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, now: T0 + 5000 }]);
+    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, round: 1, now: T0 + 5000 }]);
     expect(party(s)).toMatchObject({ status: "deal_achieved", round: 2, removedNames: [stubborn.name] });
 
     // In round 2 every bot accepts, so your payment completes the order.
     s = respond(s, 2, T0 + 6000);
     expect(party(s).participants.filter((p) => p.isBot).every((p) => p.paid)).toBe(true);
-    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, now: T0 + 9000 }]);
+    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, round: 2, now: T0 + 9000 }]);
     expect(party(s).status).toBe("confirmed");
   });
 
@@ -160,7 +161,7 @@ function playOut(s: AppState, id: string, rand: () => number): AppState {
     const r = party(s, id);
     const mine = r.participants.find((p) => p.userId === ME.userId);
     if (r.status === "deal_achieved" && mine && !mine.paid && rand() < 0.3) {
-      s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: id, userId: ME.userId, now }]);
+      s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: id, userId: ME.userId, round: r.round, now }]);
     }
     if (party(s, id).status === "delivered" || party(s, id).status === "cancelled" || party(s, id).status === "expired") break;
   }
@@ -180,7 +181,7 @@ function expectDemoOutcome(r: OrderRequest, botWontAccept: boolean, label: strin
   if (r.status === "cancelled") {
     const restaurant = CATALOG.restaurants.find((x) => x.id === r.restaurantId)!;
     const left = { ...r, participants: r.participants.filter((p) => !r.removedUserIds.includes(p.userId)) };
-    expect(r.cancelReason, label).toBe("Not enough people accepted to keep the deal.");
+    expect(r.cancelReason, label).toBe(CANCEL_REASONS.notEnoughAccepted);
     expect(queueTotal(left, restaurant), label).toBeLessThan(restaurant.deal.minTotal);
     return "cancelled";
   }
@@ -196,7 +197,7 @@ describe("end-to-end demo runs", () => {
       const botWontAccept = seed % 2 === 1;
       const restaurant = ["kumo-ramen", "levant-kitchen"][seed % 4 < 2 ? 0 : 1];
       const menu = CATALOG.restaurants.find((r) => r.id === restaurant)!.menu;
-      let s: AppState = { ...seedState(T0), demo: { botsPaused: false, botWontAccept } };
+      let s: AppState = { ...seedState(T0), demo: { ...DEFAULT_DEMO, botWontAccept } };
       s = run(s, [
         { type: "DRAFT_START", restaurantId: restaurant },
         ...Array.from({ length: 1 + Math.floor(rand() * 3) }, (): Action => ({ type: "DRAFT_ITEM", itemId: menu[Math.floor(rand() * menu.length)].id, delta: 1 })),
@@ -214,7 +215,7 @@ describe("end-to-end demo runs", () => {
       const rand = mulberry32(1000 + seed);
       const botWontAccept = seed % 2 === 1;
       const id = seeded[seed % seeded.length];
-      let s: AppState = { ...seedState(T0), demo: { botsPaused: false, botWontAccept } };
+      let s: AppState = { ...seedState(T0), demo: { ...DEFAULT_DEMO, botWontAccept } };
       const menu = CATALOG.restaurants.find((r) => r.id === party(s, id).restaurantId)!.menu;
       s = run(s, [
         { type: "JOIN", requestId: id, user: ME },

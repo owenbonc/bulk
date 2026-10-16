@@ -49,18 +49,25 @@ export function botJoinActions(state: AppState, now: number, rand: () => number)
 
 /**
  * Bots in parties that reached the deal respond at random moments: they accept and pay
- * in both rounds. With "a bot won't accept" on, exactly one bot declines in round 1 only,
- * so the demo shows the fallback round succeeding.
+ * in both rounds. Demo switches steer one "stubborn" bot: "a bot won't accept" makes it
+ * decline round 1 (the fallback round can succeed); "declines again" makes a bot decline
+ * round 2 too (the fallback fails); "never answers" makes it stay silent until the window
+ * times out. Every answer names the round it's for, so a decision made for round 1 can
+ * never count towards round 2.
  */
 export function botAcceptActions(state: AppState, now: number, rand: () => number): Action[] {
   const actions: Action[] = [];
+  const { botWontAccept, botDeclinesAgain, botSilent } = state.demo;
   for (const r of state.requests) {
     const restaurant = restaurantOf(r);
     if (r.status !== "deal_achieved" || !restaurant) continue;
-    const stubborn = state.demo.botWontAccept && r.round === 1 ? stubbornBot(r, restaurant)?.userId : undefined;
+    const declines = (botWontAccept && r.round === 1) || (botDeclinesAgain && r.round === 2);
+    const stubborn = declines || botSilent ? stubbornBot(r, restaurant)?.userId : undefined;
     for (const p of r.participants) {
-      if (!p.isBot || p.paid || p.declined || rand() >= BOT_ACCEPT_CHANCE) continue;
-      actions.push({ type: p.userId === stubborn ? "DECLINE" : "ACCEPT_AND_PAY", requestId: r.id, userId: p.userId, now });
+      if (!p.isBot || p.paid || p.declined) continue;
+      if (p.userId === stubborn && !declines) continue; // silent: let the window run out
+      if (rand() >= BOT_ACCEPT_CHANCE) continue;
+      actions.push({ type: p.userId === stubborn ? "DECLINE" : "ACCEPT_AND_PAY", requestId: r.id, userId: p.userId, round: r.round, now });
     }
   }
   return actions;
