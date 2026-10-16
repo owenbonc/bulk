@@ -22,6 +22,8 @@ function request(participants: Participant[]): OrderRequest {
     round: 1,
     removedUserIds: [],
     removedNames: [],
+    attempt: 1,
+    released: [],
   };
 }
 
@@ -62,15 +64,25 @@ describe("splitCosts", () => {
 describe("previewSplit", () => {
   const party = request([p("bob", [{ itemId: "sh-margherita", qty: 2 }]), p("me", [], false)]);
 
-  it("prices your basket as if it were finalised, with delivery shared", () => {
+  it("prices your basket as if it were finalised, with delivery shared (no discount until the party reaches £40)", () => {
     const preview = previewSplit(party, pizza, "me", [{ itemId: "sh-margherita", qty: 1 }]);
     expect(preview.members).toBe(2);
     expect(preview.subtotal).toBe(1050);
-    expect(preview.discount).toBe(210);
+    // £31.50 < £40: the deal doesn't apply yet.
+    expect(preview.discountEligible).toBe(false);
+    expect(preview.discount).toBe(0);
     expect(preview.delivery).toBe(174);
-    expect(preview.total).toBe(1050 - 210 + 174);
+    expect(preview.total).toBe(1050 + 174);
     expect(preview.people.me.total).toBe(preview.total);
     expect(preview.group.subtotal).toBe(3150);
+  });
+
+  it("applies the discount once your basket takes the party to the threshold", () => {
+    const preview = previewSplit(party, pizza, "me", [{ itemId: "sh-margherita", qty: 2 }]);
+    expect(preview.group.subtotal).toBe(4200);
+    expect(preview.discountEligible).toBe(true);
+    expect(preview.discount).toBe(420);
+    expect(preview.total).toBe(2100 - 420 + 174);
   });
 
   it("reports the party's progress including your basket, and your share of the threshold", () => {
@@ -94,7 +106,8 @@ describe("draftPreview", () => {
       { restaurantId: pizza.id, pickupPointId: "student-centre", durationMin: 15, basket: [{ itemId: "sh-margherita", qty: 2 }], cutlery: false },
       pizza,
     );
-    expect(preview).toMatchObject({ subtotal: 2100, discount: 420, delivery: 349, total: 2029, members: 1 });
+    // £21 alone is below the £40 threshold: no discount yet, full delivery.
+    expect(preview).toMatchObject({ subtotal: 2100, discount: 0, delivery: 349, total: 2449, members: 1, discountEligible: false });
     expect(preview.progress).toMatchObject({ total: 2100, left: 1900, pct: 52 });
   });
 });

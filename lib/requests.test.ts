@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { CATALOG, DEFAULT_LOCATION, seedState } from "./data";
+import { CATALOG, DEFAULT_DEMO, DEFAULT_LOCATION, seedState, STATE_VERSION } from "./data";
 import {
   ACCEPT_WINDOW_MS,
   CANCEL_REASONS,
   DELIVERY_STAGES,
+  checkHandover,
+  splitCosts,
   type Action,
   deliveryProgress,
   isHighlight,
@@ -26,8 +28,9 @@ const pizza = CATALOG.restaurants.find((r) => r.id === "slice-house")!; // 20% o
 
 function emptyState(demo: Partial<AppState["demo"]> = {}): AppState {
   return {
+    version: STATE_VERSION,
     requests: [],
-    demo: { botsPaused: false, botWontAccept: false, ...demo },
+    demo: { ...DEFAULT_DEMO, ...demo },
     friends: [],
     seenAlerts: [],
     location: DEFAULT_LOCATION,
@@ -62,12 +65,13 @@ function finalise(userId: string, now = T0 + 1000): Action {
   return { type: "FINALISE_ENTRY", requestId: "r1", userId, now };
 }
 
-function pay(userId: string, now: number): Action {
-  return { type: "ACCEPT_AND_PAY", requestId: "r1", userId, now };
+/** Accept and pay the given round (1 unless it's the fallback round). */
+function pay(userId: string, now: number, round: 1 | 2 = 1): Action {
+  return { type: "ACCEPT_AND_PAY", requestId: "r1", userId, round, now };
 }
 
-function decline(userId: string, now: number): Action {
-  return { type: "DECLINE", requestId: "r1", userId, now };
+function decline(userId: string, now: number, round: 1 | 2 = 1): Action {
+  return { type: "DECLINE", requestId: "r1", userId, round, now };
 }
 
 const DEAL_AT = T0 + 2000;
@@ -238,15 +242,33 @@ describe("JOIN / LEAVE", () => {
     expect(req(s).participants).toHaveLength(2);
   });
 
-  it("lets a non-host leave while open, but not the host", () => {
-    const s = run(
-      emptyState(),
-      create,
-      { type: "JOIN", requestId: "r1", user: bob },
-      { type: "LEAVE", requestId: "r1", userId: "bot-bob" },
-      { type: "LEAVE", requestId: "r1", userId: "me" },
-    );
+  it("lets a non-host leave while open", () => {
+    const s = run(emptyState(), create, { type: "JOIN", requestId: "r1", user: bob }, { type: "LEAVE", requestId: "r1", userId: "bot-bob" });
     expect(req(s).participants.map((p) => p.userId)).toEqual(["me"]);
+  });
+
+  it("the host can leave too; the party stays open for the rest with the same collection point", () => {
+    let s = run(emptyState(), create, ...margheritas("me", 1), finalise("me"), { type: "JOIN", requestId: "r1", user: bob }, ...margheritas("bot-bob", 1), finalise("bot-bob"));
+    s = run(s, { type: "LEAVE", requestId: "r1", userId: "me" });
+    expect(req(s)).toMatchObject({ status: "open", hostId: "me", pickupPointId: "student-centre" });
+    expect(req(s).participants.map((p) => p.userId)).toEqual(["bot-bob"]);
+    // Delivery is now shared by one order, not two.
+    expect(splitCosts(req(s), pizza).people["bot-bob"].delivery).toBe(pizza.deliveryFee);
+  });
+
+  it("after the host leaves, others can still join and reach the deal", () => {
+    let s = run(emptyState(), create, ...margheritas("me", 1), finalise("me"), { type: "LEAVE", requestId: "r1", userId: "me" });
+    expect(req(s)).toMatchObject({ status: "open", participants: [] });
+    s = run(s, { type: "JOIN", requestId: "r1", user: bob }, ...margheritas("bot-bob", 4), finalise("bot-bob", DEAL_AT));
+    expect(req(s)).toMatchObject({ status: "deal_achieved", round: 1 });
+  });
+
+  it("nobody can leave once the deal is reached or the order is placed", () => {
+    let s = run(dealState(), { type: "LEAVE", requestId: "r1", userId: "me" });
+    expect(req(s).participants).toHaveLength(2);
+    s = run(s, pay("me", DEAL_AT + 1000), pay("bot-bob", DEAL_AT + 1000), { type: "LEAVE", requestId: "r1", userId: "me" });
+    expect(req(s)).toMatchObject({ status: "confirmed" });
+    expect(req(s).participants).toHaveLength(2);
   });
 });
 
@@ -280,9 +302,9 @@ describe("basket", () => {
     expect(req(s).participants.map((p) => p.userId)).toEqual(["me"]);
   });
 
-  it("the host stays when their basket empties", () => {
+  it("the host is treated like anyone when their basket empties: they leave and the party stays open", () => {
     const s = run(emptyState(), create, ...margheritas("me", 1), { type: "REMOVE_ITEM", requestId: "r1", userId: "me", itemId: "sh-margherita" });
-    expect(req(s).participants).toHaveLength(1);
+    expect(req(s)).toMatchObject({ status: "open", participants: [] });
   });
 
   it("stores cutlery per participant", () => {
@@ -345,12 +367,26 @@ describe("expiry", () => {
 });
 
 describe("acceptance round", () => {
-  it("confirms once everyone has paid and issues a 4-digit PIN", () => {
+  it("confirms once everyone has paid and issues each person their own 6-digit collection code", () => {
     const s = run(dealState(), pay("me", DEAL_AT + 1000), pay("bot-bob", DEAL_AT + 2000));
     const r = req(s);
     expect(r.status).toBe("confirmed");
     expect(r.confirmedAt).toBe(DEAL_AT + 2000);
-    expect(r.pin).toMatch(/^\d{4}$/);
+    const codes = r.participants.map((p) => p.collectionCode);
+    codes.forEach((c) => expect(c).toMatch(/^\d{6}$/));
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+
+  it("an answer for the wrong round is ignored, so consent never carries over to a new price", () => {
+    expect(req(run(dealState(), pay("me", DEAL_AT + 1000, 2))).participants[0].paid).toBe(false);
+    const round2 = run(threeWayDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), decline("bot-bob", DEAL_AT + 3000));
+    // A late round-1 acceptance (e.g. a stale bot decision) doesn't count in round 2.
+    expect(req(run(round2, pay("bot-carl", DEAL_AT + 4000, 1))).participants.find((p) => p.userId === "bot-carl")!.paid).toBe(false);
+  });
+
+  it("repeated accept clicks change nothing", () => {
+    const once = run(dealState(), pay("me", DEAL_AT + 1000));
+    expect(run(once, pay("me", DEAL_AT + 1100), pay("me", DEAL_AT + 1200))).toEqual(once);
   });
 
   it("ignores payment outside the accept window", () => {
@@ -395,8 +431,8 @@ describe("acceptance round", () => {
       pay("me", DEAL_AT + 1000),
       pay("bot-carl", DEAL_AT + 2000),
       decline("bot-bob", at),
-      pay("bot-carl", at + 1000),
-      pay("me", at + 2000),
+      pay("bot-carl", at + 1000, 2),
+      pay("me", at + 2000, 2),
     );
     expect(req(s)).toMatchObject({ status: "confirmed", round: 2, confirmedAt: at + 2000 });
   });
@@ -413,19 +449,28 @@ describe("acceptance round", () => {
 
   it("cancels when the accept window passes with nobody else paying", () => {
     const r = req(run(dealState(), pay("me", DEAL_AT + 1000), { type: "TICK", now: DEAL_AT + ACCEPT_WINDOW_MS }));
-    expect(r).toMatchObject({ status: "cancelled", cancelReason: "Not enough people accepted to keep the deal." });
+    expect(r).toMatchObject({ status: "cancelled", cancelReason: CANCEL_REASONS.notEnoughAccepted });
   });
 
   it("never runs a third round", () => {
     const at = DEAL_AT + 3000;
     const round2 = run(threeWayDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), decline("bot-bob", at));
 
-    const declined = req(run(round2, pay("me", at + 1000), decline("bot-carl", at + 2000)));
+    const declined = req(run(round2, pay("me", at + 1000, 2), decline("bot-carl", at + 2000, 2)));
     expect(declined).toMatchObject({ status: "cancelled", round: 2, cancelReason: CANCEL_REASONS.secondRoundFailed });
     expect(declined.removedNames).toEqual(["Bob", "Carl"]);
 
-    const timedOut = req(run(round2, pay("me", at + 1000), { type: "TICK", now: at + ACCEPT_WINDOW_MS }));
-    expect(timedOut).toMatchObject({ status: "cancelled", round: 2, cancelReason: "The second round didn't complete." });
+    const timedOut = req(run(round2, pay("me", at + 1000, 2), { type: "TICK", now: at + ACCEPT_WINDOW_MS }));
+    expect(timedOut).toMatchObject({ status: "cancelled", round: 2, cancelReason: CANCEL_REASONS.secondRoundFailed });
+  });
+
+  it("a decline in round 2 ends the attempt at once, without waiting for others", () => {
+    const at = DEAL_AT + 3000;
+    const round2 = run(threeWayDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), decline("bot-bob", at));
+    const r = req(run(round2, decline("bot-carl", at + 1000, 2)));
+    expect(r).toMatchObject({ status: "cancelled", round: 2, closedAt: at + 1000 });
+    // I hadn't answered round 2 yet: not a timeout, the group fell through.
+    expect(r.released.find((e) => e.userId === "me")?.reason).toBe("group_fell_through");
   });
 
   it("a member who paid can't decline, and one who declined can't pay", () => {
@@ -451,33 +496,29 @@ describe("acceptance round", () => {
     );
   }
 
-  it("cancels the party when the host declines, even if the others still meet the threshold", () => {
+  it("the host is just another member: if they decline and the rest still qualify, the rest get round 2", () => {
     const r = req(run(bobHostedDeal(), decline("bot-bob", DEAL_AT + 1000), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 1000)));
-    expect(r).toMatchObject({ status: "cancelled", round: 1, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
-    expect(r.participants.every((p) => !p.paid)).toBe(true);
-    expect(r.removedNames).toContain("Bob");
+    expect(r).toMatchObject({ status: "deal_achieved", round: 2, hostId: "bot-bob" });
+    expect(r.participants.map((p) => p.userId)).toEqual(["me", "bot-carl"]);
+    expect(r.removedNames).toEqual(["Bob"]);
   });
 
-  it("cancels the party when the host times out, without starting round 2", () => {
+  it("a host who times out is released like anyone else, and round 2 still runs", () => {
     const r = req(
       run(bobHostedDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 1000), { type: "TICK", now: DEAL_AT + ACCEPT_WINDOW_MS }),
     );
-    expect(r).toMatchObject({ status: "cancelled", round: 1, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
-    expect(r.participants.every((p) => !p.paid)).toBe(true);
-    expect(r.removedNames).toContain("Bob");
+    expect(r).toMatchObject({ status: "deal_achieved", round: 2 });
+    expect(r.released.find((e) => e.userId === "bot-bob")?.reason).toBe("timed_out");
   });
 
-  it("cancels the party when the host drops out of round 2", () => {
+  it("a host dropping out of round 2 ends it the same way anyone's would", () => {
     const at = DEAL_AT + 3000;
     const round2 = run(bobHostedDeal(), pay("bot-bob", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), decline("me", at));
     expect(req(round2)).toMatchObject({ status: "deal_achieved", round: 2, hostId: "bot-bob" });
 
-    const declined = req(run(round2, pay("bot-carl", at + 1000), decline("bot-bob", at + 2000)));
-    expect(declined).toMatchObject({ status: "cancelled", round: 2, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
+    const declined = req(run(round2, pay("bot-carl", at + 1000, 2), decline("bot-bob", at + 2000, 2)));
+    expect(declined).toMatchObject({ status: "cancelled", round: 2, cancelReason: CANCEL_REASONS.secondRoundFailed });
     expect(declined.participants.every((p) => !p.paid)).toBe(true);
-
-    const timedOut = req(run(round2, pay("bot-carl", at + 1000), { type: "TICK", now: at + ACCEPT_WINDOW_MS }));
-    expect(timedOut).toMatchObject({ status: "cancelled", round: 2, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
   });
 });
 
@@ -604,7 +645,7 @@ describe("notificationsFor", () => {
     for (const stage of DELIVERY_STAGES) s = run(s, { type: "TICK", now: paidAt + stage.afterMs });
     const list = notificationsFor(s);
     expect(list.map((n) => n.kind)).toEqual(["ready", "on_its_way", "placed", "deal"]);
-    expect(list[0].body).toContain(req(s).pin!);
+    expect(list[0].body).toContain(req(s).participants.find((p) => p.userId === "me")!.collectionCode!);
     expect(list.every((n, i) => i === 0 || list[i - 1].at >= n.at)).toBe(true);
   });
 
@@ -613,7 +654,7 @@ describe("notificationsFor", () => {
     expect(notificationsFor(cancelled)[0]).toMatchObject({
       kind: "cancelled",
       title: "Order cancelled at Slice House",
-      body: "Not enough people accepted to keep the deal. Nobody was charged.",
+      body: `${CANCEL_REASONS.notEnoughAccepted} Nobody was charged.`,
     });
     const expired = run(emptyState(), create, { type: "TICK", now: T0 + 15 * 60_000 });
     expect(notificationsFor(expired)[0]).toMatchObject({ kind: "expired", title: "Party closed at Slice House" });
@@ -670,5 +711,140 @@ describe("seed and selectors", () => {
     );
     expect(s.friends).toEqual(["bot-aisha"]);
     expect(s.location).toBe("main-library");
+  });
+});
+
+describe("discount eligibility", () => {
+  it("applies the restaurant discount only once the party meets the threshold", () => {
+    // me £21 alone: below £40, so no discount and the full delivery fee.
+    const below = splitCosts(req(run(emptyState(), create, ...margheritas("me", 2), finalise("me"))), pizza);
+    expect(below.discountEligible).toBe(false);
+    expect(below.group).toEqual({ subtotal: 2100, discount: 0, delivery: pizza.deliveryFee, total: 2100 + pizza.deliveryFee });
+
+    const met = splitCosts(req(dealState()), pizza);
+    expect(met.discountEligible).toBe(true);
+    expect(met.group.discount).toBe(Math.round((5250 * pizza.deal.discountPct) / 100));
+  });
+
+  it("per-person totals still reconcile to the penny after someone leaves", () => {
+    let s = run(threeWayDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), decline("bot-bob", DEAL_AT + 3000));
+    const split = splitCosts(req(s), pizza);
+    const people = Object.values(split.people);
+    for (const key of ["subtotal", "discount", "delivery", "total"] as const) {
+      expect(people.reduce((sum, x) => sum + x[key], 0)).toBe(split.group[key]);
+    }
+    expect(people).toHaveLength(2);
+    s = run(s, pay("me", DEAL_AT + 4000, 2));
+    expect(req(s).status).toBe("deal_achieved");
+  });
+});
+
+describe("keep queueing or cancel", () => {
+  const retry = (newRequestId = "r2", durationMin = 30, now = T0 + 20 * 60_000): Action => ({
+    type: "RETRY_ENTRY",
+    requestId: "r1",
+    userId: "me",
+    newRequestId,
+    durationMin,
+    now,
+  });
+
+  function expiredWithBob(): AppState {
+    return run(
+      emptyState(),
+      create,
+      ...margheritas("me", 2),
+      finalise("me"),
+      { type: "JOIN", requestId: "r1", user: bob },
+      ...margheritas("bot-bob", 1),
+      finalise("bot-bob"),
+      { type: "TICK", now: T0 + 15 * 60_000 },
+    );
+  }
+
+  it("expiry keeps everyone's basket for an explicit choice", () => {
+    const r = req(expiredWithBob());
+    expect(r.status).toBe("expired");
+    expect(r.released.map((e) => [e.userId, e.reason, e.choice])).toEqual([
+      ["me", "no_match", "pending"],
+      ["bot-bob", "no_match", "pending"],
+    ]);
+  });
+
+  it("retry starts a fresh party for just that person, with the same basket and collection point", () => {
+    const s = run(expiredWithBob(), retry());
+    const fresh = req(s, "r2");
+    expect(fresh).toMatchObject({ status: "open", restaurantId: "slice-house", pickupPointId: "student-centre", hostId: "me", attempt: 2, retryOf: "r1" });
+    expect(fresh.participants.map((p) => [p.userId, p.basket, p.finalised, p.paid])).toEqual([["me", [{ itemId: "sh-margherita", qty: 2 }], true, false]]);
+    expect(req(s).released.map((e) => e.choice)).toEqual(["retried", "pending"]);
+  });
+
+  it("double clicks can't create duplicate parties", () => {
+    const s = run(expiredWithBob(), retry("r2"), retry("r2"), retry("r3"));
+    expect(s.requests.map((r) => r.id)).toEqual(["r1", "r2"]);
+  });
+
+  it("is refused while the restaurant already has an open party, or for an invalid window", () => {
+    const busy = run(expiredWithBob(), { ...create, id: "other", user: carl } as Action, retry());
+    expect(busy.requests.map((r) => r.id)).toEqual(["r1", "other"]);
+    expect(run(expiredWithBob(), retry("r2", 7)).requests).toHaveLength(1);
+  });
+
+  it("after a failed acceptance round, the retry carries no stale payment, decline or code", () => {
+    const failed = run(dealState(), pay("me", DEAL_AT + 1000), { type: "TICK", now: DEAL_AT + ACCEPT_WINDOW_MS });
+    expect(req(failed).released.find((e) => e.userId === "me")?.reason).toBe("group_fell_through");
+    const p = req(run(failed, retry()), "r2").participants[0];
+    expect(p).toMatchObject({ paid: false, finalised: true });
+    expect(p.declined).toBeFalsy();
+    expect(p.collectionCode).toBeUndefined();
+  });
+
+  it("someone who declines keeps their basket while the rest carry on", () => {
+    const s = run(threeWayDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), decline("bot-bob", DEAL_AT + 3000));
+    expect(req(s).released).toMatchObject([{ userId: "bot-bob", reason: "declined", choice: "pending", basket: [{ itemId: "sh-margherita", qty: 2 }] }]);
+  });
+
+  it("a failed demo payment is recorded as its own reason", () => {
+    const s = run(dealState(), { type: "DECLINE", requestId: "r1", userId: "me", round: 1, now: DEAL_AT + 1000, reason: "payment_failed" }, pay("bot-bob", DEAL_AT + 1000));
+    expect(req(s).released.find((e) => e.userId === "me")?.reason).toBe("payment_failed");
+  });
+
+  it("cancel leaves the queue; a later retry does nothing", () => {
+    const s = run(expiredWithBob(), { type: "CANCEL_ENTRY", requestId: "r1", userId: "me" }, retry());
+    expect(req(s).released[0].choice).toBe("cancelled");
+    expect(s.requests).toHaveLength(1);
+  });
+});
+
+describe("collection handover", () => {
+  function delivered(): AppState {
+    const paidAt = DEAL_AT + 1000;
+    let s = run(dealState(), pay("me", paidAt), pay("bot-bob", paidAt));
+    for (const stage of DELIVERY_STAGES) s = run(s, { type: "TICK", now: paidAt + stage.afterMs });
+    return s;
+  }
+
+  it("rejects handover before the food arrives", () => {
+    const s = run(dealState(), pay("me", DEAL_AT + 1000), pay("bot-bob", DEAL_AT + 1000));
+    const code = req(s).participants[0].collectionCode!;
+    expect(checkHandover(req(s), code)).toEqual({ ok: false, error: "not_arrived" });
+    expect(run(s, { type: "HANDOVER", requestId: "r1", code, now: T0 })).toBe(s);
+  });
+
+  it("finds the right bag, rejects unknown and repeated codes, and completes once every bag is collected", () => {
+    let s = delivered();
+    const [mine, bobs] = req(s).participants;
+    expect(checkHandover(req(s), "000000")).toEqual({ ok: false, error: "unknown_code" });
+    expect(checkHandover(req(s), mine.collectionCode!)).toMatchObject({ ok: true, participant: { userId: "me" } });
+
+    s = run(s, { type: "HANDOVER", requestId: "r1", code: mine.collectionCode!, now: T0 + 90_000 });
+    expect(req(s)).toMatchObject({ status: "delivered" });
+    expect(req(s).participants[0].collectedAt).toBe(T0 + 90_000);
+    expect(checkHandover(req(s), mine.collectionCode!)).toMatchObject({ ok: false, error: "already_collected" });
+    expect(run(s, { type: "HANDOVER", requestId: "r1", code: mine.collectionCode!, now: T0 + 91_000 })).toBe(s);
+
+    s = run(s, { type: "HANDOVER", requestId: "r1", code: bobs.collectionCode!, now: T0 + 92_000 });
+    expect(req(s)).toMatchObject({ status: "collected", completedAt: T0 + 92_000 });
+    expect(req(run(s, { type: "TICK", now: T0 + 999_000 })).status).toBe("collected");
   });
 });

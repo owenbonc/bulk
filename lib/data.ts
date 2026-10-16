@@ -1,4 +1,4 @@
-import type { AppState, BasketLine, Catalog, OrderRequest, Participant } from "./types";
+import type { AppState, BasketLine, Catalog, DemoSettings, OrderRequest, Participant } from "./types";
 
 export const ME = { userId: "me", name: "You" };
 
@@ -357,8 +357,15 @@ function seedParty(
     round: 1,
     removedUserIds: [],
     removedNames: [],
+    attempt: 1,
+    released: [],
   };
 }
+
+/** Persisted-state version (see `AppState.version`). Bump when the saved shape changes. */
+export const STATE_VERSION = 3;
+
+export const DEFAULT_DEMO: DemoSettings = { botsPaused: false, botWontAccept: false, botDeclinesAgain: false, botSilent: false, myPaymentFails: false };
 
 /**
  * Initial demo state: six bot-hosted open parties (two at 75%+ for Highlights); Kumo Ramen, Levant Kitchen,
@@ -366,7 +373,8 @@ function seedParty(
  */
 export function seedState(now: number): AppState {
   return {
-    demo: { botsPaused: false, botWontAccept: false },
+    version: STATE_VERSION,
+    demo: DEFAULT_DEMO,
     friends: [],
     seenAlerts: [],
     readNotifications: [],
