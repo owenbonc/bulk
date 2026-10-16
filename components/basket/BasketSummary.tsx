@@ -14,30 +14,35 @@ export interface BasketSummaryProps {
   preview: Preview;
 }
 
-/** Restaurant, collection point, delivery estimate and party line on the left; the deal card on the right. */
+/**
+ * Restaurant, collection point, delivery estimate and party line on the left; the deal block on the right
+ * behind a hairline. In a narrow container the deal block stacks below the facts.
+ */
 export function BasketSummary({ restaurant, pickup, partyIcon, partyLine, preview }: BasketSummaryProps) {
   const [lo, hi] = restaurant.etaMin;
 
   return (
-    <section aria-label="Order summary" className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
-      <div className="min-w-0 pt-0.5">
-        <Marquee as="h1" className="text-title font-semibold text-ink">
-          {restaurant.name}
-        </Marquee>
-        <ul className="mt-2.5 flex flex-col gap-1.5 text-body text-ink-2">
-          <Fact icon={<MapPin aria-hidden />} iconClassName="text-accent-ink">
-            <span className="sr-only">Collection point: </span>
-            <Marquee>{pickup?.name ?? "Collection point"}</Marquee>
-          </Fact>
-          <Fact icon={<Clock aria-hidden />}>
-            <span className="tnum">
-              Est. delivery {lo}–{hi} min
-            </span>
-          </Fact>
-          <Fact icon={partyIcon}>{partyLine}</Fact>
-        </ul>
+    <section aria-label="Order summary" className="@container">
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3 @max-[22rem]:grid-cols-1">
+        <div className="min-w-0 pt-0.5">
+          <Marquee as="h1" className="text-title font-semibold text-ink">
+            {restaurant.name}
+          </Marquee>
+          <ul className="mt-2.5 flex flex-col gap-1.5 text-body text-ink-2">
+            <Fact icon={<MapPin aria-hidden />} iconClassName="text-accent-ink">
+              <span className="sr-only">Collection point: </span>
+              <Marquee>{pickup?.name ?? "Collection point"}</Marquee>
+            </Fact>
+            <Fact icon={<Clock aria-hidden />}>
+              <span className="tnum">
+                Est. delivery {lo}–{hi} min
+              </span>
+            </Fact>
+            <Fact icon={partyIcon}>{partyLine}</Fact>
+          </ul>
+        </div>
+        <DealBlock restaurant={restaurant} preview={preview} />
       </div>
-      <DealCard restaurant={restaurant} preview={preview} />
     </section>
   );
 }
@@ -57,13 +62,13 @@ function Fact({ icon, iconClassName = "text-ink-3", children }: { icon: ReactNod
  * slice at the leading edge of the fill, so you can see how far your order moves the party. Nothing is
  * reached until you submit, so the copy speaks of your basket unlocking the deal, or what's still to go.
  */
-function DealCard({ restaurant, preview }: { restaurant: Restaurant; preview: Preview }) {
+function DealBlock({ restaurant, preview }: { restaurant: Restaurant; preview: Preview }) {
   const { progress, subtotal } = preview;
   const yours = Math.min(100, Math.round((subtotal * 100) / progress.target));
   const unlocks = progress.left === 0;
 
   return (
-    <div className="w-40 rounded-card border border-line bg-surface p-card">
+    <div className="w-40 border-l border-line pl-3 @max-[22rem]:w-auto @max-[22rem]:border-t @max-[22rem]:border-l-0 @max-[22rem]:pt-3 @max-[22rem]:pl-0">
       <DealPill label={restaurant.deal.short} />
       <div className="mt-2.5 flex items-center gap-2.5">
         <ProgressPie

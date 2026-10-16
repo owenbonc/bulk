@@ -77,7 +77,12 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
         )
       }
       action={
-        <Button block size="lg" href={mine ? `/party/${party.id}/status` : `/party/${party.id}`}>
+        <Button
+          block
+          size="lg"
+          href={mine ? `/party/${party.id}/status` : `/party/${party.id}`}
+          onClick={() => onOpenChange(false)}
+        >
           See party
         </Button>
       }

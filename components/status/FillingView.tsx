@@ -3,7 +3,7 @@
 import { BellRing, House, MapPin, ShoppingBag, UtensilsCrossed } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { BottomBar, Button, Card, Countdown, LegendDot, Marquee, ProgressPie, SectionHeader, formatPrice } from "@/components/ui";
+import { BottomBar, Button, Countdown, EXIT, LegendDot, Marquee, ProgressPie, SectionHeader, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { basketTotal } from "@/lib/split";
 import { previewSplit, progressOf, useApp } from "@/lib/store";
@@ -38,7 +38,7 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
             <CollectionPoint pickup={pickup} />
           </div>
 
-          <Card className="flex items-center justify-between gap-3 py-4">
+          <div className="flex items-center justify-between gap-3 border-y border-line py-4">
             <div className="min-w-0">
               <Countdown until={request.expiresAt} now={now} className="block text-hero font-semibold" />
               <p className="mt-1 text-meta text-ink-2">left to fill</p>
@@ -66,7 +66,7 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
                 label={`${progress.pct}% filled${mine > 0 ? `, your basket ${formatPrice(mine)}` : ""}`}
               />
             </div>
-          </Card>
+          </div>
 
           <NotifyCaption />
         </section>
@@ -89,12 +89,12 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
               <OrderSummary restaurant={restaurant} basket={me.basket} cost={preview} members={preview.members} mode="estimate" />
             </>
           ) : (
-            <Card className="flex flex-col items-start gap-group">
+            <div className="flex flex-col items-start gap-group">
               <p className="text-body text-ink-2">You&apos;re not in this party yet. Pick something from the menu to join.</p>
               <Button size="md" variant="secondary" icon={<UtensilsCrossed />} href={`/party/${request.id}`}>
                 See the menu
               </Button>
-            </Card>
+            </div>
           )}
         </section>
 
@@ -103,8 +103,8 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
         </PartySection>
       </div>
 
-      <BottomBar>
-        <Button variant="secondary" size="lg" block icon={<House />} href="/">
+      <BottomBar material={false}>
+        <Button variant="glass" block icon={<House />} href="/">
           Back to home
         </Button>
       </BottomBar>
@@ -136,7 +136,7 @@ function NotifyCaption() {
       <p className="min-w-0 flex-1">We&apos;ll notify you when the deal is reached.</p>
       <AnimatePresence initial={false}>
         {permission === "default" && (
-          <motion.span exit={{ opacity: 0, transition: { duration: 0.15 } }}>
+          <motion.span exit={{ opacity: 0, transition: EXIT }}>
             <button
               type="button"
               onClick={() => {

@@ -1,8 +1,8 @@
 "use client";
 
-import { Check, House, MapPin } from "lucide-react";
+import { Check, House, MapPin, PiggyBank } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { BottomBar, Button, Card, Countdown, EASE_OUT, Marquee, Pill, SectionHeader, cn } from "@/components/ui";
+import { BottomBar, Button, Countdown, EASE_OUT, Marquee, Pill, SPRING, SectionHeader, cn, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { DELIVERY_STAGES, DELIVERY_STEPS } from "@/lib/requests";
 import { deliveryStep, previewSplit, useApp } from "@/lib/store";
@@ -46,6 +46,11 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
   const delivered = request.status === "delivered";
   const readyAt = request.confirmedAt !== undefined ? request.confirmedAt + DELIVERED_AFTER_MS : undefined;
   const onItsWay = request.status === "out_for_delivery";
+  const others = request.participants.length - 1;
+  const savedLine =
+    others > 0
+      ? `You saved ${formatPrice(cost.discount)} with ${others} ${others === 1 ? "other" : "others"}`
+      : `You saved ${formatPrice(cost.discount)} with the deal`;
 
   return (
     <>
@@ -57,6 +62,17 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
                 {DELIVERY_STEPS[step]?.label}
               </h1>
               <p className="mt-1 text-body text-ink-2">{subline(request.status, pickup.name)}</p>
+              {delivered && cost.discount > 0 && (
+                <motion.p
+                  className="mt-1.5 flex items-center gap-1.5 text-emphasis font-semibold text-accent-ink"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={SPRING}
+                >
+                  <PiggyBank aria-hidden className="size-4 shrink-0" />
+                  {savedLine}
+                </motion.p>
+              )}
             </div>
             {delivered ? (
               <Pill tone="success" size="md" icon={<Check strokeWidth={2.5} />} className="mt-1">
@@ -92,7 +108,7 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
             )}
           </AnimatePresence>
 
-          <Card className="flex flex-col gap-2.5">
+          <div className="flex flex-col gap-2.5">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <h2 className="font-display text-section font-semibold text-ink">Collect from</h2>
@@ -102,10 +118,10 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
                   <Marquee>{pickup.name}</Marquee>
                 </p>
               </div>
-              {request.pin && <PinTiles pin={request.pin} ready={delivered} />}
+              {request.pin && <PinTiles pin={request.pin} ready={delivered} reduce={!!reduce} />}
             </div>
             <p className="text-meta text-ink-2">{pickup.access}</p>
-          </Card>
+          </div>
         </div>
 
         <section aria-labelledby="order-title" className="flex flex-col gap-group">
@@ -119,7 +135,7 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
       </div>
 
       <BottomBar material={false} className="flex justify-end">
-        <Button variant="secondary" icon={<House />} href="/" className="shadow-float">
+        <Button variant="glass" icon={<House />} href="/">
           Home
         </Button>
       </BottomBar>
@@ -144,8 +160,8 @@ function StepBar({ step }: { step: number }) {
           <div className="h-1.5 overflow-hidden rounded-full bg-ink/[0.08]">
             <div
               className={cn(
-                "h-full origin-left rounded-full bg-accent transition-transform duration-500 ease-out motion-reduce:transition-none",
-                i <= step ? "scale-x-100" : "scale-x-0",
+                "h-full rounded-full bg-accent transition-transform duration-300 ease-out motion-reduce:transition-none",
+                i <= step ? "translate-x-0" : "-translate-x-full",
               )}
             />
           </div>
@@ -158,25 +174,33 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-/** Pickup PIN as four digit tiles. Turn lime once the order is ready to collect. */
-function PinTiles({ pin, ready }: { pin: string; ready: boolean }) {
+/** Pickup PIN as four digit tiles. They turn lime with a single spring entrance once the order is ready to collect. */
+function PinTiles({ pin, ready, reduce }: { pin: string; ready: boolean; reduce: boolean }) {
   return (
     <div className="flex shrink-0 flex-col items-end gap-1">
       <span className="text-caption text-ink-2">Pickup PIN</span>
-      <div role="img" aria-label={`Pickup PIN ${pin.split("").join(" ")}`} className="flex gap-1.5">
+      <motion.div
+        key={ready ? "ready" : "waiting"}
+        role="img"
+        aria-label={`Pickup PIN ${pin.split("").join(" ")}`}
+        className="flex gap-1.5"
+        initial={ready ? (reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }) : false}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={SPRING}
+      >
         {pin.split("").map((digit, i) => (
           <span
             key={i}
             aria-hidden
             className={cn(
-              "tnum grid h-11 w-8 place-items-center rounded-chip font-mono text-hero font-semibold transition-colors duration-300 ease-out",
+              "tnum grid h-11 w-8 place-items-center rounded-chip font-mono text-hero font-semibold",
               ready ? "bg-accent text-on-accent" : "bg-surface-2 text-ink",
             )}
           >
             {digit}
           </span>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }

@@ -51,6 +51,7 @@ export const CANCEL_REASONS = {
   notEnoughAccepted: "Not enough people accepted to keep the deal.",
   secondRoundFailed: "The second round didn't complete.",
   expired: "The deal wasn't reached before the timer ran out.",
+  hostDidNotAccept: "The host didn't accept, so the party was cancelled.",
 } as const;
 
 export interface UserRef {
@@ -149,18 +150,17 @@ function changeQty(basket: BasketLine[], itemId: string, delta: number): BasketL
   return basket.map((l) => (l.itemId === itemId ? { ...l, qty: l.qty + delta } : l)).filter((l) => l.qty > 0);
 }
 
-/** The host stays host while still in the party; otherwise the first remaining member takes over. */
-function keepHost(hostId: string, participants: Participant[]): string {
-  return participants.some((p) => p.userId === hostId) || participants.length === 0 ? hostId : participants[0].userId;
-}
-
 // ---------------------------------------------------------------------------
 // Deal and acceptance rounds
 // ---------------------------------------------------------------------------
 
-/** Locks the party into an acceptance round once finalised spend meets the threshold. Unfinalised members drop out. */
+/**
+ * Locks the party into an acceptance round once finalised spend meets the threshold and the
+ * host has finalised. Unfinalised members drop out.
+ */
 function lockDealIfReached(r: OrderRequest, restaurant: Restaurant, now: number): OrderRequest {
   if (r.status !== "open" || queueTotal(r, restaurant) < restaurant.deal.minTotal) return r;
+  if (!r.participants.some((p) => p.userId === r.hostId && p.finalised)) return r;
   const participants = r.participants.filter((p) => p.finalised).map((p) => ({ ...p, paid: false, declined: false }));
   return {
     ...r,
@@ -169,31 +169,30 @@ function lockDealIfReached(r: OrderRequest, restaurant: Restaurant, now: number)
     dealAt: now,
     acceptDeadline: now + ACCEPT_WINDOW_MS,
     participants,
-    hostId: keepHost(r.hostId, participants),
   };
 }
 
 /**
  * Ends the current acceptance round. Everyone paid → confirmed. Otherwise the people who
- * declined or timed out are recorded; round 1 falls back to a single round 2 when the
- * remaining baskets still meet the threshold, and anything else cancels the party.
+ * declined or timed out are recorded. If the host declined or timed out, the party is
+ * cancelled; otherwise round 1 falls back to a single round 2 when the remaining baskets
+ * still meet the threshold, and anything else cancels the party.
  */
 function resolveRound(r: OrderRequest, restaurant: Restaurant, now: number): OrderRequest {
   const out = r.participants.filter((p) => !p.paid);
   if (out.length === 0) return { ...r, status: "confirmed", confirmedAt: now, pin: pinFor(r.id) };
+  const hostOut = out.some((p) => p.userId === r.hostId);
 
   const stay = r.participants.filter((p) => p.paid);
   const removedUserIds = [...r.removedUserIds, ...out.map((p) => p.userId)];
   const removedNames = [...r.removedNames, ...out.map((p) => p.name)];
   const stayTotal = stay.reduce((sum, p) => sum + basketTotal(p.basket, restaurant), 0);
 
-  if (r.round === 1 && stay.length > 0 && stayTotal >= restaurant.deal.minTotal) {
-    const participants = stay.map((p) => ({ ...p, paid: false }));
+  if (r.round === 1 && !hostOut && stay.length > 0 && stayTotal >= restaurant.deal.minTotal) {
     return {
       ...r,
       round: 2,
-      participants,
-      hostId: keepHost(r.hostId, participants),
+      participants: stay.map((p) => ({ ...p, paid: false })),
       removedUserIds,
       removedNames,
       acceptDeadline: now + ACCEPT_WINDOW_MS,
@@ -204,7 +203,11 @@ function resolveRound(r: OrderRequest, restaurant: Restaurant, now: number): Ord
   return {
     ...r,
     status: "cancelled",
-    cancelReason: r.round === 1 ? CANCEL_REASONS.notEnoughAccepted : CANCEL_REASONS.secondRoundFailed,
+    cancelReason: hostOut
+      ? CANCEL_REASONS.hostDidNotAccept
+      : r.round === 1
+        ? CANCEL_REASONS.notEnoughAccepted
+        : CANCEL_REASONS.secondRoundFailed,
     closedAt: now,
     removedUserIds,
     removedNames,
@@ -229,16 +232,12 @@ function droppableBots(r: OrderRequest): Participant[] {
 /**
  * The bot that refuses in round 1 when "a bot won't accept" is on: the smallest non-host
  * basket whose loss still leaves the party over the threshold (so round 2 can succeed),
- * falling back to the smallest non-host basket, then to any bot.
+ * falling back to the smallest non-host basket.
  */
 export function stubbornBot(r: OrderRequest, restaurant: Restaurant): Participant | undefined {
   const total = r.participants.reduce((sum, p) => sum + basketTotal(p.basket, restaurant), 0);
   const bySize = [...droppableBots(r)].sort((a, b) => basketTotal(a.basket, restaurant) - basketTotal(b.basket, restaurant));
-  return (
-    bySize.find((p) => total - basketTotal(p.basket, restaurant) >= restaurant.deal.minTotal) ??
-    bySize[0] ??
-    r.participants.find((p) => p.isBot)
-  );
+  return bySize.find((p) => total - basketTotal(p.basket, restaurant) >= restaurant.deal.minTotal) ?? bySize[0];
 }
 
 /**

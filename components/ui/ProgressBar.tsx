@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "./cn";
+import { lockMinePhase } from "./minePhase";
 import { SPRING_FILL } from "./motion";
 
 export type ProgressBarSize = "hairline" | "sm" | "md";
@@ -72,6 +73,7 @@ export function ProgressBar({
       {/* Your segment runs under the party's fill to the full value, so only its last part shows. */}
       {contribution !== undefined && (
         <motion.div
+          ref={lockMinePhase}
           className="absolute inset-0 animate-mine rounded-full bg-mine"
           initial={false}
           animate={{ transform: `translateX(${pct - 100}%)` }}

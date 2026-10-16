@@ -42,6 +42,7 @@ export function HomeBottomBar({ query, onQueryChange, mine }: HomeBottomBarProps
           >
             <SearchField
               tone="glass"
+              size="lg"
               value={query}
               onValueChange={onQueryChange}
               placeholder="Search parties"

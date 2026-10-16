@@ -153,8 +153,8 @@ const getServerTone = (): StatusBarTone => "dark";
 
 /**
  * Sets the fake status bar's glyphs while the calling component is mounted: `light` (white) while a photo is
- * under the status bar, `dark` (ink, the default) over cream. Pass the current value on every render, e.g.
- * `useStatusBarTone(heroUnderStatusBar ? "light" : "dark")`. The most recent caller wins.
+ * under the status bar, `dark` (ink, the default) over the app background. Pass the current value on every
+ * render, e.g. `useStatusBarTone(heroUnderStatusBar ? "light" : "dark")`. The most recent caller wins.
  */
 export function useStatusBarTone(tone: StatusBarTone): void {
   const id = useId();

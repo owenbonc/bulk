@@ -8,8 +8,8 @@ import { DealPill, IconButton, ImageFrame, Marquee, Rating, SectionHeader, cn } 
 import type { Restaurant } from "@/lib/types";
 import { PartyOpenPill, etaLabel } from "./bits";
 
-/** Tiles in view on first paint (two whole tiles and a peek of the third); their photos load first. */
-const PRIORITY_TILES = 3;
+/** Tiles in view on first paint (two whole tiles, inset by the gutter on both sides); their photos load first. */
+const PRIORITY_TILES = 2;
 
 export interface PartyMarker {
   /** You are already a member of the open party. */
@@ -79,7 +79,7 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
         {restaurants.map((r, i) => {
           const party = partyAt(r.id);
           return (
-            <li key={r.id} className="w-[42%] min-w-0 shrink-0 snap-start">
+            <li key={r.id} className="w-[calc((100%-0.75rem)/2)] min-w-0 shrink-0 snap-start">
               <Link
                 href={`/create/${r.id}`}
                 onClick={(e) => onChoose(e, r.id)}
@@ -87,7 +87,7 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
                 className="group block rounded-card outline-offset-4"
               >
                 <div className="relative transition-transform duration-100 ease-out group-active:scale-[0.97]">
-                  <ImageFrame src={r.image} alt="" ratio="1/1" radius="card" emoji={r.emoji} sizes="170px" priority={i < PRIORITY_TILES}>
+                  <ImageFrame src={r.image} alt="" ratio="1/1" radius="card" emoji={r.emoji} sizes="180px" priority={i < PRIORITY_TILES}>
                     {party && <PartyOpenPill overlay mine={party.mine} className="absolute top-2 left-2" />}
                   </ImageFrame>
                   <DealPill label={r.deal.short} size="sm" className="absolute right-3 -bottom-3 ring-3 ring-bg" />

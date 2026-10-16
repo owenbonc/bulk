@@ -11,7 +11,7 @@ export interface CountdownProps {
   /** Below this many ms the clock turns urgent. Defaults to 60s. Pass 0 to never turn urgent. */
   urgentBelowMs?: number;
   /**
-   * Urgent colour: `offer` (default) on white or cream, `offer-ink` on tinted surfaces such as --accent-soft
+   * Urgent colour: `offer` (default) on --surface or --bg, `offer-ink` on tinted surfaces such as --accent-soft
    * where --offer misses 4.5:1. The urgent colour wins over a text colour passed in `className`.
    */
   urgentTone?: "offer" | "offer-ink";

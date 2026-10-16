@@ -3,7 +3,7 @@
 import { Plus } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { Button, Card, EXIT, Marquee, Price, SPRING, SectionHeader, Stepper, cn, formatPrice } from "@/components/ui";
+import { Button, Card, EASE_OUT, EXIT, Marquee, Price, SPRING_SNAPPY, SectionHeader, Stepper, cn, formatPrice } from "@/components/ui";
 import type { BasketLine, MenuItem, Restaurant } from "@/lib/types";
 
 export interface BasketLinesProps {
@@ -30,10 +30,14 @@ export function BasketLines({ restaurant, basket, locked, onAdd, onRemove, menuH
   });
 
   const rowMotion = reduce
-    ? { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0, transition: EXIT } }
+    ? {
+        initial: { opacity: 0 },
+        animate: { opacity: 1, transition: { duration: 0.2, ease: EASE_OUT } },
+        exit: { opacity: 0, transition: EXIT },
+      }
     : {
         initial: { opacity: 0, height: 0 },
-        animate: { opacity: 1, height: "auto" },
+        animate: { opacity: 1, height: "auto", transition: { duration: 0.25, ease: EASE_OUT } },
         exit: { opacity: 0, height: 0, transition: { ...EXIT, duration: 0.2 } },
       };
 
@@ -48,7 +52,7 @@ export function BasketLines({ restaurant, basket, locked, onAdd, onRemove, menuH
           <ul>
             <AnimatePresence initial={false}>
               {rows.map(({ item, qty }) => (
-                <motion.li key={item.id} {...rowMotion} transition={SPRING} className="overflow-hidden">
+                <motion.li key={item.id} {...rowMotion} className="overflow-hidden">
                   <BasketRow
                     item={item}
                     qty={qty}
@@ -88,8 +92,8 @@ interface BasketRowProps {
 
 const swap = {
   initial: { opacity: 0, scale: 0.95 },
-  animate: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.12 } },
+  animate: { opacity: 1, scale: 1, transition: SPRING_SNAPPY },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.12, ease: EASE_OUT } },
 };
 
 /**
@@ -140,7 +144,7 @@ function BasketRow({ item, qty, locked, editing, onEditingChange, onAdd, onRemov
       >
         <span
           aria-hidden={editing || undefined}
-          className={cn("tnum min-w-6 shrink-0 text-ink-3")}
+          className="tnum inline-flex h-6 min-w-8 shrink-0 items-center justify-center rounded-full border border-line-strong px-1.5 text-meta font-semibold text-ink-2"
         >
           {qty}×
         </span>

@@ -124,7 +124,7 @@ function AccountView({ onShowCredits, onClose }: { onShowCredits: () => void; on
             <button
               type="button"
               onClick={onShowCredits}
-              className="font-medium text-ink-2 underline decoration-line-strong hover:text-ink hover:decoration-ink-3"
+              className="relative font-medium text-ink-2 underline decoration-line-strong before:absolute before:-inset-x-1 before:-inset-y-3.5 hover:text-ink hover:decoration-ink-3"
             >
               Wikimedia Commons contributors
             </button>

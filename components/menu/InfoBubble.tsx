@@ -7,10 +7,10 @@ import type { Progress } from "@/lib/requests";
 
 export type SettingsFocus = "duration" | "pickup";
 
-/* The full bubble sits on the page as a card; the compact copy floats at the top between the back and
-   search buttons as its own clear-glass pill. The collection point takes the space that is left and
-   scrolls (Marquee) if its name doesn't fit. */
-const fullShell = "flex items-stretch rounded-card border border-line bg-surface";
+/* The full bubble sits on the page as an open strip between hairlines; the compact copy floats at the top
+   between the back and search buttons as its own clear-glass pill. The collection point takes the space
+   that is left and scrolls (Marquee) if its name doesn't fit. */
+const fullShell = "flex items-stretch border-y border-line";
 const compactShell = "glass flex h-10 min-w-0 items-stretch rounded-full";
 
 // ---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ export function JoinInfoBubble({ progress, mine, pickupName, expiresAt, now, com
       <div role="group" aria-label="Party summary" className={cn(compactShell, "w-full gap-1.5 px-3 text-meta")}>
         <span className="flex min-w-14 shrink-0 flex-col justify-center gap-[5px]">
           <span className="tnum leading-none font-semibold whitespace-nowrap text-ink">
-            {leftPence > 0 ? `${left} left` : "Unlocked"}
+            {`${left} left`}
           </span>
           {bar("hairline")}
         </span>
@@ -72,7 +72,11 @@ export function JoinInfoBubble({ progress, mine, pickupName, expiresAt, now, com
           <Marquee className="font-medium">{pickup}</Marquee>
         </span>
         <Divider orientation="vertical" className="my-2.5" />
-        <Countdown until={expiresAt} now={now} className="shrink-0 self-center font-semibold text-ink" />
+        {/* Urgency in the last minute is a red dot, so the digits stay ink on glass over any photo. */}
+        <span className="flex shrink-0 items-center gap-1 self-center">
+          {expiresAt - now < 60_000 && <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-offer" />}
+          <Countdown until={expiresAt} now={now} urgentBelowMs={0} className="font-semibold text-ink" />
+        </span>
       </div>
     );
   }
@@ -81,13 +85,7 @@ export function JoinInfoBubble({ progress, mine, pickupName, expiresAt, now, com
     <div role="group" aria-label="Party summary" className={fullShell}>
       <div className="flex min-w-24 shrink-0 flex-col justify-center gap-2 py-2.5 pr-3 pl-3">
         <span className="tnum text-emphasis leading-none font-semibold whitespace-nowrap text-ink">
-          {leftPence > 0 ? (
-            <>
-              {left} <span className="font-medium text-ink-2">left</span>
-            </>
-          ) : (
-            "Unlocked"
-          )}
+          {left} <span className="font-medium text-ink-2">left</span>
         </span>
         {bar("sm")}
       </div>
@@ -122,14 +120,14 @@ export interface CreateInfoBubbleProps {
 export function CreateInfoBubble({ durationMin, pickupName, onEdit, compact = false }: CreateInfoBubbleProps) {
   if (compact) {
     return (
-      <div role="group" aria-label="Party settings" className={cn(compactShell, "w-full overflow-hidden")}>
+      <div role="group" aria-label="Party settings" className={cn(compactShell, "w-full")}>
         <Setting
           compact
           caption="Party lasts"
           value={<span className="tnum">{durationMin} min</span>}
           label={`Party lasts ${durationMin} minutes. Change`}
           onClick={() => onEdit("duration")}
-          className="shrink-0 pl-3"
+          className="shrink-0 rounded-l-full pl-3"
         />
         <Divider orientation="vertical" className="my-2.5" />
         <Setting
@@ -138,7 +136,7 @@ export function CreateInfoBubble({ durationMin, pickupName, onEdit, compact = fa
           value={pickupName}
           label={`Collect from ${pickupName}. Change`}
           onClick={() => onEdit("pickup")}
-          className="min-w-0 flex-1 pr-3"
+          className="min-w-0 flex-1 rounded-r-full pr-3"
         />
       </div>
     );
@@ -185,12 +183,14 @@ function Setting({ caption, value, label, icon, compact = false, onClick, classN
       onClick={onClick}
       className={cn(
         "flex items-center text-left transition-colors duration-100 ease-out",
-        compact ? "gap-1 px-2.5 active:bg-ink/[0.06] hover:bg-ink/[0.03]" : "gap-2 px-3 py-2.5 active:bg-surface-2 hover:bg-surface-hover",
+        compact
+          ? "relative gap-1 px-2.5 before:absolute before:inset-x-0 before:-inset-y-0.5 active:bg-ink/[0.06] hover:bg-ink/[0.03]"
+          : "gap-2 px-3 py-2.5 active:bg-ink/[0.04] hover:bg-ink/[0.03]",
         className,
       )}
     >
       <span className={cn("flex min-w-0 flex-1 flex-col", compact ? "gap-0.5" : "gap-1")}>
-        <span className="text-caption leading-none text-ink-2">{caption}</span>
+        <span className={cn("text-caption leading-none", compact ? "font-medium text-ink" : "text-ink-2")}>{caption}</span>
         <span
           className={cn(
             "flex min-w-0 items-center gap-1 leading-tight font-semibold text-ink",
@@ -201,7 +201,7 @@ function Setting({ caption, value, label, icon, compact = false, onClick, classN
           <Marquee>{value}</Marquee>
         </span>
       </span>
-      <ChevronDown aria-hidden className={cn("shrink-0 text-ink-2", compact ? "size-3.5" : "size-4")} />
+      <ChevronDown aria-hidden className={cn("shrink-0", compact ? "size-3.5 text-ink" : "size-4 text-ink-2")} />
     </button>
   );
 }

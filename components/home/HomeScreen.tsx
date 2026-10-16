@@ -18,13 +18,20 @@ export function HomeScreen() {
   const [query, setQuery] = useState("");
   const { highlights, others, mine, totalCount } = useHomeParties(query);
   const searching = query.trim().length > 0;
-  const nothingMatches = highlights.length === 0 && others.length === 0;
+  const resultCount = highlights.length + others.length;
+  const nothingMatches = resultCount === 0;
+  const announcement = !searching
+    ? ""
+    : resultCount === 0
+      ? `No parties match ${query.trim()}`
+      : `${resultCount} ${resultCount === 1 ? "party" : "parties"}`;
 
   return (
     <>
       <TopBar left={<LocationButton variant="stacked" className="glass" />} right={<NotificationsButton />} className="[&>div]:px-4" />
 
       <main className="flex flex-col gap-section pt-3 pb-6">
+        <h1 className="sr-only">Food parties near you</h1>
         {highlights.length > 0 && <Highlights parties={highlights} />}
 
         {others.length > 0 && (
@@ -47,9 +54,14 @@ export function HomeScreen() {
               title={`No parties match ‘${query.trim()}’`}
               body="Try a restaurant, a cuisine like pizza, or a dish."
               action={
-                <Button variant="secondary" onClick={() => setQuery("")}>
-                  Clear search
-                </Button>
+                <div className="flex flex-col items-center gap-2">
+                  <Button variant="secondary" onClick={() => setQuery("")}>
+                    Clear search
+                  </Button>
+                  <Button variant="ghost" href="/create" icon={<Plus />}>
+                    Create a party
+                  </Button>
+                </div>
               }
             />
           ) : (
@@ -63,6 +75,10 @@ export function HomeScreen() {
               }
             />
           ))}
+
+        <p className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </p>
       </main>
 
       <HomeBottomBar query={query} onQueryChange={setQuery} mine={mine} />
@@ -72,7 +88,7 @@ export function HomeScreen() {
 
 function EmptyState({ icon, title, body, action }: { icon?: ReactNode; title: string; body: string; action: ReactNode }) {
   return (
-    <div role="status" className="flex flex-col items-center px-8 pt-16 pb-8 text-center">
+    <div className="flex flex-col items-center px-8 pt-16 pb-8 text-center">
       {icon && (
         <span aria-hidden className="mb-4 grid size-12 place-items-center rounded-full bg-surface-2 text-ink-2">
           {icon}

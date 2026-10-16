@@ -7,7 +7,7 @@ import { EXIT, SPRING } from "./motion";
 
 export interface BottomBarProps {
   children: ReactNode;
-  /** Slides up 12px and fades in when true, back down when false. */
+  /** Renders in place on mount; slides up 12px and fades in when it turns true, back down when it turns false. */
   show?: boolean;
   /**
    * `true` (default): a translucent material bar on the bottom edge, padded clear of the home indicator.
@@ -42,7 +42,7 @@ export function BottomBar({ children, show = true, material = true, divider = tr
   return (
     <>
       <div aria-hidden style={{ height }} />
-      <AnimatePresence>
+      <AnimatePresence initial={false}>
         {show && (
           <motion.div
             ref={measure}

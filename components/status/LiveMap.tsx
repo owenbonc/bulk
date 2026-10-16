@@ -1,10 +1,10 @@
 "use client";
 
 import { MapPin, Navigation, UtensilsCrossed } from "lucide-react";
-import { motion, useReducedMotion } from "motion/react";
-import type { ReactNode } from "react";
+import { motion, useAnimationFrame, useReducedMotion } from "motion/react";
+import { useLayoutEffect, useRef, type ReactNode } from "react";
 import { EASE_OUT, cn } from "@/components/ui";
-import { deliveryProgress, useFrameNow } from "@/lib/store";
+import { deliveryProgress, useApp } from "@/lib/store";
 import type { OrderRequest, PickupPoint, Restaurant } from "@/lib/types";
 
 const W = 343;
@@ -74,12 +74,27 @@ export interface LiveMapProps {
 
 /**
  * Simulated delivery map: a stylised street grid (no real tiles) with the restaurant and the
- * collection point, a dotted route, and the courier moving along it frame by frame, driven by
- * `deliveryProgress`.
+ * collection point, a dotted route, and the courier driven by `deliveryProgress`. The map renders from
+ * the store's once-a-second clock. While the order is out for delivery, an animation-frame loop moves
+ * the courier and the travelled line directly on their SVG elements, so the map doesn't re-render
+ * every frame.
  */
 export function LiveMap({ request, restaurant, pickup }: LiveMapProps) {
-  const now = useFrameNow(request.status === "out_for_delivery");
+  const { now } = useApp();
   const reduce = useReducedMotion();
+  const courierRef = useRef<SVGGElement>(null);
+  const travelledRef = useRef<SVGPathElement>(null);
+
+  const placeCourier = () => {
+    if (request.status !== "out_for_delivery") return;
+    const { at, travelled } = along(ROUTE, deliveryProgress(request, Date.now()));
+    courierRef.current?.setAttribute("transform", `translate(${at[0]} ${at[1]})`);
+    travelledRef.current?.setAttribute("d", toPath(travelled));
+  };
+  useAnimationFrame(placeCourier);
+  // A heartbeat render writes a position up to a second old, so the live one replaces it before paint.
+  useLayoutEffect(placeCourier);
+
   const progress = deliveryProgress(request, now);
   const { at, travelled } = along(ROUTE, progress);
   const start = ROUTE[0];
@@ -103,9 +118,9 @@ export function LiveMap({ request, restaurant, pickup }: LiveMapProps) {
         </g>
 
         <path d={toPath(ROUTE)} fill="none" stroke="var(--ink-3)" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" strokeDasharray="0 7" />
-        <path d={toPath(travelled)} fill="none" stroke="var(--accent-ink)" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
+        <path ref={travelledRef} d={toPath(travelled)} fill="none" stroke="var(--accent-ink)" strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round" />
 
-        <g transform={`translate(${at[0]} ${at[1]})`}>
+        <g ref={courierRef} transform={`translate(${at[0]} ${at[1]})`}>
           {!reduce && (
             <motion.circle
               r={8}

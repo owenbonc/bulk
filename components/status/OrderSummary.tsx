@@ -1,4 +1,4 @@
-import { Card, Divider, Price, SummaryRow, formatPrice } from "@/components/ui";
+import { Divider, Price, SummaryRow, formatPrice } from "@/components/ui";
 import type { CostLine } from "@/lib/split";
 import type { BasketLine, Restaurant } from "@/lib/types";
 
@@ -13,7 +13,7 @@ export interface OrderSummaryProps {
   mode: "estimate" | "exact" | "paid";
 }
 
-/** Your items and what you pay: the "Order" card on the status page. */
+/** Your items and what you pay: the open "Order" rows on the status page, grouped by hairline dividers. */
 export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderSummaryProps) {
   const lines = basket.flatMap((line) => {
     const item = restaurant.menu.find((m) => m.id === line.itemId);
@@ -22,7 +22,7 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
 
   if (mode === "paid") {
     return (
-      <Card className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3">
         <ul className="flex flex-col gap-2">
           {lines.map(({ item, qty }) => (
             <li key={item.id} className="flex items-baseline justify-between gap-4 text-body">
@@ -38,13 +38,13 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
           hint={cost.discount > 0 ? `You saved ${formatPrice(cost.discount)} with the deal` : undefined}
           strong
         />
-      </Card>
+      </div>
     );
   }
 
   const estimate = mode === "estimate";
   return (
-    <Card className="flex flex-col gap-3">
+    <div className="flex flex-col gap-3">
       <ul className="flex flex-col gap-2">
         {lines.map(({ item, qty }) => (
           <li key={item.id} className="flex items-baseline gap-3 text-body">
@@ -64,13 +64,21 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
         />
         <SummaryRow
           label="Delivery share"
-          hint={members > 1 ? <span className="tnum">{`${formatPrice(restaurant.deliveryFee)} ÷ ${members}`}</span> : undefined}
+          hint={
+            members > 1 ? (
+              <span className="tnum">{`${formatPrice(restaurant.deliveryFee)} ÷ ${members}`}</span>
+            ) : estimate ? (
+              <>
+                <span className="tnum">{`${formatPrice(restaurant.deliveryFee)} ÷ 1`}</span> · drops as people join
+              </>
+            ) : undefined
+          }
           value={<Price pence={cost.delivery} />}
         />
       </div>
       <Divider />
       <SummaryRow label={estimate ? "Estimated total" : "Total"} value={<Price pence={cost.total} />} strong />
       {estimate && <p className="-mt-1 text-meta text-ink-3">Final total is confirmed when the party fills.</p>}
-    </Card>
+    </div>
   );
 }

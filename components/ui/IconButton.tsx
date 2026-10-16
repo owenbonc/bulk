@@ -75,7 +75,7 @@ function Badge({ size }: { size: IconButtonSize }) {
     <span
       aria-hidden
       className={cn(
-        "pointer-events-none absolute rounded-full border border-accent-ink/40 bg-accent ring-2 ring-bg",
+        "pointer-events-none absolute rounded-full border border-accent-ink bg-accent ring-2 ring-bg",
         sizes[size].badge,
       )}
     />

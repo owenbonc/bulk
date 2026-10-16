@@ -45,7 +45,7 @@ export function Switch({ checked, onCheckedChange, label, description, disabled 
         aria-hidden
         className={cn(
           "block h-[27px] w-[27px] rounded-full bg-surface shadow-thumb",
-          "transition-[translate,scale] duration-200 ease-out group-active/switch:scale-x-[1.15]",
+          "transition-[translate,scale,transform-origin] duration-200 ease-out group-active/switch:scale-x-[1.15]",
           checked ? "translate-x-5 origin-right" : "translate-x-0 origin-left",
         )}
       />

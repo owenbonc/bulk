@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ChevronDown, LocateFixed, MapPin } from "lucide-react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Marquee, Sheet, cn } from "@/components/ui";
 import { CATALOG } from "@/lib/data";
 import { pickupById, useApp } from "@/lib/store";
@@ -12,12 +12,14 @@ export interface LocationSheetProps {
 }
 
 /**
- * Bottom sheet listing the collection points, your current location first. Picking one sets it as your
- * location (SET_LOCATION) and closes the sheet.
+ * Bottom sheet listing the collection points, your current location first, as a radio group. Arrow keys
+ * and Home/End move the selection within the group (roving tabindex); tapping, Enter or Space picks a point
+ * and closes the sheet.
  */
 export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
   const { state, dispatch } = useApp();
   const current = state.location;
+  const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   // Freeze the order while the sheet is open so rows don't jump under your finger after a pick.
   const [wasOpen, setWasOpen] = useState(open);
@@ -28,6 +30,8 @@ export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
   }
 
   const points = [...CATALOG.pickupPoints].sort((a, b) => Number(b.id === pinned) - Number(a.id === pinned));
+  // The checked point is the group's single tab stop; the first point when none is checked.
+  const checkedIndex = Math.max(0, points.findIndex((p) => p.id === current));
 
   return (
     <Sheet
@@ -36,7 +40,39 @@ export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
       title="Your location"
       description="Parties deliver to one of these collection points."
     >
-      <div role="radiogroup" aria-label="Collection points" className="-mx-5 flex flex-col">
+      <div
+        role="radiogroup"
+        aria-label="Collection points"
+        className="-mx-5 flex flex-col"
+        onKeyDown={(e) => {
+          const from = radioRefs.current.findIndex((el) => el === document.activeElement);
+          if (from < 0) return;
+          const last = points.length - 1;
+          let to: number;
+          switch (e.key) {
+            case "ArrowDown":
+            case "ArrowRight":
+              to = from === last ? 0 : from + 1;
+              break;
+            case "ArrowUp":
+            case "ArrowLeft":
+              to = from === 0 ? last : from - 1;
+              break;
+            case "Home":
+              to = 0;
+              break;
+            case "End":
+              to = last;
+              break;
+            default:
+              return;
+          }
+          e.preventDefault();
+          const next = points[to];
+          if (next.id !== current) dispatch({ type: "SET_LOCATION", pickupPointId: next.id });
+          radioRefs.current[to]?.focus();
+        }}
+      >
         {points.map((point, i) => {
           const selected = point.id === current;
           const Icon = point.id === pinned ? LocateFixed : MapPin;
@@ -47,6 +83,10 @@ export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
                 type="button"
                 role="radio"
                 aria-checked={selected}
+                ref={(el) => {
+                  radioRefs.current[i] = el;
+                }}
+                tabIndex={i === checkedIndex ? 0 : -1}
                 onClick={() => {
                   if (!selected) dispatch({ type: "SET_LOCATION", pickupPointId: point.id });
                   onOpenChange(false);

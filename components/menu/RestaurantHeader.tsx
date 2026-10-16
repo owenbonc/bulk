@@ -8,8 +8,9 @@ export const HERO_OVERLAP = 24;
 
 /**
  * Full-bleed hero photo from the very top of the phone, under the status bar: 16:10 of the photo stays
- * visible below the status bar's safe area. A soft ink shade sits over the top edge only, so the white
- * status bar glyphs and the floating glass buttons read over any photo.
+ * visible below the status bar's safe area. An ink shade over the top edge holds through the status bar
+ * band and fades out below the floating buttons, so the white status bar glyphs clear 4.5:1 even over pale
+ * photos and the glass buttons read over any photo.
  */
 export function MenuHero({ restaurant, ref }: { restaurant: Restaurant; ref?: Ref<HTMLDivElement> }) {
   return (
@@ -24,7 +25,7 @@ export function MenuHero({ restaurant, ref }: { restaurant: Restaurant; ref?: Re
       />
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-x-0 top-0 h-[calc(var(--safe-top)+64px)] bg-linear-to-b from-ink/35 via-ink/10 to-transparent"
+        className="pointer-events-none absolute inset-x-0 top-0 h-[calc(var(--safe-top)+80px)] bg-linear-to-b from-ink/60 via-ink/45 via-30% to-transparent"
       />
     </div>
   );

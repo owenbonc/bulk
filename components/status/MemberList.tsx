@@ -2,7 +2,7 @@
 
 import { Check, UserPlus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Avatar, Card, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, cn } from "@/components/ui";
+import { Avatar, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, EXIT, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { basketCount } from "@/lib/split";
 import { useApp } from "@/lib/store";
@@ -26,8 +26,8 @@ function ordered(request: OrderRequest, mode: MemberMode): Participant[] {
 }
 
 /**
- * The "Party" card: everyone in the party with a Host tag and a per-state trailing detail
- * (choosing / item count, Paid / Pending, add friend). Rows animate in as people join and
+ * The "Party" rows: everyone in the party with a Host tag and a per-state trailing detail
+ * (choosing / item count, Paid / Pending, add friend), separated by hairlines that start at the name. Rows animate in as people join and
  * slide into place when the paid order changes.
  */
 export function MemberList({ request, mode }: { request: OrderRequest; mode: MemberMode }) {
@@ -35,36 +35,34 @@ export function MemberList({ request, mode }: { request: OrderRequest; mode: Mem
   const members = ordered(request, mode);
 
   return (
-    <Card padded={false}>
-      <ul className="flex flex-col">
-        <AnimatePresence initial={false}>
-          {members.map((p, i) => {
-            const you = p.userId === ME.userId;
-            return (
-              <motion.li
-                key={p.userId}
-                layout="position"
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                transition={SPRING}
-                className="relative"
-              >
-                {i > 0 && <div aria-hidden className="absolute top-0 right-0 left-14 h-px bg-line" />}
-                <div className="flex min-h-14 items-center gap-3 px-card py-2">
-                  <Avatar name={p.name} you={you} />
-                  <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Marquee className={cn("text-body text-ink", you && "font-semibold")}>{you ? "You" : p.name}</Marquee>
-                    {p.userId === request.hostId && <Pill tone="outline" className="shrink-0">Host</Pill>}
-                  </div>
-                  <Trailing participant={p} mode={mode} you={you} friend={state.friends.includes(p.userId)} onAddFriend={() => dispatch({ type: "ADD_FRIEND", userId: p.userId })} />
+    <ul className="flex flex-col">
+      <AnimatePresence initial={false}>
+        {members.map((p, i) => {
+          const you = p.userId === ME.userId;
+          return (
+            <motion.li
+              key={p.userId}
+              layout="position"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={SPRING}
+              className="relative"
+            >
+              {i > 0 && <div aria-hidden className="absolute top-0 right-0 left-11 h-px bg-line" />}
+              <div className="flex min-h-14 items-center gap-3 py-2">
+                <Avatar name={p.name} you={you} />
+                <div className="flex min-w-0 flex-1 items-center gap-2">
+                  <Marquee className={cn("text-body text-ink", you && "font-semibold")}>{you ? "You" : p.name}</Marquee>
+                  {p.userId === request.hostId && <Pill tone="outline" className="shrink-0">Host</Pill>}
                 </div>
-              </motion.li>
-            );
-          })}
-        </AnimatePresence>
-      </ul>
-    </Card>
+                <Trailing participant={p} mode={mode} you={you} friend={state.friends.includes(p.userId)} onAddFriend={() => dispatch({ type: "ADD_FRIEND", userId: p.userId })} />
+              </div>
+            </motion.li>
+          );
+        })}
+      </AnimatePresence>
+    </ul>
   );
 }
 
@@ -119,7 +117,7 @@ function Trailing({
             </Pill>
           </motion.span>
         ) : (
-          <motion.span key="add" exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.1 } }}>
+          <motion.span key="add" exit={{ opacity: 0, scale: 0.95, transition: EXIT }}>
             <IconButton aria-label={`Add ${p.name} as a friend`} size="sm" variant="outline" onClick={onAddFriend}>
               <UserPlus />
             </IconButton>

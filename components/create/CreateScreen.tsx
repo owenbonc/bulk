@@ -2,7 +2,7 @@
 
 import { Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState, type MouseEvent } from "react";
+import { useEffect, useState, type MouseEvent } from "react";
 import { LocationButton } from "@/components/shared/LocationSheet";
 import { Button, EASE_OUT, EXIT, IconButton, SearchField, TopBar } from "@/components/ui";
 import { CATALOG, ME } from "@/lib/data";
@@ -23,7 +23,10 @@ export function CreateScreen() {
   const { state } = useApp();
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
-  const [popup, setPopup] = useState<{ open: boolean; partyId?: string }>({ open: false });
+  const [popup, setPopup] = useState<{ open: boolean; partyId?: string; key: number }>({ open: false, key: 0 });
+
+  // Closed whenever the route is hidden, so it never reappears on return; the new key remounts it without an exit frame.
+  useEffect(() => () => setPopup((p) => (p.open ? { open: false, key: p.key + 1 } : p)), []);
 
   const q = normalise(query);
   const featured = q ? [] : CATALOG.restaurants.filter((r) => r.featured);
@@ -39,13 +42,19 @@ export function CreateScreen() {
     const party = openPartyFor(state, restaurantId);
     if (!party) return;
     event.preventDefault();
-    setPopup({ open: true, partyId: party.id });
+    setPopup((p) => ({ ...p, open: true, partyId: party.id }));
   };
 
   const closeSearch = () => {
     setSearching(false);
     setQuery("");
   };
+
+  const announcement = !q
+    ? ""
+    : deals.length === 0
+      ? `No restaurants match ${query.trim()}`
+      : `${deals.length} ${deals.length === 1 ? "restaurant" : "restaurants"}`;
 
   return (
     <>
@@ -95,9 +104,12 @@ export function CreateScreen() {
 
       <main className="pb-safe">
         <h1 className="px-gutter pt-1 text-title font-semibold text-ink">Create a party</h1>
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {announcement}
+        </span>
 
         {deals.length === 0 ? (
-          <div role="status" className="flex flex-col items-center px-8 pt-12 pb-8 text-center">
+          <div className="flex flex-col items-center px-8 pt-12 pb-8 text-center">
             <p className="text-emphasis font-semibold text-pretty break-words text-ink">No restaurants match &lsquo;{query.trim()}&rsquo;</p>
             <p className="mt-1 text-body text-ink-2">Try a cuisine like ramen or curry, or a dish.</p>
             <Button variant="secondary" className="mt-4" onClick={() => setQuery("")}>
@@ -113,6 +125,7 @@ export function CreateScreen() {
       </main>
 
       <PartyExistsPopup
+        key={popup.key}
         open={popup.open}
         partyId={popup.partyId}
         onOpenChange={(open) => setPopup((p) => ({ ...p, open }))}

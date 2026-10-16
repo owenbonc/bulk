@@ -86,7 +86,7 @@ export function MenuList({ restaurant, controls, query, onClearQuery }: MenuList
         <span aria-hidden className="grid size-12 place-items-center rounded-full bg-surface-2 text-ink-2">
           <SearchX />
         </span>
-        <p className="text-body text-ink-2" role="status">
+        <p className="text-body text-ink-2">
           No dishes match &lsquo;<span className="font-semibold text-ink">{query.trim()}</span>&rsquo;
         </p>
         <Button variant="secondary" size="sm" onClick={onClearQuery}>
