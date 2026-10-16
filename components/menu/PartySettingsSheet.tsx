@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Button, Sheet, cn } from "@/components/ui";
+import { Button, Pill, Sheet, cn } from "@/components/ui";
 import { CATALOG, PARTY_DURATIONS } from "@/lib/data";
 import type { SettingsFocus } from "./InfoBubble";
 
@@ -12,6 +12,10 @@ export interface PartySettingsSheetProps {
   pickupPointId: string;
   /** Which section was tapped; the sheet brings it into view. */
   focus: SettingsFocus;
+  /** Your current location, tagged "You're here". */
+  locationId: string;
+  /** This restaurant already has an open party collecting at the point (one per restaurant per point). */
+  hasPartyAt: (pickupPointId: string) => boolean;
   onApply: (settings: { durationMin: number; pickupPointId: string }) => void;
 }
 
@@ -35,8 +39,20 @@ function radioKeyIndex(key: string, index: number, count: number): number | null
   }
 }
 
-/** W7: how long the party stays open and where the order is delivered. Nothing changes until Apply. */
-export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPointId, focus, onApply }: PartySettingsSheetProps) {
+/**
+ * W7: how long the party stays open and where the order is delivered. Points where this restaurant already
+ * has a party carry a "Party open" pill (creating there offers to join it instead). Nothing changes until Apply.
+ */
+export function PartySettingsSheet({
+  open,
+  onOpenChange,
+  durationMin,
+  pickupPointId,
+  focus,
+  locationId,
+  hasPartyAt,
+  onApply,
+}: PartySettingsSheetProps) {
   const [duration, setDuration] = useState(durationMin);
   const [pickup, setPickup] = useState(pickupPointId);
   const pickupRef = useRef<HTMLDivElement>(null);
@@ -146,6 +162,7 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
           >
             {CATALOG.pickupPoints.map((point, i) => {
               const selected = point.id === pickup;
+              const taken = hasPartyAt(point.id);
               return (
                 <button
                   key={point.id}
@@ -179,9 +196,22 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-body font-semibold text-ink text-pretty">{point.name}</span>
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                      <span className="text-body font-semibold text-ink text-pretty">{point.name}</span>
+                      {point.id === locationId && <span className="text-caption font-semibold text-accent-ink">You&apos;re here</span>}
+                    </span>
                     <span className="mt-0.5 block text-meta text-ink-2 text-pretty">{point.access}</span>
+                    {taken && selected && (
+                      <span className="mt-1 block text-meta text-ink-2 text-pretty">
+                        This restaurant already has a party here, so you&apos;ll be offered that one to join.
+                      </span>
+                    )}
                   </span>
+                  {taken && (
+                    <Pill tone="soft" icon={<span aria-hidden className="size-1.5 shrink-0 rounded-full bg-accent-ink" />} className="mt-px shrink-0">
+                      Party open
+                    </Pill>
+                  )}
                 </button>
               );
             })}

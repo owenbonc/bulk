@@ -25,7 +25,8 @@ npm run lint
 | | |
 |---|---|
 | Order request ("party") | Created via **Create order request**: pick a restaurant, build your basket, choose the pickup point and open duration (15/30/60 min). The creator is host, and their basket goes straight into the queue. |
-| Home | Lists every active party (restaurant, time left, pickup point, progress to the deal). Tap one to join. |
+| Home | Lists the parties collecting near your location (yours first, then others within a short walk, with "Here" or "5 min walk"), plus every party you're in. Change location from the pin at the top left. Tap one to join. |
+| One party per place | A restaurant can have one open party per collection point. Distances and delivery estimates are computed from your location (`lib/geo.ts`). |
 | Deal achieved | The request's combined **finalised** baskets reach the restaurant's £ threshold. Anyone still choosing food at that moment is dropped. |
 | Time runs out first | Request **expires**. Nobody is charged. |
 | Accept & pay | Everyone has 60s. If anyone hasn't paid, the **whole order is cancelled** and nobody is charged. |
@@ -40,7 +41,8 @@ Use the **Demo** button (bottom right) to steer the bots:
 2. **Join path:** tap a bot-hosted party on Home → choose food → Finalise → finish the flow.
 3. **Cancellation:** tick *A bot won't accept* before the deal. After 60s the order cancels.
 4. **Expiry:** tick *Pause bots joining*, join and finalise, then *Expire this request in 5s*.
-5. **Reset demo** restores the seeded restaurants and requests. State persists across refreshes in `localStorage`.
+5. **Locations:** switch location on Home to see each collection point's parties (three seeded at each, ids like `seed-burger-yard-student-centre`). Kumo Ramen has a party at Ramsay Hall but none at the Student Centre, so it's the one to host from the default location.
+6. **Reset demo** restores the seeded restaurants and requests. State persists across refreshes in `localStorage`.
 
 ## Code map
 
@@ -48,6 +50,7 @@ Use the **Demo** button (bottom right) to steer the bots:
 - `lib/split.ts`: per-person cost split
 - `lib/simulation.ts`: bot participants (pure, tested)
 - `lib/store.tsx`: React provider, 1s heartbeat, persistence
-- `lib/data.ts`: seed restaurants, menus, deals, pickup points
+- `lib/data.ts`: seed restaurants, menus, deals, pickup points (with coordinates)
+- `lib/geo.ts`: distances, delivery estimates, walking times and the "near you" selection
 - `app/`: screens (`/` parties, `/create` restaurants, `/create/[restaurantId]` basket, `/req/[reqId]/order` joiner's basket, `/req/[reqId]` party status)
 - `docs/superpowers/specs/`: design spec for this phase

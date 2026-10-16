@@ -25,8 +25,9 @@ export {
   progressOf,
   unreadCount,
 } from "./requests";
+export { NEARBY_WALK_MIN, byBestDealFrom, deliveryEta, partiesNear, placeOf, restaurantMiles } from "./geo";
 
-const STORAGE_KEY = "bulk-demo-v2";
+const STORAGE_KEY = "bulk-demo-v3";
 const HEARTBEAT_MS = 1_000;
 const FIRST_BOT_DELAY_MS = 6_000;
 const BOT_STEP_MS = [5_000, 9_000] as const;
@@ -152,6 +153,12 @@ export function restaurantById(id: string) {
 
 export function pickupById(id: string) {
   return CATALOG.pickupPoints.find((p) => p.id === id);
+}
+
+/** The collection point you're at (your current location). */
+export function useLocation() {
+  const { state } = useApp();
+  return pickupById(state.location) ?? CATALOG.pickupPoints[0];
 }
 
 /** Notifications for the bell sheet, newest first, plus how many are unread. */

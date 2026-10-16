@@ -163,9 +163,10 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - Top bar: close X (left), location name with chevron (centre-left, same location sheet as Home), search button (right) filtering the lists.
 - **Featured** horizontal carousel (restaurants with `featured: true`): image tile with deal pill on its bottom edge, name, one meta line. Arrow button top-right.
 - **Best deals near you**: list rows: square image left; name, "★ 4.7 · 0.4 mi", "Est. 25–35 min", red tag icon + "Offer: 25% off £50".
-- Tapping a restaurant that already has an open party shows the **W13 popup** instead of opening the menu.
-- Restaurants with an open party show a small "Party open" pill **right-aligned at the row's right edge**, top-aligned with the restaurant name (not directly after the name). Rows without a party have nothing there.
-- Seed data must show a mix: 12 restaurants in total, only 6 with an open party, so roughly half the "Best deals near you" rows have no pill (add 4 party-free restaurants, e.g. sushi, Thai, Korean, fresh pasta, with menus, deals and freely licensed photos).
+- Distances, delivery estimates and the "Best deals near you" order are measured from your location (§10).
+- Tapping a restaurant that already has an open party **at your location** shows the **W13 popup** instead of opening the menu.
+- Restaurants with an open party at your location show a small "Party open" pill **right-aligned at the row's right edge**, top-aligned with the restaurant name (not directly after the name). Rows without a party have nothing there.
+- Seed data must show a mix: 12 restaurants in total, about 3 with an open party at each location, so most "Best deals near you" rows have no pill.
 
 ### W7–W8 Create a party: host menu — `/create/[restaurantId]`
 - Same layout as W2/W3 (reuse the same components), but the info bubble is **interactive**: "Party lasts · 15 minutes ⌄" | "Collect from · Student Centre entrance ⌄". Tapping either opens a bottom sheet (W7) that dims the rest: "Party lasts" options 10/15/30/60 min; "Collection point" radio list of the 4 points with access notes; full-width "Apply" button. The docked compact bubble in the top bar (W8) shows both values and stays tappable.
@@ -190,8 +191,8 @@ All money integer pence. Existing helpers stay unless noted.
 // lib/types.ts additions
 interface Deal { label: string; short: string; minTotal: number; discountPct: number } // short: "25% off"
 interface MenuItem { id; name; price; description: string; category: "main" | "side" | "drink"; image?: string; originalPrice?: number; topPick?: boolean }
-interface Restaurant { id; name; cuisine; emoji; deliveryFee; deal; menu; image: string; area: string /* "Bloomsbury" */; rating: number; ratingCount: number; ratingLabel: string /* "Good" */; etaMin: [number, number] /* [25,35] */; distanceMiles: number; featured?: boolean }
-interface PickupPoint { id; name; access: string /* "Inside the main doors, by the post room" */; lat?; lng? }
+interface Restaurant { id; name; cuisine; emoji; deliveryFee; deal; menu; image: string; area: string /* "Bloomsbury" */; rating: number; ratingCount: number; ratingLabel: string /* "Good" */; lat: number; lng: number; prepMin: number /* kitchen time before the ride */; featured?: boolean }
+interface PickupPoint { id; name; access: string /* "Inside the main doors, by the post room" */; lat: number; lng: number }
 interface Participant { ...existing; cutlery: boolean; declined?: boolean }
 type RequestStatus = existing union (unchanged)
 interface OrderRequest { ...existing; round: 1 | 2; removedUserIds: string[]; removedNames: string[]; cancelReason?: string }
@@ -204,21 +205,22 @@ Actions (new or changed):
 - `SET_CUTLERY { requestId, userId, cutlery }`.
 - `DECLINE { requestId, userId, now }` during `deal_achieved`.
 - `DRAFT_START { restaurantId }`, `DRAFT_ITEM { itemId, delta }`, `DRAFT_SET { pickupPointId?, durationMin?, cutlery? }`, `DRAFT_CLEAR`.
-- `CREATE_FROM_DRAFT { id, user, now }`: creates the party from the draft, host basket finalised, clears draft. **Refuses (no-op) if the restaurant already has an open party.**
+- `CREATE_FROM_DRAFT { id, user, now }`: creates the party from the draft, host basket finalised, clears draft. **Refuses (no-op) if the restaurant already has an open party at the draft's collection point** (the draft is kept so the host can pick another point).
 - `FILL_PARTY { requestId, now }` (demo): bots join with baskets until the threshold is reached.
-- `ADD_FRIEND { userId }`, `MARK_ALERT_SEEN { key }`, `MARK_NOTIFICATIONS_READ`, `SET_LOCATION { pickupPointId }`.
+- `ADD_FRIEND { userId }`, `MARK_ALERT_SEEN { key }`, `MARK_NOTIFICATIONS_READ`, `SET_LOCATION { pickupPointId }` (a draft's collection point moves with you).
 
 Rules:
-- **One party per restaurant**: `openPartyFor(state, restaurantId)` returns the open party or undefined.
+- **One party per restaurant per collection point**: `openPartyFor(state, restaurantId, pickupPointId)` returns the open party there or undefined. `CREATE_REQUEST` and `CREATE_FROM_DRAFT` follow the same rule.
 - **Acceptance round (Google Doc spec §5)**: when the deal is reached everyone has `ACCEPT_WINDOW_MS` (60s) to accept and pay. The round resolves early once everyone has paid or declined. At resolution, if anyone declined or timed out: remove them (record ids/names). If this was round 1 **and** the remaining finalised spend still meets the threshold **and** someone remains, start **round 2**: reset everyone's `paid`, recompute totals (delivery share changes), new deadline. Otherwise status `cancelled` with `cancelReason` ("Not enough people accepted to keep the deal." / "The second round didn't complete."). If everyone pays → `confirmed` as today. Never more than one fallback round.
 - `expired` keeps meaning "timer ran out before the deal was reached"; set `cancelReason` "The deal wasn't reached before the timer ran out."
 - Delivery stages after `confirmed`: preparing at 4s, out_for_delivery at 10s, delivered at 30s (gives the live map ~20s).
 - Selectors/helpers exported from `lib/`: `openPartyFor`, `progressOf(request, restaurant)` → `{ total, target, left, pct }`, `previewSplit(request, restaurant, userId, basket)` (cost as if your basket were finalised), `draftPreview(draft, restaurant)`, `deliveryProgress(request, now)` (0–1 within out_for_delivery), `notificationsFor(state)` → `{ key, requestId, title, body, at }[]`, `isHighlight(request, restaurant)` (pct ≥ 75 and open).
-- Storage key bumps to `bulk-demo-v2`.
+- Location helpers in `lib/geo.ts`: `haversineMiles`, `restaurantMiles(restaurant, point)` (1 decimal), `deliveryEta(restaurant, point)` (prep + ride + hand-over, a 10 min window), `walkMinutes`, `NEARBY_WALK_MIN` (9), `placeOf(request, locationId)` → `{ point, here, walkMin, nearby }`, `partiesNear(requests, locationId, now)` (here first, then by walk), `byBestDealFrom(point)`.
+- Storage key: `bulk-demo-v3`.
 
 ## 8. Seed data (backend agent)
 
-8 restaurants near UCL with real-looking names (fictional), cuisines spread (pizza, ramen, burgers, curry, poke, Mexican, Chinese, Middle Eastern), each with 7–9 menu items across mains/sides/drinks, 3 marked `topPick`, 1–2 with `originalPrice` sale prices, short appetising descriptions. Deals range 15–25% off with £35–£55 thresholds. 6 open parties seeded with bots (1 per restaurant): 2 at ≥75% (highlights), 4 between 25% and 70%, timers 9–50 minutes. 2 restaurants without a party (for create). 3 restaurants `featured`. Collection points: "Student Centre", "Main Library", "Ramsay Hall", "IOE Bedford Way" (short names; the access note carries the detail). Default location: Student Centre.
+8 restaurants near UCL with real-looking names (fictional), cuisines spread (pizza, ramen, burgers, curry, poke, Mexican, Chinese, Middle Eastern), each with 7–9 menu items across mains/sides/drinks, 3 marked `topPick`, 1–2 with `originalPrice` sale prices, short appetising descriptions. Deals range 15–25% off with £35–£55 thresholds. 12 open parties seeded with bots, three at each collection point (ids `seed-<restaurantId>-<pickupPointId>`, e.g. `seed-burger-yard-student-centre`): each point has one highlight (≥75%) and two parties between 25% and 70%, timers 8–50 minutes. Slice House and Burger Yard run parties at two points; Kumo Ramen only at Ramsay Hall, so it is free to host at the default Student Centre; Baan Thai and Pasta Fresca have none. 3 restaurants `featured`. Collection points: "Student Centre", "Main Library", "Ramsay Hall", "IOE Bedford Way" (short names; the access note carries the detail). Default location: Student Centre.
 
 Images: source real, freely licensed food photos (Wikimedia Commons public-domain or CC-BY/CC-BY-SA, found via WebSearch/WebFetch of commons.wikimedia.org, downloading the `upload.wikimedia.org` file URL). One hero per restaurant (8) and one per top-pick item (~24, reuse is fine where dishes match). Resize to max 1200px wide hero / 600px items with `sips -Z`, convert to JPEG quality ~75 (`sips -s format jpeg -s formatOptions 75`), save under `public/images/restaurants/` and `public/images/items/`. Write `public/images/CREDITS.md` (file, source URL, author, licence). If a download fails, leave `image` undefined for that item (the UI falls back gracefully). Do not hotlink.
 
@@ -238,3 +240,4 @@ Images: source real, freely licensed food photos (Wikimedia Commons public-domai
 - **Restaurants stay the same everywhere, with real distances**: distance, delivery estimate and the "Best deals near you" order are computed from the selected location (each collection point and restaurant has coordinates).
 - **One party per restaurant per location**: a restaurant can have a party at each collection point; the "There's already a party" popup only triggers for a party at the location you're in.
 - **Seed**: 2–4 open parties at every collection point (each with at least one highlight), so every location switch shows something new.
+- **Implementation notes**: "near you" is a walk of `NEARBY_WALK_MIN` (9 min, straight line × 1.3 at 3 mph) or less. The four points sit within ~0.5 mi of each other, so a 12 min radius would show every party everywhere; at 9 min the Student Centre and IOE see three points, the Main Library all four, Ramsay Hall itself and the Main Library. Cards show the collection point with "Here" or "5 min walk", and a party card's delivery estimate is to that party's collection point. Parties you're in always show. The location sheet lists "3 here · 9 parties nearby" under each point. Switching location scrolls to the top and fades the new set in (opacity only under reduced motion); on Create the rows glide to their new order. In the host settings sheet, points where the restaurant already has a party carry a "Party open" pill; "Create party" there shows W13.

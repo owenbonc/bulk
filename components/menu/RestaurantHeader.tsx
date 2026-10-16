@@ -1,7 +1,8 @@
 import { MapPin, Truck } from "lucide-react";
 import type { Ref } from "react";
 import { ImageFrame, Marquee, Rating } from "@/components/ui";
-import type { Restaurant } from "@/lib/types";
+import { deliveryEta, restaurantMiles } from "@/lib/geo";
+import type { PickupPoint, Restaurant } from "@/lib/types";
 
 /** How far the page lifts over the bottom of the hero photo (the rounded sheet edge), in px. */
 export const HERO_OVERLAP = 24;
@@ -31,16 +32,19 @@ export function MenuHero({ restaurant, ref }: { restaurant: Restaurant; ref?: Re
   );
 }
 
-/** Name, cuisine and neighbourhood, rating and delivery estimate under the hero. */
-export function RestaurantHeader({ restaurant }: { restaurant: Restaurant }) {
-  const [min, max] = restaurant.etaMin;
+/**
+ * Name, cuisine, neighbourhood and distance, rating and delivery estimate under the hero. Distance and
+ * delivery time are measured to `point`, the collection point the order goes to.
+ */
+export function RestaurantHeader({ restaurant, point }: { restaurant: Restaurant; point: PickupPoint }) {
+  const [min, max] = deliveryEta(restaurant, point);
   return (
     <div className="flex flex-col gap-1">
       <h1 className="text-title font-semibold text-ink">{restaurant.name}</h1>
       <p className="flex min-w-0 items-center gap-1 text-meta text-ink-2">
         <MapPin aria-hidden className="size-3.5 shrink-0" />
         <Marquee>
-          {restaurant.cuisine} · {restaurant.area} · <span className="tnum">{restaurant.distanceMiles} mi</span>
+          {restaurant.cuisine} · {restaurant.area} · <span className="tnum">{restaurantMiles(restaurant, point).toFixed(1)} mi</span>
         </Marquee>
       </p>
       <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">

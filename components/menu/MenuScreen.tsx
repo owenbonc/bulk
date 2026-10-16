@@ -16,9 +16,9 @@ import {
   toast,
   useStatusBarTone,
 } from "@/components/ui";
-import { ME } from "@/lib/data";
+import { CATALOG, ME } from "@/lib/data";
 import { basketCount, basketTotal, draftPreview, progressOf } from "@/lib/requests";
-import { pickupById, useApp } from "@/lib/store";
+import { openPartyFor, pickupById, useApp } from "@/lib/store";
 import type { Draft, OrderRequest, Restaurant } from "@/lib/types";
 import { BasketBubble } from "./BasketBubble";
 import { CreateInfoBubble, JoinInfoBubble, type SettingsFocus } from "./InfoBubble";
@@ -46,7 +46,7 @@ const SHEET_HANDOFF_MS = 320;
  */
 export function MenuScreen(props: MenuScreenProps) {
   const { restaurant, mode } = props;
-  const { now, dispatch } = useApp();
+  const { state, now, dispatch } = useApp();
   const router = useRouter();
   const reduceMotion = useReducedMotion();
 
@@ -56,8 +56,8 @@ export function MenuScreen(props: MenuScreenProps) {
   const count = basketCount(basket);
   const subtotal = basketTotal(basket, restaurant);
   const pickupPointId = props.mode === "join" ? props.party.pickupPointId : props.draft.pickupPointId;
-  const pickup = pickupById(pickupPointId);
-  const pickupName = pickup?.name ?? "Collection point";
+  const pickup = pickupById(pickupPointId) ?? CATALOG.pickupPoints[0];
+  const pickupName = pickup.name;
 
   const controls: ItemControls = {
     qtyOf: (itemId) => basket.find((l) => l.itemId === itemId)?.qty ?? 0,
@@ -266,7 +266,7 @@ export function MenuScreen(props: MenuScreenProps) {
             searching ? "invisible opacity-0" : "opacity-100",
           )}
         >
-          <RestaurantHeader restaurant={restaurant} />
+          <RestaurantHeader restaurant={restaurant} point={pickup} />
           <div ref={bubbleRef} className={cn("transition-opacity duration-200 ease-out", docked ? "opacity-0" : "opacity-100")}>
             {infoBubble(false)}
           </div>
@@ -320,6 +320,8 @@ export function MenuScreen(props: MenuScreenProps) {
           durationMin={props.draft.durationMin}
           pickupPointId={props.draft.pickupPointId}
           focus={settingsFocus}
+          locationId={state.location}
+          hasPartyAt={(id) => !!openPartyFor(state, restaurant.id, id)}
           onApply={(next) => {
             const draft = props.draft;
             if (next.durationMin === draft.durationMin && next.pickupPointId === draft.pickupPointId) return;
