@@ -1,45 +1,48 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG } from "./data";
-import { splitCosts } from "./split";
+import { basketCount, draftPreview, formatGBP, formatGBPShort, previewSplit, splitCosts } from "./split";
 import type { OrderRequest, Participant } from "./types";
 
-const pizza = CATALOG.restaurants.find((r) => r.id === "slice-house")!; // 20% off, £3.99 delivery
+const pizza = CATALOG.restaurants.find((r) => r.id === "slice-house")!; // 20% off a £40 order, £3.49 delivery, margherita £10.50
 
-function p(userId: string, basket: Participant["basket"]): Participant {
-  return { userId, name: userId, isBot: false, basket, finalised: true, paid: false };
+function p(userId: string, basket: Participant["basket"], finalised = true): Participant {
+  return { userId, name: userId, isBot: false, basket, finalised, paid: false, cutlery: false };
 }
 
 function request(participants: Participant[]): OrderRequest {
   return {
     id: "r1",
     restaurantId: pizza.id,
-    pickupPointId: "hall-a",
+    pickupPointId: "student-centre",
     hostId: participants[0].userId,
     createdAt: 0,
     expiresAt: 1,
-    status: "deal_achieved",
+    status: "open",
     participants,
+    round: 1,
+    removedUserIds: [],
+    removedNames: [],
   };
 }
 
 describe("splitCosts", () => {
   it("splits discount by items and delivery equally", () => {
     const split = splitCosts(
-      request([p("a", [{ itemId: "margherita", qty: 2 }]), p("b", [{ itemId: "margherita", qty: 2 }])]),
+      request([p("a", [{ itemId: "sh-margherita", qty: 2 }]), p("b", [{ itemId: "sh-margherita", qty: 2 }])]),
       pizza,
     );
-    // £36 group subtotal, 20% = £7.20 discount, £3.99 delivery
-    expect(split.group).toEqual({ subtotal: 3600, discount: 720, delivery: 399, total: 3279 });
-    expect(split.people.a).toMatchObject({ subtotal: 1800, discount: 360 });
-    expect(split.people.a.delivery + split.people.b.delivery).toBe(399);
+    // £42 group subtotal, 20% = £8.40 discount, £3.49 delivery
+    expect(split.group).toEqual({ subtotal: 4200, discount: 840, delivery: 349, total: 3709 });
+    expect(split.people.a).toMatchObject({ subtotal: 2100, discount: 420 });
+    expect(split.people.a.delivery + split.people.b.delivery).toBe(349);
   });
 
   it("per-person totals always add up to the group total (no rounding loss)", () => {
     const split = splitCosts(
       request([
-        p("a", [{ itemId: "pepperoni", qty: 1 }]),
-        p("b", [{ itemId: "cola", qty: 1 }]),
-        p("c", [{ itemId: "garlic-bread", qty: 1 }, { itemId: "veggie", qty: 1 }]),
+        p("a", [{ itemId: "sh-pepperoni", qty: 1 }]),
+        p("b", [{ itemId: "sh-cola", qty: 1 }]),
+        p("c", [{ itemId: "sh-garlic-knots", qty: 1 }, { itemId: "sh-funghi", qty: 1 }]),
       ]),
       pizza,
     );
@@ -50,9 +53,61 @@ describe("splitCosts", () => {
   });
 
   it("ignores participants who have not finalised", () => {
-    const notFinal = { ...p("b", [{ itemId: "margherita", qty: 5 }]), finalised: false };
-    const split = splitCosts(request([p("a", [{ itemId: "margherita", qty: 1 }]), notFinal]), pizza);
-    expect(split.group.subtotal).toBe(900);
+    const split = splitCosts(request([p("a", [{ itemId: "sh-margherita", qty: 1 }]), p("b", [{ itemId: "sh-margherita", qty: 5 }], false)]), pizza);
+    expect(split.group.subtotal).toBe(1050);
     expect(split.people.b).toBeUndefined();
+  });
+});
+
+describe("previewSplit", () => {
+  const party = request([p("bob", [{ itemId: "sh-margherita", qty: 2 }]), p("me", [], false)]);
+
+  it("prices your basket as if it were finalised, with delivery shared", () => {
+    const preview = previewSplit(party, pizza, "me", [{ itemId: "sh-margherita", qty: 1 }]);
+    expect(preview.members).toBe(2);
+    expect(preview.subtotal).toBe(1050);
+    expect(preview.discount).toBe(210);
+    expect(preview.delivery).toBe(174);
+    expect(preview.total).toBe(1050 - 210 + 174);
+    expect(preview.people.me.total).toBe(preview.total);
+    expect(preview.group.subtotal).toBe(3150);
+  });
+
+  it("reports the party's progress including your basket, and your share of the threshold", () => {
+    const preview = previewSplit(party, pizza, "me", [{ itemId: "sh-margherita", qty: 1 }]);
+    expect(preview.progress).toEqual({ total: 3150, target: 4000, left: 850, pct: 78 });
+    expect(preview.share).toBeCloseTo(1050 / 4000);
+  });
+
+  it("works when you haven't joined yet, and previews an empty basket as zero", () => {
+    const outsider = request([p("bob", [{ itemId: "sh-margherita", qty: 2 }])]);
+    expect(previewSplit(outsider, pizza, "me", [{ itemId: "sh-cola", qty: 1 }]).members).toBe(2);
+    const empty = previewSplit(outsider, pizza, "me", []);
+    expect(empty).toMatchObject({ subtotal: 0, total: 0, members: 1, share: 0 });
+    expect(empty.progress.total).toBe(2100);
+  });
+});
+
+describe("draftPreview", () => {
+  it("prices the host's draft as a party of one", () => {
+    const preview = draftPreview(
+      { restaurantId: pizza.id, pickupPointId: "student-centre", durationMin: 15, basket: [{ itemId: "sh-margherita", qty: 2 }], cutlery: false },
+      pizza,
+    );
+    expect(preview).toMatchObject({ subtotal: 2100, discount: 420, delivery: 349, total: 2029, members: 1 });
+    expect(preview.progress).toMatchObject({ total: 2100, left: 1900, pct: 52 });
+  });
+});
+
+describe("formatting", () => {
+  it("formats pence as pounds", () => {
+    expect(formatGBP(729)).toBe("£7.29");
+    expect(formatGBP(4000)).toBe("£40.00");
+    expect(formatGBPShort(4000)).toBe("£40");
+    expect(formatGBPShort(725)).toBe("£7.25");
+  });
+
+  it("counts items in a basket", () => {
+    expect(basketCount([{ itemId: "a", qty: 2 }, { itemId: "b", qty: 1 }])).toBe(3);
   });
 });
