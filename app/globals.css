@@ -15,26 +15,41 @@
 
 :root {
   --bg: #f7f5ec;
+  /* Page background around the phone column on wide screens. */
+  --bg-desk: #ece9dc;
   --surface: #ffffff;
+  /* Hover wash on white surfaces. */
+  --surface-hover: #fcfbf7;
   --surface-2: #efece0;
+  /* Hover wash on --surface-2. */
+  --surface-2-hover: #e9e6d9;
   --ink: #1b1d14;
   --ink-2: #5c5f52;
-  /* Darkened from #8c8f80 so tertiary text clears 4.5:1 on --bg and --surface-2. */
+  /* Tertiary text; clears 4.5:1 on --bg and --surface-2. */
   --ink-3: #686b5d;
   --line: #e4e1d3;
   --line-strong: #d6d2c1;
+  /* Off track of the Switch. */
+  --track: #dedac9;
 
   --accent: #b7cd32;
+  /* Hover on accent fills. */
+  --accent-hover: #acc22b;
   --accent-strong: #9db51f;
   --accent-soft: #eef3cf;
   --accent-ink: #4a5706;
   --on-accent: #1b1d14;
 
-  /* Tomato, deep enough for 4.5:1 text on --bg and --surface. */
-  --offer: #c63f26;
+  /* Tomato: deal pills (solid, white text 5.1:1), sale prices, urgent timers on white or cream. */
+  --offer: #c93a22;
+  /* Pressed state of --offer fills. */
+  --offer-strong: #b0321c;
+  --on-offer: #ffffff;
   --offer-soft: #fbe4dd;
-  /* Offer-coloured text on --offer-soft. */
-  --offer-ink: #b0361e;
+  /* Offer-coloured text on tinted surfaces (--accent-soft 6.3:1, --offer-soft 6:1, --surface 7.2:1). */
+  --offer-ink: #a32a15;
+  /* Offer-coloured icons on the ink toast. */
+  --offer-on-ink: #ff8a73;
 
   --success: #2f7d4f;
   --success-soft: #edf5ef;
@@ -43,26 +58,56 @@
 
   /* Translucent chrome material. */
   --material: rgb(247 245 236 / 0.78);
+  --material-fallback: rgb(247 245 236 / 0.96);
   --material-solid: #f7f5ec;
+
+  /* Clear glass for round icon buttons, the Home search bar and big action buttons. */
+  --glass: rgb(255 255 255 / 0.5);
+  --glass-hover: rgb(255 255 255 / 0.62);
+  --glass-pressed: rgb(255 255 255 / 0.72);
+  --glass-fallback: rgb(255 255 255 / 0.9);
+  --glass-edge: rgb(255 255 255 / 0.75);
+  --glass-highlight: rgb(255 255 255 / 0.9);
+
+  /* Avatar tints: background and text pairs, text clears 4.5:1 on its tint. */
+  --tint-1-bg: #eef3cf;
+  --tint-1-fg: #4a5706;
+  --tint-2-bg: #fbe4dd;
+  --tint-2-fg: #9c3019;
+  --tint-3-bg: #e3edf3;
+  --tint-3-fg: #2b5470;
+  --tint-4-bg: #f1e7cf;
+  --tint-4-fg: #6b5020;
+  --tint-5-bg: #ebe5f3;
+  --tint-5-fg: #54407a;
+  --tint-6-bg: #e1efe6;
+  --tint-6-fg: #2c6a45;
 
   --column: 430px;
 }
 
 @theme inline {
   --color-bg: var(--bg);
+  --color-bg-desk: var(--bg-desk);
   --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
   --color-surface-2: var(--surface-2);
+  --color-surface-2-hover: var(--surface-2-hover);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
   --color-ink-3: var(--ink-3);
   --color-line: var(--line);
   --color-line-strong: var(--line-strong);
+  --color-track: var(--track);
   --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
   --color-accent-strong: var(--accent-strong);
   --color-accent-soft: var(--accent-soft);
   --color-accent-ink: var(--accent-ink);
   --color-on-accent: var(--on-accent);
   --color-offer: var(--offer);
+  --color-offer-strong: var(--offer-strong);
+  --color-on-offer: var(--on-offer);
   --color-offer-soft: var(--offer-soft);
   --color-offer-ink: var(--offer-ink);
   --color-success: var(--success);
@@ -77,6 +122,9 @@
 }
 
 @theme {
+  /* Wider than the phone column: the page turns sand and the column gets side hairlines. */
+  --breakpoint-desk: 26.9375rem;
+
   /* Type scale: 12 caption, 13 meta, 15 body, 17 emphasis, 20 section, 26 title, 34 hero. */
   --text-caption: 0.75rem;
   --text-caption--line-height: 1.35;
@@ -106,6 +154,8 @@
   --shadow-sheet: 0 -12px 40px -16px rgb(27 29 20 / 0.24), 0 -1px 3px -1px rgb(27 29 20 / 0.06);
   --shadow-popup: 0 28px 64px -20px rgb(27 29 20 / 0.36), 0 6px 16px -6px rgb(27 29 20 / 0.12);
   --shadow-thumb: 0 2px 5px -1px rgb(27 29 20 / 0.22), 0 0 0 0.5px rgb(27 29 20 / 0.08);
+  /* 1px --line hairline on each side of the phone column. */
+  --shadow-column: -1px 0 0 var(--line), 1px 0 0 var(--line);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -153,10 +203,10 @@
     scrollbar-color: rgb(27 29 20 / 0.22) transparent;
   }
 
-  /* On wide screens the phone column sits on a slightly deeper sand. */
-  @media (min-width: 431px) {
+  /* On wide screens the phone column sits on a slightly deeper sand (same breakpoint as the column hairlines). */
+  @variant desk {
     html {
-      background: #ece9dc;
+      background: var(--bg-desk);
     }
   }
 
@@ -267,7 +317,7 @@
   backdrop-filter: blur(20px) saturate(160%);
 
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-    background-color: rgb(247 245 236 / 0.96);
+    background-color: var(--material-fallback);
   }
 
   @media (prefers-reduced-transparency: reduce) {
@@ -280,6 +330,51 @@
     background-color: var(--material-solid);
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
+  }
+}
+
+/*
+ * Clear glass for round icon buttons, the Home search bar and big action buttons: half-white with a strong
+ * blur, a bright 1px edge (drawn as an inset shadow so it never changes the control's size), a brighter
+ * top highlight and the floating shadow. The shadow is composed with Tailwind's ring variables so `ring-*`
+ * utilities (focus rings) still add to it. Solid white under reduced transparency or increased contrast.
+ */
+@utility glass {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  --tw-inset-shadow: inset 0 1px 0 var(--glass-highlight), inset 0 0 0 1px var(--glass-edge);
+  --tw-shadow: var(--shadow-float);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow, 0 0 #0000), var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--glass-hover);
+    }
+  }
+
+  &:active:not(:disabled, [aria-disabled="true"]) {
+    background-color: var(--glass-pressed);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background-color: var(--glass-fallback);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    --tw-inset-shadow: inset 0 0 0 1px var(--line);
+  }
+
+  @media (prefers-contrast: more) {
+    background-color: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    --tw-inset-shadow: inset 0 0 0 1px var(--line-strong);
   }
 }
 
@@ -343,7 +438,7 @@
 }
 
 .bulk-toaster [data-sonner-toast][data-styled="true"][data-type="error"] [data-icon] {
-  color: #ff8a73;
+  color: var(--offer-on-ink);
 }
 
 .bulk-toaster [data-sonner-toast][data-styled="true"] [data-button] {

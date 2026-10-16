@@ -3,7 +3,7 @@
 import { MapPin, Navigation, UtensilsCrossed } from "lucide-react";
 import { motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
-import { cn } from "@/components/ui";
+import { EASE_OUT, cn } from "@/components/ui";
 import { deliveryProgress, useFrameNow } from "@/lib/store";
 import type { OrderRequest, PickupPoint, Restaurant } from "@/lib/types";
 
@@ -12,29 +12,36 @@ const H = 176;
 
 type Point = readonly [number, number];
 
-/** The courier's route along the streets, restaurant → collection point. */
+/**
+ * The courier's route along the streets, restaurant → collection point. Both marker labels sit above their
+ * markers, so the route reaches each marker from below or the side and never runs under a label, and both
+ * markers sit far enough from the top edge for their label to stay inside the map.
+ */
 const ROUTE: Point[] = [
   [44, 138],
-  [150, 138],
-  [150, 90],
-  [262, 90],
-  [262, 42],
-  [306, 42],
+  [180, 138],
+  [180, 108],
+  [252, 108],
+  [252, 80],
+  [306, 80],
 ];
 
 /** Stylised street grid: [x1, y1, x2, y2, width]. */
 const STREETS: [number, number, number, number, number][] = [
-  [0, 42, W, 42, 10],
-  [0, 90, W, 90, 10],
+  [0, 34, W, 34, 10],
+  [0, 80, W, 80, 10],
   [0, 138, W, 138, 10],
   [44, 0, 44, H, 8],
-  [150, 0, 150, H, 10],
-  [262, 0, 262, H, 10],
-  [206, 0, 206, 90, 6],
-  [96, 90, 96, H, 6],
-  [0, 8, 96, 90, 6],
-  [306, 90, 343, 128, 6],
+  [180, 0, 180, H, 10],
+  [306, 0, 306, 80, 6],
+  [180, 108, W, 108, 6],
+  [252, 80, 252, H, 6],
+  [96, 80, 96, H, 6],
+  [306, 80, W, 116, 6],
 ];
+
+/** A small park between the streets: [x, y, width, height]. */
+const PARK = [58, 46, 108, 22] as const;
 
 /** Point at fraction `t` (0–1) along a polyline, plus the polyline travelled so far. */
 function along(points: Point[], t: number): { at: Point; travelled: Point[] } {
@@ -87,8 +94,8 @@ export function LiveMap({ request, restaurant, pickup }: LiveMapProps) {
       style={{ aspectRatio: `${W} / ${H}` }}
     >
       <svg aria-hidden viewBox={`0 0 ${W} ${H}`} className="absolute inset-0 size-full">
-        <rect x={160} y={98} width={94} height={32} rx={8} fill="var(--success-soft)" />
-        <rect x={160} y={98} width={94} height={32} rx={8} fill="none" stroke="var(--success)" strokeOpacity={0.12} />
+        <rect x={PARK[0]} y={PARK[1]} width={PARK[2]} height={PARK[3]} rx={8} fill="var(--success-soft)" />
+        <rect x={PARK[0]} y={PARK[1]} width={PARK[2]} height={PARK[3]} rx={8} fill="none" stroke="var(--success)" strokeOpacity={0.12} />
         <g stroke="var(--surface)" strokeLinecap="round">
           {STREETS.map(([x1, y1, x2, y2, w]) => (
             <line key={`${x1}-${y1}-${x2}-${y2}`} x1={x1} y1={y1} x2={x2} y2={y2} strokeWidth={w} />
@@ -105,7 +112,7 @@ export function LiveMap({ request, restaurant, pickup }: LiveMapProps) {
               fill="var(--accent)"
               initial={{ opacity: 0.55, scale: 1 }}
               animate={{ opacity: 0, scale: 2.4 }}
-              transition={{ duration: 1.6, ease: [0.23, 1, 0.32, 1], repeat: Infinity }}
+              transition={{ duration: 1.6, ease: EASE_OUT, repeat: Infinity }}
             />
           )}
           <circle r={9} fill="var(--surface)" />
@@ -120,7 +127,7 @@ export function LiveMap({ request, restaurant, pickup }: LiveMapProps) {
         <MapPin />
       </Marker>
 
-      <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-1 text-caption font-semibold text-ink-2 shadow-[0_1px_3px_rgb(27_29_20/0.08)]">
+      <span className="absolute top-2.5 left-2.5 inline-flex items-center gap-1 rounded-full bg-surface/90 px-2 py-1 text-caption font-semibold text-ink-2 shadow-thumb">
         <Navigation aria-hidden className="size-3.5 text-accent-ink" />
         Simulated delivery
       </span>
@@ -128,6 +135,10 @@ export function LiveMap({ request, restaurant, pickup }: LiveMapProps) {
   );
 }
 
+/**
+ * A map marker with its name above it. `align` anchors the label to the marker's left edge (`start`), centre
+ * or right edge (`end`), so a marker near a side keeps its label inside the map.
+ */
 function Marker({
   point,
   label,
@@ -157,7 +168,7 @@ function Marker({
       </span>
       <span
         className={cn(
-          "absolute top-5 max-w-[120px] truncate rounded-full bg-surface/90 px-2 py-0.5 text-caption font-semibold text-ink",
+          "absolute bottom-5 rounded-full bg-surface/90 px-2 py-0.5 text-caption font-semibold whitespace-nowrap text-ink",
           align === "start" ? "left-0 -translate-x-4" : align === "center" ? "left-0 -translate-x-1/2" : "right-0 translate-x-4",
         )}
       >

@@ -50,7 +50,7 @@ export function TopPicks({ restaurant, controls }: { restaurant: Restaurant; con
                 className="absolute right-2 bottom-2"
               />
             </ImageFrame>
-            <h3 className="mt-2.5 truncate font-sans text-body leading-snug font-semibold text-ink">{item.name}</h3>
+            <h3 className="mt-2.5 font-sans text-body leading-snug font-semibold text-ink">{item.name}</h3>
             <p className="text-meta font-semibold text-ink">
               <Price pence={item.price} originalPence={item.originalPrice} />
             </p>

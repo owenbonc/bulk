@@ -1,8 +1,9 @@
 "use client";
 
-import { FlaskConical, MapPin, Users } from "lucide-react";
+import { Camera, FlaskConical, MapPin, Users, X } from "lucide-react";
+import { Logo } from "@/components/brand/Logo";
 import { DemoControlsPanel } from "@/components/demo";
-import { Avatar, Divider, Sheet } from "@/components/ui";
+import { Avatar, Divider, IconButton, Sheet } from "@/components/ui";
 import { CATALOG, ME } from "@/lib/data";
 import { pickupById, useApp } from "@/lib/store";
 
@@ -11,15 +12,22 @@ export interface AccountSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** You, your friends, the demo note and the presenter's demo controls. */
+/** The Bulk logo, you, your friends, the demo and photo credits, and the presenter's demo controls. */
 export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
   const { state } = useApp();
   const friends = state.friends.length;
   const location = pickupById(state.location) ?? CATALOG.pickupPoints[0];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Account" hideTitle>
-      <div className="flex items-center gap-4 pt-1 pb-5">
+    <Sheet open={open} onOpenChange={onOpenChange} title="Account" hideTitle showClose={false}>
+      <div className="flex items-center justify-between gap-3 pb-4">
+        <Logo size={30} />
+        <IconButton aria-label="Close" size="sm" variant="soft" className="-mr-1.5" onClick={() => onOpenChange(false)}>
+          <X />
+        </IconButton>
+      </div>
+
+      <div className="flex items-center gap-4 pb-5">
         <Avatar name={ME.name} you size={56} />
         <div className="min-w-0">
           <p className="font-display text-title font-semibold text-ink">{ME.name}</p>
@@ -44,10 +52,26 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
         </div>
       </div>
 
-      <p className="mt-3 flex items-center gap-2 px-1 text-meta text-ink-2">
-        <FlaskConical aria-hidden className="size-4 shrink-0" />
-        Demo: sample restaurants and offers
-      </p>
+      <div className="mt-3 flex flex-col gap-1.5 px-1 text-meta text-ink-2">
+        <p className="flex items-center gap-2">
+          <FlaskConical aria-hidden className="size-4 shrink-0" />
+          Demo: sample restaurants and offers
+        </p>
+        <p className="flex items-center gap-2">
+          <Camera aria-hidden className="size-4 shrink-0" />
+          <span>
+            Photos:{" "}
+            <a
+              href="/images/CREDITS.md"
+              target="_blank"
+              rel="noopener"
+              className="font-medium text-ink-2 underline decoration-line-strong hover:text-ink hover:decoration-ink-3"
+            >
+              Wikimedia Commons contributors
+            </a>
+          </span>
+        </p>
+      </div>
 
       <Divider className="my-5" />
 

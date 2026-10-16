@@ -44,8 +44,8 @@ export function MemberList({ request, mode }: { request: OrderRequest; mode: Mem
               <motion.li
                 key={p.userId}
                 layout="position"
-                initial={{ opacity: 0, transform: "translateY(6px)" }}
-                animate={{ opacity: 1, transform: "translateY(0px)" }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0 }}
                 transition={SPRING}
                 className="relative"
@@ -110,8 +110,8 @@ function Trailing({
         {friend ? (
           <motion.span
             key="added"
-            initial={{ opacity: 0, transform: "scale(0.95)" }}
-            animate={{ opacity: 1, transform: "scale(1)" }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={SPRING_SNAPPY}
           >
             <Pill tone="ink" icon={<Check strokeWidth={2.5} />} role="status">
@@ -119,7 +119,7 @@ function Trailing({
             </Pill>
           </motion.span>
         ) : (
-          <motion.span key="add" exit={{ opacity: 0, transform: "scale(0.95)", transition: { duration: 0.1 } }}>
+          <motion.span key="add" exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.1 } }}>
             <IconButton aria-label={`Add ${p.name} as a friend`} size="sm" variant="outline" onClick={onAddFriend}>
               <UserPlus />
             </IconButton>

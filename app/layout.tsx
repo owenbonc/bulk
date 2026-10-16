@@ -37,6 +37,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
+  // Must be a literal colour: --bg.
   themeColor: "#f7f5ec",
   colorScheme: "light",
 };
@@ -47,8 +48,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <LucideProvider size={20} strokeWidth={1.75}>
           <MotionConfig reducedMotion="user">
-            {/* The phone column: full width on phones, centred with side hairlines on a laptop. */}
-            <div className="relative mx-auto min-h-dvh w-full max-w-column bg-bg min-[480px]:shadow-[-1px_0_0_var(--line),1px_0_0_var(--line)]">
+            {/* The phone column: full width on phones; from the `desk` breakpoint (wider than the column) it is
+                centred on sand with side hairlines. */}
+            <div className="relative mx-auto min-h-dvh w-full max-w-column bg-bg desk:shadow-column">
               <AppProvider>
                 {children}
                 <PartyAlerts />

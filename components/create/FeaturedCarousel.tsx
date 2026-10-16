@@ -4,9 +4,12 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useReducedMotion } from "motion/react";
 import { useRef, useState, type MouseEvent } from "react";
-import { IconButton, ImageFrame, SectionHeader, cn } from "@/components/ui";
+import { DealPill, IconButton, ImageFrame, Rating, SectionHeader, cn } from "@/components/ui";
 import type { Restaurant } from "@/lib/types";
-import { OfferDealPill, PartyOpenPill, Rating, etaLabel } from "./bits";
+import { PartyOpenPill, etaLabel } from "./bits";
+
+/** Tiles in view on first paint (two whole tiles and a peek of the third); their photos load first. */
+const PRIORITY_TILES = 3;
 
 export interface PartyMarker {
   /** You are already a member of the open party. */
@@ -73,9 +76,9 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
         id="featured-track"
         ref={trackRef}
         onScroll={updateEnd}
-        className="no-scrollbar mt-3 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 touch-pan-x touch-pan-y"
+        className="no-scrollbar mt-2 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 touch-pan-x touch-pan-y"
       >
-        {restaurants.map((r) => {
+        {restaurants.map((r, i) => {
           const party = partyAt(r.id);
           return (
             <li key={r.id} className="w-[44%] shrink-0 snap-start">
@@ -86,10 +89,10 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
                 className="group block rounded-sheet outline-offset-4"
               >
                 <div className="relative transition-transform duration-100 ease-out group-active:scale-[0.97]">
-                  <ImageFrame src={r.image} alt="" ratio="1/1" emoji={r.emoji} sizes="180px">
+                  <ImageFrame src={r.image} alt="" ratio="1/1" emoji={r.emoji} sizes="180px" priority={i < PRIORITY_TILES}>
                     {party && <PartyOpenPill overlay mine={party.mine} className="absolute top-2 left-2" />}
                   </ImageFrame>
-                  <OfferDealPill label={r.deal.short} className="absolute right-3 -bottom-3 ring-3 ring-bg" />
+                  <DealPill label={r.deal.short} size="sm" className="absolute right-3 -bottom-3 ring-3 ring-bg" />
                 </div>
                 <p className="mt-4 truncate text-emphasis leading-tight font-semibold text-ink">{r.name}</p>
                 <p className="mt-0.5 flex min-w-0 items-center gap-1 text-meta text-ink-2">

@@ -13,7 +13,7 @@ export interface LogoMarkProps {
 export function LogoMark({ size = 28, className }: LogoMarkProps) {
   return (
     <svg viewBox="0 0 48 48" width={size} height={size} aria-hidden className={cn("shrink-0", className)}>
-      <rect x="31.5" y="19.5" width="6.5" height="8.5" rx="2" fill="#fff" stroke="var(--ink)" strokeWidth="2.6" />
+      <rect x="31.5" y="19.5" width="6.5" height="8.5" rx="2" fill="var(--surface)" stroke="var(--ink)" strokeWidth="2.6" />
       <path d={MOUTH} fill="var(--accent)" stroke="var(--ink)" strokeWidth="3" strokeLinejoin="round" />
     </svg>
   );

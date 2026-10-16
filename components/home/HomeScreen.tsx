@@ -7,21 +7,22 @@ import { LocationButton } from "@/components/shared/LocationSheet";
 import { Highlights } from "./Highlights";
 import { HomeBottomBar } from "./HomeBottomBar";
 import { NotificationsButton } from "./NotificationsSheet";
-import { LIST_ITEM_TOP, PartyListCard } from "./PartyListCard";
+import { PartyListCard } from "./PartyListCard";
 import { useHomeParties } from "./useHomeParties";
-import { DOCK_SPACE, YourPartyDock } from "./YourPartyDock";
 
-/** W1 Home: highlights, other parties, your party, and the search / create bar. */
+/** List cards at the top of "Other parties" whose images load eagerly. */
+const PRIORITY_CARDS = 2;
+
+/** W1 Home: highlights, other parties, and the floating your-party card and search / create controls. */
 export function HomeScreen() {
   const [query, setQuery] = useState("");
-  const [barHeight, setBarHeight] = useState(0);
   const { highlights, others, mine, totalCount } = useHomeParties(query);
   const searching = query.trim().length > 0;
   const nothingMatches = highlights.length === 0 && others.length === 0;
 
   return (
     <>
-      <TopBar left={<LocationButton variant="stacked" className="-ml-1" />} right={<NotificationsButton />} className="[&>div]:px-3" />
+      <TopBar left={<LocationButton variant="stacked" className="glass" />} right={<NotificationsButton />} className="[&>div]:px-4" />
 
       <main className="flex flex-col gap-7 pt-3 pb-6">
         {highlights.length > 0 && <Highlights parties={highlights} />}
@@ -29,10 +30,10 @@ export function HomeScreen() {
         {others.length > 0 && (
           <section aria-labelledby="others-title" className="px-4">
             <SectionHeader id="others-title" title={highlights.length > 0 ? "Other parties" : "Parties near you"} count={others.length} />
-            <ul className="mt-1 flex flex-col gap-2">
-              {others.map((p) => (
-                <li key={p.request.id} style={{ paddingTop: LIST_ITEM_TOP }}>
-                  <PartyListCard party={p} />
+            <ul className="mt-2 flex flex-col gap-3">
+              {others.map((p, i) => (
+                <li key={p.request.id}>
+                  <PartyListCard party={p} priority={i < PRIORITY_CARDS} />
                 </li>
               ))}
             </ul>
@@ -64,9 +65,7 @@ export function HomeScreen() {
           ))}
       </main>
 
-      {mine.length > 0 && <div aria-hidden style={{ height: DOCK_SPACE }} />}
-      <YourPartyDock parties={mine} barHeight={barHeight} />
-      <HomeBottomBar query={query} onQueryChange={setQuery} onHeight={setBarHeight} />
+      <HomeBottomBar query={query} onQueryChange={setQuery} mine={mine} />
     </>
   );
 }

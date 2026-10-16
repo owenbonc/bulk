@@ -51,7 +51,7 @@ export function CreateScreen() {
     <>
       <TopBar
         left={
-          <IconButton aria-label="Close" href="/" variant="glass">
+          <IconButton aria-label="Close" href="/">
             <X />
           </IconButton>
         }
@@ -86,7 +86,7 @@ export function CreateScreen() {
               Cancel
             </Button>
           ) : (
-            <IconButton aria-label="Search restaurants" variant="glass" onClick={() => setSearching(true)}>
+            <IconButton aria-label="Search restaurants" onClick={() => setSearching(true)}>
               <Search />
             </IconButton>
           )
@@ -94,10 +94,7 @@ export function CreateScreen() {
       />
 
       <main className="pb-safe">
-        <header className="px-4 pt-3">
-          <h1 className="text-title font-semibold text-ink">Create a party</h1>
-          <p className="mt-1 text-body text-ink-2">Pick a restaurant. You&apos;ll be the host.</p>
-        </header>
+        <h1 className="px-4 pt-1 text-title font-semibold text-ink">Create a party</h1>
 
         {deals.length === 0 ? (
           <div role="status" className="flex flex-col items-center px-8 pt-16 pb-8 text-center">
@@ -108,7 +105,7 @@ export function CreateScreen() {
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col gap-7 pt-6 pb-6">
+          <div className="flex flex-col gap-6 pt-3 pb-6">
             {featured.length > 0 && <FeaturedCarousel restaurants={featured} partyAt={partyAt} onChoose={choose} />}
             <BestDealsList restaurants={deals} count={q ? deals.length : undefined} partyAt={partyAt} onChoose={choose} />
           </div>

@@ -82,7 +82,7 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
             {isOpen && (
               <>
                 {" · "}
-                <Countdown until={party.expiresAt} now={now} suffix="left" />
+                <Countdown until={party.expiresAt} now={now} suffix="left" urgentTone="offer-ink" />
               </>
             )}
           </span>

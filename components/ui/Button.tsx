@@ -5,11 +5,11 @@ import { LoaderCircle } from "lucide-react";
 import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
 import { cn, positioned } from "./cn";
 
-export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger";
+export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "glass";
 export type ButtonSize = "sm" | "md" | "lg";
 
 const base =
-  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full font-semibold whitespace-nowrap select-none " +
+  "inline-flex shrink-0 items-center justify-center gap-2 rounded-full whitespace-nowrap select-none " +
   "transition-[scale,background-color,color,box-shadow] duration-100 ease-out active:scale-[0.97] " +
   "disabled:cursor-not-allowed disabled:active:scale-100 aria-disabled:cursor-not-allowed aria-disabled:active:scale-100 " +
   "data-loading:pointer-events-none";
@@ -17,17 +17,19 @@ const base =
 // Hover only on enabled controls; disabled and aria-disabled fall back to the quiet surface.
 const variants: Record<ButtonVariant, string> = {
   primary:
-    "bg-accent text-on-accent active:bg-accent-strong hover:not-disabled:not-aria-disabled:bg-[#acc22b] " +
+    "font-semibold bg-accent text-on-accent active:bg-accent-strong hover:not-disabled:not-aria-disabled:bg-accent-hover " +
     "disabled:bg-surface-2 disabled:text-ink-3 aria-disabled:bg-surface-2 aria-disabled:text-ink-3",
   secondary:
-    "bg-surface text-ink ring-1 ring-line ring-inset active:bg-surface-2 hover:not-disabled:not-aria-disabled:bg-[#fcfbf7] " +
+    "font-semibold bg-surface text-ink ring-1 ring-line ring-inset active:bg-surface-2 hover:not-disabled:not-aria-disabled:bg-surface-hover " +
     "disabled:text-ink-3 aria-disabled:text-ink-3",
   ghost:
-    "bg-transparent text-ink active:bg-ink/[0.06] hover:not-disabled:not-aria-disabled:bg-ink/[0.04] " +
+    "font-semibold bg-transparent text-ink active:bg-ink/[0.06] hover:not-disabled:not-aria-disabled:bg-ink/[0.04] " +
     "disabled:text-ink-3 aria-disabled:text-ink-3",
   danger:
-    "bg-transparent text-offer active:bg-offer-soft hover:not-disabled:not-aria-disabled:bg-offer-soft/60 " +
+    "font-semibold bg-transparent text-offer active:bg-offer-soft hover:not-disabled:not-aria-disabled:bg-offer-soft/60 " +
     "disabled:text-ink-3 aria-disabled:text-ink-3",
+  // Clear glass for the big actions (Join party, Create party, Accept and pay): bold ink label, lime `chip`.
+  glass: "glass font-bold text-ink disabled:text-ink-3 aria-disabled:text-ink-3",
 };
 
 const sizes: Record<ButtonSize, string> = {
@@ -44,8 +46,10 @@ export interface ButtonStyleOptions {
   block?: boolean;
 }
 
-function styleFor({ variant = "primary", size = "md", block = false }: ButtonStyleOptions): string {
-  return cn(base, variants[variant], sizes[size], block && "w-full");
+function styleFor({ variant = "primary", size, block = false, chip = false }: ButtonStyleOptions & { chip?: boolean }): string {
+  // Glass actions default to the big 56px size; a chip tucks in 8px from the trailing edge.
+  const resolved = size ?? (variant === "glass" ? "lg" : "md");
+  return cn(base, variants[variant], sizes[resolved], chip && "pr-2", block && "w-full");
 }
 
 /** Class string for elements that should look like a Button without being one. */
@@ -60,6 +64,11 @@ interface OwnProps extends ButtonStyleOptions {
   icon?: ReactNode;
   /** Content pinned to the trailing edge, e.g. the price on a full-width CTA. */
   trailing?: ReactNode;
+  /**
+   * Lime chip pinned to the trailing edge, e.g. `chip="£7.29"` on a glass action button. The label moves
+   * to the leading edge. Quiet sand while disabled.
+   */
+  chip?: ReactNode;
 }
 
 type AsButton = OwnProps & Omit<ComponentPropsWithRef<"button">, keyof OwnProps> & { href?: undefined };
@@ -68,13 +77,21 @@ type AsLink = OwnProps &
 
 export type ButtonProps = AsButton | AsLink;
 
-function Content({ loading, icon, trailing, children }: Pick<OwnProps, "loading" | "icon" | "trailing"> & { children?: ReactNode }) {
+function Content({
+  loading,
+  icon,
+  trailing,
+  chip,
+  inert,
+  children,
+}: Pick<OwnProps, "loading" | "icon" | "trailing" | "chip"> & { inert: boolean; children?: ReactNode }) {
+  const hasTrailing = trailing !== undefined || chip !== undefined;
   return (
     <>
       <span
         className={cn(
           "inline-flex min-w-0 flex-1 items-center gap-2 transition-[opacity,filter] duration-200 ease-out",
-          trailing !== undefined ? "justify-between" : "justify-center",
+          hasTrailing ? "justify-between" : "justify-center",
           loading && "opacity-0 blur-[2px]",
         )}
       >
@@ -83,6 +100,16 @@ function Content({ loading, icon, trailing, children }: Pick<OwnProps, "loading"
           {children !== undefined && children !== null && <span className="truncate">{children}</span>}
         </span>
         {trailing !== undefined && <span className="tnum shrink-0">{trailing}</span>}
+        {chip !== undefined && (
+          <span
+            className={cn(
+              "tnum inline-flex h-10 shrink-0 items-center rounded-full px-3.5 text-emphasis font-bold transition-colors duration-150",
+              inert ? "bg-surface-2 text-ink-3" : "bg-accent text-on-accent",
+            )}
+          >
+            {chip}
+          </span>
+        )}
       </span>
       {loading && (
         <span className="absolute inset-0 grid place-items-center" aria-hidden>
@@ -95,11 +122,12 @@ function Content({ loading, icon, trailing, children }: Pick<OwnProps, "loading"
 
 /**
  * Pill button. Primary is the lime action, secondary a white pill with a hairline, ghost text-only,
- * danger a quiet tomato text button. Pass `href` to render a Next.js Link with the same styling.
+ * danger a quiet tomato text button, glass the clear-glass big action (56px, bold ink label, lime `chip`).
+ * Pass `href` to render a Next.js Link with the same styling.
  */
 export function Button(props: ButtonProps) {
   if (props.href !== undefined) {
-    const { variant, size, block, loading, icon, trailing, disabled, className, children, href, onClick, ...rest } = props;
+    const { variant, size, block, loading, icon, trailing, chip, disabled, className, children, href, onClick, ...rest } = props;
     const inert = disabled || loading;
     return (
       <Link
@@ -116,16 +144,16 @@ export function Button(props: ButtonProps) {
           }
           onClick?.(e);
         }}
-        className={cn(styleFor({ variant, size, block }), positioned(className), className)}
+        className={cn(styleFor({ variant, size, block, chip: chip !== undefined }), positioned(className), className)}
       >
-        <Content loading={loading} icon={icon} trailing={trailing}>
+        <Content loading={loading} icon={icon} trailing={trailing} chip={chip} inert={Boolean(disabled)}>
           {children}
         </Content>
       </Link>
     );
   }
 
-  const { variant, size, block, loading, icon, trailing, className, children, onClick, type = "button", ...rest } = props;
+  const { variant, size, block, loading, icon, trailing, chip, className, children, onClick, type = "button", ...rest } = props;
   return (
     <button
       {...rest}
@@ -136,9 +164,15 @@ export function Button(props: ButtonProps) {
         if (loading) return;
         onClick?.(e);
       }}
-      className={cn(styleFor({ variant, size, block }), positioned(className), className)}
+      className={cn(styleFor({ variant, size, block, chip: chip !== undefined }), positioned(className), className)}
     >
-      <Content loading={loading} icon={icon} trailing={trailing}>
+      <Content
+        loading={loading}
+        icon={icon}
+        trailing={trailing}
+        chip={chip}
+        inert={Boolean(rest.disabled || rest["aria-disabled"] === true || rest["aria-disabled"] === "true")}
+      >
         {children}
       </Content>
     </button>

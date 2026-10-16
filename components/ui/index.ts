@@ -4,7 +4,8 @@ export { SPRING, SPRING_SNAPPY, SPRING_FILL, EXIT, EASE_OUT } from "./motion";
 
 export { Button, buttonClasses, type ButtonProps, type ButtonVariant, type ButtonSize } from "./Button";
 export { IconButton, type IconButtonProps, type IconButtonVariant, type IconButtonSize } from "./IconButton";
-export { Pill, DealPill, type PillProps, type PillTone, type DealPillProps } from "./Pill";
+export { Pill, DealPill, type PillProps, type PillTone, type DealPillProps, type DealPillSize } from "./Pill";
+export { Rating, type RatingProps } from "./Rating";
 export { ProgressBar, type ProgressBarProps } from "./ProgressBar";
 export { ProgressPie, type ProgressPieProps } from "./ProgressPie";
 export { Countdown, type CountdownProps } from "./Countdown";
@@ -22,3 +23,4 @@ export { Avatar, type AvatarProps } from "./Avatar";
 export { Card, SummaryRow, type CardProps, type SummaryRowProps } from "./Card";
 export { SearchField, type SearchFieldProps } from "./SearchField";
 export { toast } from "./toast";
+export { PASS_THROUGH_ATTR, isPassThrough } from "./layers";

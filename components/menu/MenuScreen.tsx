@@ -66,7 +66,9 @@ export function MenuScreen(props: MenuScreenProps) {
   };
 
   const progress = props.mode === "join" ? progressOf(props.party, restaurant) : draftPreview(props.draft, restaurant).progress;
-  const completesDeal = props.mode === "join" && subtotal > 0 && progress.total + subtotal >= progress.target;
+  // Join progress counts finalised baskets only, so add yours; the draft's progress already includes it.
+  const withMine = props.mode === "join" ? progress.total + subtotal : progress.total;
+  const unlocksDeal = subtotal > 0 && withMine >= progress.target;
 
   // ---- Sheets ----------------------------------------------------------------------------------
   const [dealOpen, setDealOpen] = useState(false);
@@ -79,12 +81,12 @@ export function MenuScreen(props: MenuScreenProps) {
   };
 
   // ---- Scroll-driven chrome --------------------------------------------------------------------
+  // The top bar never draws a strip: its round buttons, the docked info bubble and the search field float
+  // over the photo and the menu as clear glass (W3/W8).
   const barRef = useRef<HTMLDivElement>(null);
-  const heroRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const barHeight = useHeaderHeight(barRef);
-  const pastHero = useScrolledPast(heroRef, barHeight);
   const docked = useScrolledPast(bubbleRef, barHeight);
 
   // ---- Search ----------------------------------------------------------------------------------
@@ -118,9 +120,6 @@ export function MenuScreen(props: MenuScreenProps) {
     if (searching) alignMenu("auto", "above");
   }, [searching]);
 
-  const material = pastHero || docked || searchOpen;
-  const buttonVariant = material ? "plain" : "glass";
-
   const back = () => {
     if (window.history.length > 1) router.back();
     else router.push(mode === "join" ? "/" : "/create");
@@ -148,9 +147,9 @@ export function MenuScreen(props: MenuScreenProps) {
       <div ref={barRef} className="contents">
         <TopBar
           position="fixed"
-          material={material}
+          material={false}
           left={
-            <IconButton aria-label="Back" variant={buttonVariant} onClick={back}>
+            <IconButton aria-label="Back" onClick={back}>
               <ArrowLeft />
             </IconButton>
           }
@@ -159,7 +158,7 @@ export function MenuScreen(props: MenuScreenProps) {
               {docked && (
                 <motion.div
                   key="docked"
-                  className="flex w-full min-w-0 justify-center px-1"
+                  className="flex w-full min-w-0 justify-center"
                   initial={{ opacity: 0, y: 6 }}
                   animate={{ opacity: 1, y: 0, transition: DOCK_IN }}
                   exit={{ opacity: 0, y: 6, transition: DOCK_OUT }}
@@ -174,7 +173,6 @@ export function MenuScreen(props: MenuScreenProps) {
               <IconButton
                 aria-label={searchOpen ? "Close search" : "Search the menu"}
                 aria-expanded={searchOpen}
-                variant={buttonVariant}
                 onClick={() => (searchOpen ? closeSearch() : setSearchOpen(true))}
               >
                 {searchOpen ? <X /> : <Search />}
@@ -188,7 +186,7 @@ export function MenuScreen(props: MenuScreenProps) {
                     animate={{ opacity: 1, scale: 1, transition: DOCK_IN }}
                     exit={{ opacity: 0, scale: 0.95, transition: DOCK_OUT }}
                   >
-                    <IconButton aria-label="More about this party" aria-haspopup="dialog" variant={buttonVariant} onClick={() => setMoreOpen(true)}>
+                    <IconButton aria-label="More about this party" aria-haspopup="dialog" onClick={() => setMoreOpen(true)}>
                       <Ellipsis />
                     </IconButton>
                   </motion.span>
@@ -204,7 +202,7 @@ export function MenuScreen(props: MenuScreenProps) {
               onValueChange={setQuery}
               placeholder={`Search ${restaurant.name}`}
               label="Search the menu"
-              tone="translucent"
+              tone="glass"
               onKeyDown={(e) => {
                 if (e.key === "Escape" && !query) closeSearch();
               }}
@@ -213,7 +211,7 @@ export function MenuScreen(props: MenuScreenProps) {
         </TopBar>
       </div>
 
-      <MenuHero ref={heroRef} restaurant={restaurant} />
+      <MenuHero restaurant={restaurant} />
 
       {/* The page lifts over the photo like a sheet. */}
       <div className="relative -mt-6 flex flex-col gap-8 rounded-t-sheet bg-bg px-4 pt-6">
@@ -235,7 +233,7 @@ export function MenuScreen(props: MenuScreenProps) {
         count={count}
         subtotal={subtotal}
         label={mode === "join" ? "View basket" : "Create party"}
-        note={completesDeal ? "your basket unlocks the deal" : "deal not added yet"}
+        note={unlocksDeal ? "Unlocks the deal" : "Deal not added yet"}
         href={props.mode === "join" ? `/party/${props.party.id}/basket` : `/create/${restaurant.id}/basket`}
         dealLabel={restaurant.deal.short}
         onDealClick={() => setDealOpen(true)}

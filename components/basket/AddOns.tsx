@@ -35,7 +35,7 @@ export function AddOns({ restaurant, basket, locked, onAdd, onRemove }: AddOnsPr
                 className="absolute right-2 bottom-2"
               />
             </ImageFrame>
-            <p className="mt-2 truncate text-body font-medium text-ink">{item.name}</p>
+            <p className="mt-2 text-body leading-snug font-medium text-ink">{item.name}</p>
             <Price pence={item.price} originalPence={item.originalPrice} className="text-meta text-ink-2" />
           </li>
         ))}

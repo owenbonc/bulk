@@ -39,15 +39,6 @@ function askNotificationPermission() {
   if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission();
 }
 
-/** Back to the menu: a real history step when we came from it, otherwise a fresh visit. */
-function useBackToMenu(menuHref: string) {
-  const router = useRouter();
-  return () => {
-    if (window.history.length > 1) router.back();
-    else router.push(menuHref);
-  };
-}
-
 // ---------------------------------------------------------------------------
 // Join mode: your basket in an existing party
 // ---------------------------------------------------------------------------
@@ -60,7 +51,6 @@ function JoinBasket({ partyId }: { partyId: string }) {
   const restaurant = request && restaurantById(request.restaurantId);
   const menuHref = `/party/${partyId}`;
   const statusHref = `/party/${partyId}/status`;
-  const back = useBackToMenu(menuHref);
 
   const submitted = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -99,7 +89,7 @@ function JoinBasket({ partyId }: { partyId: string }) {
     <BasketLayout
       restaurant={restaurant}
       pickup={pickupById(request.pickupPointId)}
-      partyIcon={<UsersRound aria-hidden className="mt-[2px]" />}
+      partyIcon={<UsersRound aria-hidden />}
       partyLine={
         <>
           <span className="tnum">{people}</span> in party · closes in{" "}
@@ -111,7 +101,7 @@ function JoinBasket({ partyId }: { partyId: string }) {
       locked={closed}
       onAdd={add}
       onRemove={remove}
-      onBack={back}
+      menuHref={menuHref}
       cutlery={me?.cutlery ?? false}
       cutleryDisabled={!me || closed}
       onCutlery={(cutlery) => me && dispatch({ type: "SET_CUTLERY", requestId: partyId, userId: ME.userId, cutlery })}
@@ -132,7 +122,6 @@ function HostBasket({ restaurantId }: { restaurantId: string }) {
   const { state, dispatch } = useApp();
   const router = useRouter();
   const restaurant = restaurantById(restaurantId);
-  const back = useBackToMenu(`/create/${restaurantId}`);
 
   const draft = state.draft?.restaurantId === restaurantId ? state.draft : undefined;
   const existing = openPartyFor(state, restaurantId);
@@ -182,7 +171,7 @@ function HostBasket({ restaurantId }: { restaurantId: string }) {
     <BasketLayout
       restaurant={restaurant}
       pickup={pickupById(view.pickupPointId)}
-      partyIcon={<Timer aria-hidden className="mt-[2px]" />}
+      partyIcon={<Timer aria-hidden />}
       partyLine={
         <>
           Party lasts <span className="tnum">{view.durationMin}</span> min
@@ -193,7 +182,7 @@ function HostBasket({ restaurantId }: { restaurantId: string }) {
       locked={busy}
       onAdd={(itemId) => dispatch({ type: "DRAFT_ITEM", itemId, delta: 1 })}
       onRemove={(itemId) => dispatch({ type: "DRAFT_ITEM", itemId, delta: -1 })}
-      onBack={back}
+      menuHref={`/create/${restaurantId}`}
       cutlery={view.cutlery}
       cutleryDisabled={!draft}
       onCutlery={(cutlery) => dispatch({ type: "DRAFT_SET", cutlery })}
@@ -220,7 +209,8 @@ interface BasketLayoutProps {
   locked: boolean;
   onAdd: (itemId: string) => void;
   onRemove: (itemId: string) => void;
-  onBack: () => void;
+  /** The menu this basket belongs to: back and "Add items" always go here. */
+  menuHref: string;
   cutlery: boolean;
   cutleryDisabled: boolean;
   onCutlery: (cutlery: boolean) => void;
@@ -241,7 +231,7 @@ function BasketLayout({
   locked,
   onAdd,
   onRemove,
-  onBack,
+  menuHref,
   cutlery,
   cutleryDisabled,
   onCutlery,
@@ -257,13 +247,13 @@ function BasketLayout({
     <>
       <TopBar
         left={
-          <IconButton aria-label="Back to menu" variant="glass" onClick={onBack}>
+          <IconButton aria-label="Back to menu" href={menuHref}>
             <ArrowLeft />
           </IconButton>
         }
         title="Your order"
         right={
-          <IconButton aria-label="Close and go home" variant="glass" href="/">
+          <IconButton aria-label="Close and go home" href="/">
             <X />
           </IconButton>
         }
@@ -280,7 +270,7 @@ function BasketLayout({
             locked={locked}
             onAdd={onAdd}
             onRemove={onRemove}
-            onAddItems={onBack}
+            menuHref={menuHref}
           />
         </div>
 

@@ -47,7 +47,6 @@ export function NotificationsButton() {
       <IconButton
         aria-label={unread > 0 ? `Notifications, ${unread} unread` : "Notifications"}
         aria-haspopup="dialog"
-        variant="glass"
         badge={unread > 0}
         onClick={openSheet}
       >
@@ -74,7 +73,7 @@ export function NotificationsButton() {
                   <Link
                     href={`/party/${n.requestId}/status`}
                     onClick={() => setOpen(false)}
-                    className="flex gap-4 px-5 py-3 transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-[#fbfaf5]"
+                    className="flex gap-4 px-5 py-3 transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-surface-hover"
                   >
                     <span aria-hidden className={cn("mt-0.5 grid size-10 shrink-0 place-items-center rounded-full", tone)}>
                       <Icon />

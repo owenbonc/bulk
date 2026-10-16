@@ -20,8 +20,8 @@ export function PartySection({ request, children }: { request: OrderRequest; chi
         <motion.section
           aria-labelledby="party-title"
           className="flex flex-col gap-3"
-          initial={{ opacity: 0, transform: "translateY(12px)" }}
-          animate={{ opacity: 1, transform: "translateY(0px)", transition: SPRING }}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0, transition: SPRING }}
           exit={{ opacity: 0, transition: EXIT }}
         >
           <SectionHeader id="party-title" title="Party" count={request.participants.length} />

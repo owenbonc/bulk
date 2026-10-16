@@ -7,10 +7,13 @@ import type { Progress } from "@/lib/requests";
 
 export type SettingsFocus = "duration" | "pickup";
 
-/* The full bubble sits on the page as a card; the compact copy docks into the translucent top bar on a
-   solid surface (never translucent on translucent). */
+/* The full bubble sits on the page as a card; the compact copy floats at the top between the back and
+   search buttons as its own clear-glass pill. Collection point names are short ("Student Centre", the
+   longest "IOE Bedford Way"), so both show the whole name on one line on a 375px phone: the full join
+   bubble needs about 331px of the 343px column, the compact one about 254px of the 263px between the
+   buttons. */
 const fullShell = "flex items-stretch rounded-[22px] border border-line bg-surface";
-const compactShell = "flex h-11 min-w-0 items-stretch rounded-full bg-surface ring-1 ring-line ring-inset";
+const compactShell = "glass flex h-11 min-w-0 items-stretch rounded-full";
 
 function progressText(p: Progress) {
   return `${formatPrice(p.total, { trim: true })} of ${formatPrice(p.target, { trim: true })} towards the deal`;
@@ -33,41 +36,44 @@ export function JoinInfoBubble({ progress, pickupName, expiresAt, now, compact =
 
   if (compact) {
     return (
-      <div role="group" aria-label="Party summary" className={cn(compactShell, "w-full gap-2.5 px-3.5 text-meta")}>
+      <div role="group" aria-label="Party summary" className={cn(compactShell, "w-full gap-1.5 px-3 text-meta")}>
         <span className="flex shrink-0 flex-col justify-center gap-[5px]">
-          <span className="tnum leading-none font-semibold text-ink">{left} left</span>
+          <span className="tnum leading-none font-semibold whitespace-nowrap text-ink">{left} left</span>
           <ProgressBar value={progress.total} max={progress.target} size="hairline" label="Deal progress" valueText={progressText(progress)} />
         </span>
         <Divider orientation="vertical" className="my-2.5" />
-        <span className="flex min-w-0 flex-1 items-center gap-1 text-ink">
+        <span className="flex flex-1 items-center justify-center gap-0.5 text-ink">
           <MapPin aria-hidden className="size-3.5 shrink-0 text-accent-ink" />
-          <span className="truncate font-medium">{pickupName}</span>
+          <span className="font-medium whitespace-nowrap">
+            <span className="sr-only">Collection point: </span>
+            {pickupName}
+          </span>
         </span>
         <Divider orientation="vertical" className="my-2.5" />
-        <Countdown until={expiresAt} now={now} className="self-center font-semibold text-ink" />
+        <Countdown until={expiresAt} now={now} className="shrink-0 self-center font-semibold text-ink" />
       </div>
     );
   }
 
   return (
     <div role="group" aria-label="Party summary" className={fullShell}>
-      <div className="flex shrink-0 flex-col justify-center gap-2 py-3 pr-3.5 pl-4">
-        <span className="tnum text-emphasis leading-none font-semibold text-ink">
+      <div className="flex shrink-0 flex-col justify-center gap-2 py-3 pr-3 pl-3.5">
+        <span className="tnum text-emphasis leading-none font-semibold whitespace-nowrap text-ink">
           {left} <span className="font-medium text-ink-2">left</span>
         </span>
         <ProgressBar value={progress.total} max={progress.target} size="sm" label="Deal progress" valueText={progressText(progress)} />
       </div>
       <Divider orientation="vertical" className="my-3" />
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 px-3 py-3">
+      <div className="flex flex-1 items-center gap-1 px-2.5 py-3">
         <MapPin aria-hidden className="size-4 shrink-0 text-accent-ink" />
-        <span className="line-clamp-2 text-meta leading-snug font-medium text-ink">
+        <span className="text-meta leading-snug font-medium text-ink">
           <span className="sr-only">Collection point: </span>
           {pickupName}
         </span>
       </div>
       <Divider orientation="vertical" className="my-3" />
-      <div className="flex shrink-0 flex-col items-start justify-center gap-0.5 py-3 pr-4 pl-3.5">
-        <span className="flex items-center gap-1 text-caption text-ink-2">
+      <div className="flex shrink-0 flex-col items-start justify-center gap-0.5 py-3 pr-3.5 pl-3">
+        <span className="flex items-center gap-1 text-caption whitespace-nowrap text-ink-2">
           <Timer aria-hidden className="size-3.5" />
           Closes in
         </span>
@@ -153,8 +159,8 @@ function Setting({ caption, value, label, icon, compact = false, onClick, classN
       aria-haspopup="dialog"
       onClick={onClick}
       className={cn(
-        "flex items-center text-left transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-[#fbfaf5]",
-        compact ? "gap-1 px-2.5" : "gap-2 px-4 py-3",
+        "flex items-center text-left transition-colors duration-100 ease-out",
+        compact ? "gap-1 px-2.5 active:bg-ink/[0.06] hover:bg-ink/[0.03]" : "gap-2 px-3.5 py-3 active:bg-surface-2 hover:bg-surface-hover",
         className,
       )}
     >
@@ -167,7 +173,7 @@ function Setting({ caption, value, label, icon, compact = false, onClick, classN
           )}
         >
           {icon}
-          <span className="truncate">{value}</span>
+          <span className="whitespace-nowrap">{value}</span>
         </span>
       </span>
       <ChevronDown aria-hidden className={cn("shrink-0 text-ink-2", compact ? "size-3.5" : "size-4")} />

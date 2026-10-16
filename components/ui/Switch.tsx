@@ -38,13 +38,13 @@ export function Switch({ checked, onCheckedChange, label, description, disabled 
         "group/switch relative inline-flex h-[31px] w-[51px] shrink-0 items-center rounded-full p-[2px]",
         "transition-colors duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-40",
         "before:absolute before:-inset-y-1.5 before:-inset-x-0",
-        checked ? "bg-accent" : "bg-[#dedac9]",
+        checked ? "bg-accent" : "bg-track",
       )}
     >
       <span
         aria-hidden
         className={cn(
-          "block h-[27px] w-[27px] rounded-full bg-white shadow-thumb",
+          "block h-[27px] w-[27px] rounded-full bg-surface shadow-thumb",
           "transition-[translate,scale] duration-200 ease-out group-active/switch:scale-x-[1.15]",
           checked ? "translate-x-5 origin-right" : "translate-x-0 origin-left",
         )}

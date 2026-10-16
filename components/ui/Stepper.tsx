@@ -28,15 +28,19 @@ const IDLE_COLLAPSE_MS = 3000;
 export type StepperSize = "sm" | "md";
 export type StepperVariant = "outline" | "glass";
 
-const dims: Record<StepperSize, { box: string; btn: string; text: string }> = {
-  // sm: 32px over image tiles; md: 36px in menu rows. Both extend their hit areas to 44px.
-  sm: { box: "size-8", btn: "size-8 [&_svg]:size-4", text: "text-meta" },
-  md: { box: "size-9", btn: "size-9 [&_svg]:size-[18px]", text: "text-body" },
+/*
+ * sm: 32px tall over image tiles; md: 36px in menu rows. Collapsed ("+" or the count) the button is a circle
+ * whose hit area extends to 44px all round. Expanded ("− n +") each button widens (40px sm, 44px md) and
+ * extends vertically to 44px, with the outer two reaching 4px past the pill's ends, so every target is 44px.
+ */
+const dims: Record<StepperSize, { box: string; btn: string; open: string; hitY: string; text: string }> = {
+  sm: { box: "size-8", btn: "size-8 [&_svg]:size-4", open: "h-8 w-10 [&_svg]:size-4", hitY: "before:-inset-y-1.5", text: "text-meta" },
+  md: { box: "size-9", btn: "size-9 [&_svg]:size-[18px]", open: "h-9 w-11 [&_svg]:size-[18px]", hitY: "before:-inset-y-1", text: "text-body" },
 };
 
 const idle: Record<StepperVariant, string> = {
   outline: "bg-surface text-ink ring-1 ring-line-strong ring-inset",
-  glass: "material text-ink shadow-float",
+  glass: "glass text-ink",
 };
 
 const tick: Variants = {
@@ -46,9 +50,9 @@ const tick: Variants = {
 };
 
 const pop = {
-  initial: { opacity: 0, scale: 0.8 },
+  initial: { opacity: 0, scale: 0.95 },
   animate: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0.8, transition: { duration: 0.12 } },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.12 } },
 };
 
 export interface StepperProps {
@@ -69,7 +73,8 @@ export interface StepperProps {
 /**
  * Item quantity control. "+" adds the first one and fills with the count; tapping the count expands
  * into "− n +" (trash at 1). Collapses after 3s idle or when another stepper is used. Grows leftward
- * from its right edge without moving surrounding layout.
+ * from its right edge without moving surrounding layout. The pill does not clip, so focus rings and the
+ * extended hit areas reach past its edge; only the count clips its rolling digit.
  */
 export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "outline", disabled = false, className }: StepperProps) {
   const id = useId();
@@ -130,8 +135,9 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
     }
   };
 
-  const hit = "relative before:absolute before:-inset-y-1.5";
+  const hit = cn("relative before:absolute", d.hitY);
   const press = "transition-[scale,background-color] duration-100 ease-out active:scale-[0.9]";
+  const open = state === "open";
 
   return (
     <div
@@ -146,7 +152,7 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
         transition={SPRING_SNAPPY}
         style={{ borderRadius: 999 }}
         className={cn(
-          "absolute top-0 right-0 flex items-center overflow-hidden transition-colors duration-200",
+          "absolute top-0 right-0 flex items-center transition-colors duration-200",
           state === "add" ? idle[variant] : "bg-accent text-on-accent",
           state !== "add" && variant === "glass" && "shadow-float",
         )}
@@ -164,7 +170,7 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
                 add();
               }}
               {...pop}
-              className={cn(d.btn, "grid place-items-center rounded-full before:-inset-x-1.5 disabled:opacity-40", hit, press)}
+              className={cn(d.btn, "relative grid place-items-center rounded-full before:absolute before:-inset-1.5 disabled:opacity-40", press)}
             >
               <Plus />
             </motion.button>
@@ -177,14 +183,14 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
               aria-label={qty === 1 ? `Remove ${label}` : `Remove one ${label}`}
               onClick={remove}
               {...pop}
-              className={cn(d.btn, "grid place-items-center rounded-full active:bg-ink/10", hit, press)}
+              className={cn(d.open, "grid place-items-center rounded-full before:right-0 before:-left-1 active:bg-ink/10", hit, press)}
             >
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.span
                   key={qty === 1 ? "trash" : "minus"}
-                  initial={{ opacity: 0, scale: 0.8 }}
+                  initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
                   className="grid place-items-center"
                 >
@@ -209,28 +215,29 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
               }}
               {...pop}
               className={cn(
-                d.btn,
+                open ? d.open : d.btn,
                 d.text,
-                "tnum relative grid place-items-center overflow-hidden rounded-full font-semibold",
-                state === "count" && "before:-inset-x-1",
-                hit,
+                "tnum relative grid place-items-center rounded-full font-semibold before:absolute",
+                open ? cn("before:inset-x-0", d.hitY) : "before:-inset-1.5",
                 press,
               )}
             >
-              <AnimatePresence initial={false} mode="popLayout" custom={dir}>
-                <motion.span
-                  key={qty}
-                  custom={dir}
-                  variants={tick}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={SPRING_SNAPPY}
-                  aria-hidden
-                >
-                  {qty}
-                </motion.span>
-              </AnimatePresence>
+              {/* Clips only the rolling digit, so the button's focus ring and hit area stay whole. */}
+              <span aria-hidden className="grid size-full place-items-center overflow-hidden rounded-[inherit]">
+                <AnimatePresence initial={false} mode="popLayout" custom={dir}>
+                  <motion.span
+                    key={qty}
+                    custom={dir}
+                    variants={tick}
+                    initial="enter"
+                    animate="center"
+                    exit="exit"
+                    transition={SPRING_SNAPPY}
+                  >
+                    {qty}
+                  </motion.span>
+                </AnimatePresence>
+              </span>
             </motion.button>
           )}
 
@@ -241,7 +248,7 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
               aria-label={`Add another ${label}`}
               onClick={add}
               {...pop}
-              className={cn(d.btn, "grid place-items-center rounded-full active:bg-ink/10", hit, press)}
+              className={cn(d.open, "grid place-items-center rounded-full before:-right-1 before:left-0 active:bg-ink/10", hit, press)}
             >
               <Plus />
             </motion.button>

@@ -76,7 +76,7 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
                     "flex h-16 flex-col items-center justify-center rounded-chip transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.96]",
                     selected
                       ? "bg-accent text-on-accent"
-                      : "bg-surface text-ink ring-1 ring-line ring-inset hover:bg-[#fbfaf5]",
+                      : "bg-surface text-ink ring-1 ring-line ring-inset hover:bg-surface-hover",
                   )}
                 >
                   <span className="tnum font-display text-section leading-none font-semibold">{min}</span>
@@ -106,7 +106,7 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
                     "flex items-start gap-3 rounded-card px-4 py-3.5 text-left transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.98]",
                     selected
                       ? "bg-accent-soft ring-2 ring-accent-ink ring-inset"
-                      : "bg-surface ring-1 ring-line ring-inset hover:bg-[#fbfaf5]",
+                      : "bg-surface ring-1 ring-line ring-inset hover:bg-surface-hover",
                   )}
                 >
                   <span

@@ -69,12 +69,13 @@ export type DealPillProps = DealPillOwnProps &
   );
 
 /**
- * The lime deal badge ("25% off"). Renders a button when given `onClick` (e.g. to open the deal sheet),
- * otherwise a static label. Add `ring-3 ring-bg` when it overlaps an image edge.
+ * The deal badge ("25% off"): solid --offer red with bold white text, the same everywhere. Renders a button
+ * when given `onClick` (e.g. to open the deal sheet), otherwise a static label. Add `ring-3 ring-bg` (or
+ * `ring-surface` on a card) when it overlaps an image edge.
  */
 export function DealPill({ label, size = "md", withIcon = false, className, ...rest }: DealPillProps) {
   const classes = cn(
-    "tnum inline-flex shrink-0 items-center rounded-full bg-accent font-semibold whitespace-nowrap text-on-accent",
+    "tnum inline-flex shrink-0 items-center rounded-full bg-offer font-bold whitespace-nowrap text-on-offer",
     dealSizes[size],
     className,
   );
@@ -94,8 +95,8 @@ export function DealPill({ label, size = "md", withIcon = false, className, ...r
         className={cn(
           classes,
           positioned(className),
-          "transition-[scale,background-color] duration-100 ease-out select-none active:scale-[0.96] active:bg-accent-strong",
-          "hover:bg-[#acc22b]",
+          "transition-[scale,background-color] duration-100 ease-out select-none active:scale-[0.96] active:bg-offer-strong",
+          "hover:bg-offer-strong",
           size === "sm" && "before:absolute before:-inset-2.5",
           size === "md" && "before:absolute before:-inset-y-1.5 before:inset-x-0",
         )}

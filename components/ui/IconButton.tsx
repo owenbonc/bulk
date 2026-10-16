@@ -6,6 +6,7 @@ import { cn, positioned } from "./cn";
 
 export type IconButtonVariant = "plain" | "soft" | "outline" | "accent" | "glass";
 export type IconButtonSize = "sm" | "md" | "lg";
+export type IconButtonIconColor = "ink" | "accent";
 
 const base =
   "inline-grid shrink-0 place-items-center rounded-full select-none " +
@@ -13,16 +14,30 @@ const base =
   "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 " +
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:active:scale-100";
 
-const variants: Record<IconButtonVariant, string> = {
-  plain: "text-ink active:bg-ink/[0.07] hover:not-disabled:not-aria-disabled:bg-ink/[0.05]",
+// Surface and default icon colour per variant, kept apart so `iconColor` can swap the colour cleanly.
+const variants: Record<IconButtonVariant, { surface: string; text: string }> = {
+  // Clear glass disc (the default): every round control on the page and over photos.
+  glass: { surface: "glass", text: "text-ink" },
+  plain: { surface: "active:bg-ink/[0.07] hover:not-disabled:not-aria-disabled:bg-ink/[0.05]", text: "text-ink" },
   // Quiet filled disc for close buttons inside sheets and popups.
-  soft: "bg-surface-2 text-ink-2 active:bg-line hover:not-disabled:not-aria-disabled:bg-[#e9e6d9]",
-  outline:
-    "bg-surface text-ink ring-1 ring-line ring-inset active:bg-surface-2 hover:not-disabled:not-aria-disabled:bg-[#fcfbf7]",
-  accent: "bg-accent text-on-accent active:bg-accent-strong hover:not-disabled:not-aria-disabled:bg-[#acc22b]",
-  // Translucent disc for floating over photos.
-  glass: "material text-ink shadow-float active:bg-[rgb(239_236_224/0.9)]",
+  soft: {
+    surface: "bg-surface-2 active:bg-line hover:not-disabled:not-aria-disabled:bg-surface-2-hover",
+    text: "text-ink-2",
+  },
+  outline: {
+    surface: "bg-surface ring-1 ring-line ring-inset active:bg-surface-2 hover:not-disabled:not-aria-disabled:bg-surface-hover",
+    text: "text-ink",
+  },
+  accent: {
+    surface: "bg-accent active:bg-accent-strong hover:not-disabled:not-aria-disabled:bg-accent-hover",
+    text: "text-on-accent",
+  },
 };
+
+function variantClasses(variant: IconButtonVariant, iconColor: IconButtonIconColor | undefined): string {
+  const v = variants[variant];
+  return cn(v.surface, iconColor === "accent" ? "text-accent-ink" : iconColor === "ink" ? "text-ink" : v.text);
+}
 
 const sizes: Record<IconButtonSize, string> = {
   // 36px visual, 44px hit area.
@@ -34,8 +49,11 @@ const sizes: Record<IconButtonSize, string> = {
 interface OwnProps {
   /** Required: icon-only buttons need an accessible name. */
   "aria-label": string;
+  /** Default `glass`. */
   variant?: IconButtonVariant;
   size?: IconButtonSize;
+  /** Icon colour; defaults to the variant's. `accent` draws it in --accent-ink so a glass button still reads as the primary action. */
+  iconColor?: IconButtonIconColor;
   /** Shows a small accent dot, e.g. unread notifications. */
   badge?: boolean;
   /** The icon. */
@@ -57,10 +75,10 @@ function Badge() {
   );
 }
 
-/** Round icon-only button, 44px by default. Pass `href` to render a Next.js Link. */
+/** Round icon-only button, 44px, clear glass by default. Pass `href` to render a Next.js Link. */
 export function IconButton(props: IconButtonProps) {
   if (props.href !== undefined) {
-    const { variant = "plain", size = "md", badge, disabled, className, children, href, onClick, ...rest } = props;
+    const { variant = "glass", size = "md", iconColor, badge, disabled, className, children, href, onClick, ...rest } = props;
     return (
       <Link
         {...rest}
@@ -74,7 +92,7 @@ export function IconButton(props: IconButtonProps) {
           }
           onClick?.(e);
         }}
-        className={cn(base, positioned(className), variants[variant], sizes[size], className)}
+        className={cn(base, positioned(className), variantClasses(variant, iconColor), sizes[size], className)}
       >
         {children}
         {badge && <Badge />}
@@ -82,9 +100,13 @@ export function IconButton(props: IconButtonProps) {
     );
   }
 
-  const { variant = "plain", size = "md", badge, className, children, type = "button", ...rest } = props;
+  const { variant = "glass", size = "md", iconColor, badge, className, children, type = "button", ...rest } = props;
   return (
-    <button {...rest} type={type} className={cn(base, positioned(className), variants[variant], sizes[size], className)}>
+    <button
+      {...rest}
+      type={type}
+      className={cn(base, positioned(className), variantClasses(variant, iconColor), sizes[size], className)}
+    >
       {children}
       {badge && <Badge />}
     </button>

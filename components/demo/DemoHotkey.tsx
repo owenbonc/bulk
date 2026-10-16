@@ -2,7 +2,8 @@
 
 import { X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { IconButton } from "@/components/ui";
+import { createPortal } from "react-dom";
+import { IconButton, PASS_THROUGH_ATTR } from "@/components/ui";
 import { DemoControlsPanel } from "./DemoControlsPanel";
 
 function isTyping(target: EventTarget | null): boolean {
@@ -11,11 +12,40 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /**
+ * While a sheet or popup is open its focus trap pulls focus back as soon as it lands outside, which would
+ * shut the party picker the moment it opens. Focus moves into or inside the panel are stopped at the window
+ * before the trap's document listeners see them. Pointer presses inside the panel are ignored by Sheet and
+ * Popup through the pass-through attribute.
+ */
+function useFocusPassThrough(panel: HTMLElement | null) {
+  useEffect(() => {
+    if (!panel) return;
+    const inside = (t: EventTarget | null) => t instanceof Node && panel.contains(t);
+    const onFocusIn = (e: FocusEvent) => {
+      if (inside(e.target)) e.stopImmediatePropagation();
+    };
+    const onFocusOut = (e: FocusEvent) => {
+      if (inside(e.relatedTarget)) e.stopImmediatePropagation();
+    };
+    window.addEventListener("focusin", onFocusIn, true);
+    window.addEventListener("focusout", onFocusOut, true);
+    return () => {
+      window.removeEventListener("focusin", onFocusIn, true);
+      window.removeEventListener("focusout", onFocusOut, true);
+    };
+  }, [panel]);
+}
+
+/**
  * Press "d" anywhere (outside text fields) to toggle a floating demo-controls panel. Keyboard-driven and
- * used constantly while presenting, so it appears and disappears instantly.
+ * used constantly while presenting, so it appears and disappears instantly. Portalled to <body> above every
+ * layer and kept clickable while a vaul sheet or Radix dialog is open (those set pointer-events: none on
+ * the body).
  */
 export function DemoHotkey() {
   const [open, setOpen] = useState(false);
+  const [panel, setPanel] = useState<HTMLElement | null>(null);
+  useFocusPassThrough(open ? panel : null);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -33,10 +63,12 @@ export function DemoHotkey() {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <aside
+      ref={setPanel}
       aria-label="Demo controls"
-      className="fixed right-3 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-[70] w-[300px] max-w-[calc(100vw-24px)] rounded-card bg-surface p-4 pt-3 shadow-popup ring-1 ring-line min-[900px]:top-6 min-[900px]:right-auto min-[900px]:bottom-auto min-[900px]:left-[calc(50%+239px)]"
+      {...{ [PASS_THROUGH_ATTR]: "" }}
+      className="pointer-events-auto fixed right-3 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-[70] w-[300px] max-w-[calc(100vw-24px)] rounded-card bg-surface p-4 pt-3 shadow-popup ring-1 ring-line min-[900px]:top-6 min-[900px]:right-auto min-[900px]:bottom-auto min-[900px]:left-[calc(50%+239px)]"
     >
       <div className="mb-1 flex items-center justify-between gap-2">
         <h2 className="text-emphasis font-semibold text-ink">Demo controls</h2>
@@ -44,12 +76,13 @@ export function DemoHotkey() {
           <span className="text-caption text-ink-3">
             <kbd className="rounded-md bg-surface-2 px-1.5 py-0.5 text-caption text-ink-2">D</kbd> to hide
           </span>
-          <IconButton aria-label="Close demo controls" size="sm" onClick={() => setOpen(false)}>
+          <IconButton aria-label="Close demo controls" size="sm" variant="soft" onClick={() => setOpen(false)}>
             <X />
           </IconButton>
         </div>
       </div>
       <DemoControlsPanel />
-    </aside>
+    </aside>,
+    document.body,
   );
 }

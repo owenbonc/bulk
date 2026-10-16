@@ -51,7 +51,7 @@ export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
                   if (!selected) dispatch({ type: "SET_LOCATION", pickupPointId: point.id });
                   onOpenChange(false);
                 }}
-                className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-[#fbfaf5]"
+                className="flex w-full items-center gap-4 px-5 py-3 text-left transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-surface-hover"
               >
                 <span
                   aria-hidden

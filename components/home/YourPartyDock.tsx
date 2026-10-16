@@ -11,38 +11,41 @@ import { useApp } from "@/lib/store";
 import { clockTime } from "./parts";
 import type { HomeParty } from "./useHomeParties";
 
-/** Gap between the card and the bottom bar. */
-const GAP = 8;
 /** Card row height. */
 const CARD_HEIGHT = 76;
-/** The scroller reaches this far under the bottom bar so the card's shadow is never cut off in view. */
-const SHADOW_ROOM = 20;
+/** How far below its place the card starts when it slides in. */
+const ENTER_OFFSET = 32;
 
-/** Space the page reserves above the bottom bar while the dock shows. */
-export const DOCK_SPACE = CARD_HEIGHT + GAP;
+/** Parties whose card has already slid in this session, so coming back to Home doesn't replay the entrance. */
+const introduced = new Set<string>();
 
 /**
- * Your-party card(s), floating just above the Home bottom bar: solid lime, one 76px row per party you're
- * in, most urgent first, swiped sideways when there are several. Tap opens the party's status page.
+ * Your-party card(s): solid lime, one 76px row per party you're in, most urgent first, swiped sideways with
+ * page dots when there are several. Rendered as the first item of Home's bottom stack, so it floats just
+ * above the controls, over the list and under sheets. It slides up when a party first appears; tap opens
+ * the party's status page.
  */
-export function YourPartyDock({ parties, barHeight }: { parties: HomeParty[]; barHeight: number }) {
-  const show = parties.length > 0 && barHeight > 0;
+export function YourPartyDock({ parties }: { parties: HomeParty[] }) {
+  const ids = parties.map((p) => p.request.id).join(" ");
+  const fresh = parties.some((p) => !introduced.has(p.request.id));
+
+  useEffect(() => {
+    for (const id of ids.split(" ")) if (id) introduced.add(id);
+  }, [ids]);
 
   return (
     <AnimatePresence>
-      {show && (
+      {parties.length > 0 && (
         <motion.div
           key="dock"
-          className="fixed inset-x-0 z-30 mx-auto w-full max-w-column"
-          style={{ bottom: barHeight - SHADOW_ROOM }}
-          initial={{ opacity: 0, y: 24 }}
-          animate={{ opacity: 1, y: 0, transition: SPRING }}
+          initial={fresh ? { y: ENTER_OFFSET } : false}
+          animate={{ y: 0, transition: SPRING }}
           exit={{ opacity: 0, y: 16, transition: EXIT }}
         >
+          {/* Bleeds to the column edges and pads around the card so its shadow isn't clipped by the scroller. */}
           <ul
             aria-label="Your parties"
-            className="no-scrollbar flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto overscroll-x-contain px-4 pt-3 [touch-action:pan-x_pan-y]"
-            style={{ paddingBottom: GAP + SHADOW_ROOM }}
+            className="no-scrollbar -mx-4 -mt-2 -mb-5 flex snap-x snap-mandatory scroll-px-4 gap-2 overflow-x-auto overscroll-x-contain px-4 pt-2 pb-5 [touch-action:pan-x_pan-y]"
           >
             {parties.map((p, i) => (
               <li key={p.request.id} className="w-full shrink-0 snap-center">

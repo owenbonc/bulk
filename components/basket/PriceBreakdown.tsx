@@ -3,7 +3,10 @@ import { Divider, Price, SummaryRow, formatPrice } from "@/components/ui";
 import type { Preview } from "@/lib/requests";
 import type { Restaurant } from "@/lib/types";
 
-/** Projected cost of your basket: food, the group deal, your share of delivery and the estimated total. */
+/**
+ * Projected cost of your basket: food, the group deal, your share of delivery and the estimated total.
+ * The delivery split ("£3.49 ÷ 3") shows only when someone shares it with you.
+ */
 export function PriceBreakdown({ restaurant, preview }: { restaurant: Restaurant; preview: Preview }) {
   const { subtotal, discount, delivery, total, members } = preview;
 
@@ -18,11 +21,7 @@ export function PriceBreakdown({ restaurant, preview }: { restaurant: Restaurant
       />
       <SummaryRow
         label="Delivery share"
-        hint={
-          <span className="tnum">
-            {formatPrice(restaurant.deliveryFee)} ÷ {members}
-          </span>
-        }
+        hint={members > 1 ? <span className="tnum">{`${formatPrice(restaurant.deliveryFee)} ÷ ${members}`}</span> : undefined}
         value={<Price pence={delivery} />}
       />
       <Divider className="my-1" />

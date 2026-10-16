@@ -17,7 +17,10 @@ export interface HelpSheetProps {
   pickup: PickupPoint;
 }
 
-/** Party details, how the party works, and help actions (share, report, leave). */
+/**
+ * The status page's "More information" sheet: party details (restaurant, deal terms, collection point and
+ * access note), how the party works, then Share, Report and Leave (Leave only while open, never for the host).
+ */
 export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: HelpSheetProps) {
   const { dispatch } = useApp();
   const router = useRouter();
@@ -40,7 +43,7 @@ export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: H
   };
 
   const report = () => {
-    toast("Thanks, we've logged this (demo)");
+    toast("Thanks, we've logged this");
     onOpenChange(false);
   };
 
@@ -163,7 +166,7 @@ function ActionRow({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex min-h-14 w-full items-center gap-4 px-5 py-3 text-left text-body font-medium transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-[#fbfaf5]",
+        "flex min-h-14 w-full items-center gap-4 px-5 py-3 text-left text-body font-medium transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-surface-hover",
         tone === "offer" ? "text-offer" : "text-ink",
       )}
     >
@@ -171,7 +174,7 @@ function ActionRow({
         aria-hidden
         className={cn(
           "grid size-8 shrink-0 place-items-center rounded-full [&_svg]:size-[18px]",
-          tone === "offer" ? "bg-offer-soft text-offer" : "bg-surface-2 text-ink-2",
+          tone === "offer" ? "bg-offer-soft text-offer-ink" : "bg-surface-2 text-ink-2",
         )}
       >
         {icon}
