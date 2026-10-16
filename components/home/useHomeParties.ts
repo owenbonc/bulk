@@ -1,8 +1,9 @@
 "use client";
 
 import { CATALOG, ME } from "@/lib/data";
-import { isHighlight, isTerminal, progressOf, useApp } from "@/lib/store";
-import type { Progress } from "@/lib/requests";
+import { byNearest, placeOf, type PartyPlace } from "@/lib/geo";
+import { hasCollected, isActiveFor, isHighlight, progressOf, useApp } from "@/lib/store";
+import { basketTotal, type Progress } from "@/lib/requests";
 import type { OrderRequest, Participant, Restaurant } from "@/lib/types";
 
 /** A party as the Home screen shows it. */
@@ -10,12 +11,13 @@ export interface HomeParty {
   request: OrderRequest;
   restaurant: Restaurant;
   progress: Progress;
+  /** Where it collects, seen from your location. */
+  place: PartyPlace;
   /** Your entry, when you're in this party. */
   me?: Participant;
+  /** Your finalised basket's share of `progress.total`, drawn as the pulsing --mine slice; 0 otherwise. */
+  contribution: number;
 }
-
-/** How long a delivered order stays on Home as "Ready to collect". */
-const READY_LINGER_MS = 60 * 60_000;
 
 function normalise(text: string): string {
   return text.toLocaleLowerCase("en-GB").normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
@@ -38,13 +40,18 @@ function urgency(p: HomeParty): number {
 }
 
 export interface HomeParties {
-  /** Open parties at 75% or more of their deal, closest to the deal first. */
+  /** Nearby open parties at 75% or more of their deal: at your collection point first, then by walk. */
   highlights: HomeParty[];
-  /** Every other visible party: yours that have moved past filling (including recently delivered), then those at your collection point, then closing soonest. */
+  /**
+   * Every other visible party: yours that have moved past filling (including delivered ones you haven't
+   * collected), then nearby open ones at your collection point, then by walk, then closing soonest.
+   */
   others: HomeParty[];
-  /** Parties you're in that still need you (including recently delivered ones), most urgent first. Not filtered by search. */
+  /** Parties you're in that still need you (including delivered ones you haven't collected), most urgent first. Not filtered by search. */
   mine: HomeParty[];
-  /** Visible parties before the search filter. */
+  /** Delivered parties you've collected, so the your-party card can see one off. */
+  collected: HomeParty[];
+  /** Visible parties before the search filter: open ones near your location plus every party you're in. */
   totalCount: number;
 }
 
@@ -56,38 +63,28 @@ export function useHomeParties(query: string): HomeParties {
     const restaurant = CATALOG.restaurants.find((r) => r.id === request.restaurantId);
     if (!restaurant) continue;
     const me = request.participants.find((p) => p.userId === ME.userId && !p.declined);
-    all.push({ request, restaurant, progress: progressOf(request, restaurant), me });
+    const progress = progressOf(request, restaurant);
+    const contribution = me?.finalised ? Math.min(basketTotal(me.basket, restaurant), progress.total) : 0;
+    all.push({ request, restaurant, progress, place: placeOf(request, state.location), me, contribution });
   }
 
   const isOpen = (p: HomeParty) => p.request.status === "open" && p.request.expiresAt > now;
-  /** A party you're in that Home still shows: live ones, plus recently delivered ones as "Ready to collect". */
-  const stillYours = (p: HomeParty) => {
-    if (!p.me) return false;
-    const { status, confirmedAt } = p.request;
-    if (status === "delivered") return confirmedAt !== undefined && now - confirmedAt < READY_LINGER_MS;
-    if (status === "open") return p.request.expiresAt > now;
-    return !isTerminal(status);
-  };
-  const listed = all.filter((p) => isOpen(p) || stillYours(p));
+  const stillYours = (p: HomeParty) => isActiveFor(p.request, now);
+  // Parties you're in always show, wherever they collect.
+  const listed = all.filter((p) => (isOpen(p) && p.place.nearby) || stillYours(p));
   const matching = listed.filter((p) => matchesQuery(p.restaurant, query));
 
-  const highlights = matching
-    .filter((p) => isOpen(p) && isHighlight(p.request, p.restaurant))
-    .sort((a, b) => b.progress.pct - a.progress.pct || a.request.expiresAt - b.request.expiresAt);
+  const highlights = matching.filter((p) => isOpen(p) && isHighlight(p.request, p.restaurant)).sort(byNearest);
 
-  const nearby = (p: HomeParty) => p.request.pickupPointId === state.location;
   const others = matching
     .filter((p) => !highlights.includes(p))
-    .sort(
-      (a, b) =>
-        Number(isOpen(a)) - Number(isOpen(b)) ||
-        Number(nearby(b)) - Number(nearby(a)) ||
-        a.request.expiresAt - b.request.expiresAt,
-    );
+    .sort((a, b) => Number(isOpen(a)) - Number(isOpen(b)) || byNearest(a, b));
 
   const mine = all
     .filter(stillYours)
     .sort((a, b) => urgency(a) - urgency(b) || a.request.expiresAt - b.request.expiresAt);
 
-  return { highlights, others, mine, totalCount: listed.length };
+  const collected = all.filter((p) => (p.request.status === "delivered" || p.request.status === "collected") && hasCollected(p.request));
+
+  return { highlights, others, mine, collected, totalCount: listed.length };
 }

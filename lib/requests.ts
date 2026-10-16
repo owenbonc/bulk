@@ -1,4 +1,5 @@
-import { BOT_NAMES, CATALOG, DEFAULT_DURATION_MIN, ME } from "./data";
+import { BOT_NAMES, CATALOG, DEFAULT_DURATION_MIN, ME, STATE_VERSION } from "./data";
+import { deliveryEta } from "./geo";
 import {
   basketCount,
   basketTotal,
@@ -6,9 +7,12 @@ import {
   formatGBP,
   formatGBPShort,
   previewSplit,
+  priceGroup,
   progressOf,
   queueTotal,
+  soloCost,
   splitCosts,
+  targetDiscount,
   type CostLine,
   type Preview,
   type Progress,
@@ -22,11 +26,26 @@ import type {
   Draft,
   OrderRequest,
   Participant,
+  ReleasedEntry,
+  ReleaseReason,
   Restaurant,
   RequestStatus,
 } from "./types";
 
-export { basketCount, basketTotal, draftPreview, formatGBP, formatGBPShort, previewSplit, progressOf, queueTotal, splitCosts };
+export {
+  basketCount,
+  basketTotal,
+  draftPreview,
+  formatGBP,
+  formatGBPShort,
+  previewSplit,
+  priceGroup,
+  progressOf,
+  queueTotal,
+  soloCost,
+  splitCosts,
+  targetDiscount,
+};
 export type { CostLine, Preview, Progress, Split };
 
 /** Time everyone has to accept and pay in each acceptance round. */
@@ -48,11 +67,13 @@ export const DELIVERY_STEPS: { status: RequestStatus; label: string }[] = [
 ];
 
 export const CANCEL_REASONS = {
-  notEnoughAccepted: "Not enough people accepted to keep the deal.",
-  secondRoundFailed: "The second round didn't complete.",
+  notEnoughAccepted: "Not everyone accepted, and the rest no longer reached the deal.",
+  secondRoundFailed: "The repriced second round wasn't accepted by everyone.",
   expired: "The deal wasn't reached before the timer ran out.",
-  hostDidNotAccept: "The host didn't accept, so the party was cancelled.",
 } as const;
+
+/** How long a new party started from a saved basket can stay open, in minutes. */
+export const RETRY_DURATIONS = [15, 30, 60];
 
 export interface UserRef {
   userId: string;
@@ -68,9 +89,15 @@ export type Action =
   | { type: "REMOVE_ITEM"; requestId: string; userId: string; itemId: string }
   | { type: "SET_CUTLERY"; requestId: string; userId: string; cutlery: boolean }
   | { type: "FINALISE_ENTRY"; requestId: string; userId: string; now: number }
-  | { type: "ACCEPT_AND_PAY"; requestId: string; userId: string; now: number }
-  | { type: "DECLINE"; requestId: string; userId: string; now: number }
+  /** `round` is the round being answered: an answer for an earlier round is ignored. */
+  | { type: "ACCEPT_AND_PAY"; requestId: string; userId: string; round: 1 | 2; now: number }
+  | { type: "DECLINE"; requestId: string; userId: string; round: 1 | 2; now: number; reason?: "declined" | "payment_failed" }
+  | { type: "RETRY_ENTRY"; requestId: string; userId: string; newRequestId: string; durationMin: number; now: number }
+  | { type: "CANCEL_ENTRY"; requestId: string; userId: string }
+  /** Hands over the bag whose pickup PIN is `code` (you showing your PIN, or the driver entering one). */
+  | { type: "HANDOVER"; requestId: string; code: string; now: number }
   | { type: "SET_EXPIRY"; requestId: string; expiresAt: number }
+  | { type: "SET_ACCEPT_DEADLINE"; requestId: string; deadline: number }
   | { type: "FILL_PARTY"; requestId: string; now: number }
   | { type: "TICK"; now: number }
   | { type: "DRAFT_START"; restaurantId: string }
@@ -79,6 +106,7 @@ export type Action =
   | { type: "DRAFT_CLEAR" }
   | { type: "CREATE_FROM_DRAFT"; id: string; user: UserRef; now: number }
   | { type: "ADD_FRIEND"; userId: string }
+  | { type: "INVITE_FRIEND"; requestId: string; userId: string; friendId: string; now: number }
   | { type: "MARK_ALERT_SEEN"; key: string }
   | { type: "MARK_NOTIFICATIONS_READ" }
   | { type: "SET_LOCATION"; pickupPointId: string }
@@ -91,19 +119,91 @@ type PartyAction = Extract<Action, { requestId: string }>;
 // Small pure helpers
 // ---------------------------------------------------------------------------
 
-export function pinFor(id: string): string {
+function hash(s: string): number {
   let h = 0;
-  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  return String(1000 + (h % 9000));
+  for (const ch of s) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+/** Distinct 4-digit pickup PINs, one per participant, derived from the party so they are stable. */
+export function assignCollectionCodes(r: OrderRequest): Participant[] {
+  const used = new Set<string>();
+  return r.participants.map((p) => {
+    let salt = 0;
+    let code: string;
+    do code = String(1000 + (hash(`${r.id}:${p.userId}:${salt++}`) % 9000));
+    while (used.has(code));
+    used.add(code);
+    return { ...p, collectionCode: code };
+  });
+}
+
+export type HandoverCheck =
+  | { ok: true; participant: Participant }
+  | { ok: false; error: "not_arrived" | "unknown_code" | "already_collected"; participant?: Participant };
+
+/** What the demo driver sees after entering a PIN. The reducer applies the same rules. */
+export function checkHandover(r: OrderRequest, code: string): HandoverCheck {
+  if (r.status !== "delivered") return { ok: false, error: "not_arrived" };
+  const participant = r.participants.find((p) => p.collectionCode === code.trim());
+  if (!participant) return { ok: false, error: "unknown_code" };
+  if (participant.collectedAt !== undefined) return { ok: false, error: "already_collected", participant };
+  return { ok: true, participant };
 }
 
 export function isTerminal(status: RequestStatus): boolean {
-  return status === "delivered" || status === "expired" || status === "cancelled";
+  return status === "collected" || status === "expired" || status === "cancelled";
 }
 
-/** The open party at a restaurant (there is at most one), if any. */
-export function openPartyFor(state: AppState, restaurantId: string): OrderRequest | undefined {
-  return state.requests.find((r) => r.restaurantId === restaurantId && r.status === "open");
+/**
+ * Saved state, or null (a fresh demo) when nothing is saved, the saved shape is from another version
+ * (so old data can't crash the screens), or every party has ended (e.g. seeded timers ran out overnight).
+ */
+export function parseSaved(saved: string | null): AppState | null {
+  if (!saved) return null;
+  try {
+    const state = JSON.parse(saved) as Partial<AppState> | null;
+    if (state?.version !== STATE_VERSION || !Array.isArray(state.requests) || !state.demo) return null;
+    return state.requests.some((r) => !isTerminal(r.status)) ? (state as AppState) : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Placed with the restaurant: can no longer be left or cancelled in the app. */
+export function isSubmitted(status: RequestStatus): boolean {
+  return ["confirmed", "preparing", "out_for_delivery", "delivered", "collected"].includes(status);
+}
+
+/** Someone's released entry in a party whose attempt ended for them (basket kept so they can start a new party with it). */
+export function releasedEntry(r: OrderRequest | undefined, userId: string): ReleasedEntry | undefined {
+  return r?.released.find((e) => e.userId === userId);
+}
+
+/** How long a delivered order you haven't collected stays on Home as "Ready to collect". */
+export const READY_LINGER_MS = 60 * 60_000;
+
+/** You've shown your PIN and your bag has been handed over. */
+export function hasCollected(request: OrderRequest, userId = ME.userId): boolean {
+  return request.participants.find((p) => p.userId === userId)?.collectedAt !== undefined;
+}
+
+/**
+ * A party you're in that still needs you, as the your-party card and "You're in" treat it: open ones that
+ * haven't run out, paid orders on their way, and delivered ones you haven't collected (for READY_LINGER_MS).
+ */
+export function isActiveFor(request: OrderRequest, now: number, userId = ME.userId): boolean {
+  const me = request.participants.find((p) => p.userId === userId && !p.declined);
+  if (!me) return false;
+  const { status, confirmedAt } = request;
+  if (status === "delivered") return me.collectedAt === undefined && confirmedAt !== undefined && now - confirmedAt < READY_LINGER_MS;
+  if (status === "open") return request.expiresAt > now;
+  return !isTerminal(status);
+}
+
+/** The open party at a restaurant collecting at a collection point (there is at most one per pair), if any. */
+export function openPartyFor(state: AppState, restaurantId: string, pickupPointId: string): OrderRequest | undefined {
+  return state.requests.find((r) => r.restaurantId === restaurantId && r.pickupPointId === pickupPointId && r.status === "open");
 }
 
 /** Open and at least 75% of the way to the deal. */
@@ -113,7 +213,8 @@ export function isHighlight(request: OrderRequest, restaurant: Restaurant): bool
 
 /** Index into DELIVERY_STEPS for a paid order, or -1 before payment / after cancellation. */
 export function deliveryStep(status: RequestStatus): number {
-  return DELIVERY_STEPS.findIndex((s) => s.status === status);
+  // Collected is past the last step: every bag has been handed over.
+  return DELIVERY_STEPS.findIndex((s) => s.status === (status === "collected" ? "delivered" : status));
 }
 
 function stageAfter(status: RequestStatus): number {
@@ -123,16 +224,17 @@ function stageAfter(status: RequestStatus): number {
 /** Courier position along the route, 0–1, while `out_for_delivery` (0 before, 1 once delivered). */
 export function deliveryProgress(request: OrderRequest, now: number): number {
   if (request.confirmedAt === undefined) return 0;
-  if (request.status === "delivered") return 1;
+  if (request.status === "delivered" || request.status === "collected") return 1;
   const start = request.confirmedAt + stageAfter("out_for_delivery");
   const end = request.confirmedAt + stageAfter("delivered");
   return Math.min(1, Math.max(0, (now - start) / (end - start)));
 }
 
-/** User-facing arrival estimate ("Arrives ~19:40"): payment time plus the middle of the restaurant's ETA window. */
-export function arrivesAt(request: OrderRequest, restaurant: Restaurant): number | undefined {
-  if (request.confirmedAt === undefined) return undefined;
-  const [lo, hi] = restaurant.etaMin;
+/** User-facing arrival estimate ("Arrives ~19:40"): payment time plus the middle of the delivery window to the party's collection point. */
+export function arrivesAt(request: OrderRequest, restaurant: Restaurant, catalog: Catalog = CATALOG): number | undefined {
+  const point = catalog.pickupPoints.find((p) => p.id === request.pickupPointId);
+  if (request.confirmedAt === undefined || !point) return undefined;
+  const [lo, hi] = deliveryEta(restaurant, point);
   return request.confirmedAt + Math.round((lo + hi) / 2) * 60_000;
 }
 
@@ -154,70 +256,77 @@ function changeQty(basket: BasketLine[], itemId: string, delta: number): BasketL
 // Deal and acceptance rounds
 // ---------------------------------------------------------------------------
 
+function release(p: Participant, reason: ReleaseReason): ReleasedEntry {
+  return { userId: p.userId, name: p.name, isBot: p.isBot, basket: p.basket, cutlery: p.cutlery, reason, choice: "pending" };
+}
+
+/** Fresh consent: nobody carries an acceptance, decline or demo payment into a new round. */
+function clearConsent(p: Participant): Participant {
+  return { ...p, paid: false, declined: false, declineReason: undefined };
+}
+
 /**
- * Locks the party into an acceptance round once finalised spend meets the threshold and the
- * host has finalised. Unfinalised members drop out.
+ * Locks the party into an acceptance round (an exact quote) once finalised spend meets the
+ * threshold. Unfinalised members drop out. The host is not special: the party can lock
+ * whether or not its creator is still in it.
  */
 function lockDealIfReached(r: OrderRequest, restaurant: Restaurant, now: number): OrderRequest {
-  if (r.status !== "open" || queueTotal(r, restaurant) < restaurant.deal.minTotal) return r;
-  if (!r.participants.some((p) => p.userId === r.hostId && p.finalised)) return r;
-  const participants = r.participants.filter((p) => p.finalised).map((p) => ({ ...p, paid: false, declined: false }));
+  if (r.status !== "open" || !splitCosts(r, restaurant).discountEligible) return r;
   return {
     ...r,
     status: "deal_achieved",
     round: 1,
     dealAt: now,
     acceptDeadline: now + ACCEPT_WINDOW_MS,
-    participants,
+    participants: r.participants.filter((p) => p.finalised).map(clearConsent),
   };
 }
 
 /**
- * Ends the current acceptance round. Everyone paid → confirmed. Otherwise the people who
- * declined or timed out are recorded. If the host declined or timed out, the party is
- * cancelled; otherwise round 1 falls back to a single round 2 when the remaining baskets
- * still meet the threshold, and anything else cancels the party.
+ * Ends the current acceptance round. Everyone paid → confirmed, with a collection code each.
+ * Otherwise whoever declined, failed to pay or timed out is released with their basket kept.
+ * Round 1 falls back to a single repriced round 2 when everyone left still meets the
+ * threshold (fresh consent from all); anything else ends the attempt, releasing everyone so
+ * each person can start a new party with their basket.
  */
-function resolveRound(r: OrderRequest, restaurant: Restaurant, now: number): OrderRequest {
-  const out = r.participants.filter((p) => !p.paid);
-  if (out.length === 0) return { ...r, status: "confirmed", confirmedAt: now, pin: pinFor(r.id) };
-  const hostOut = out.some((p) => p.userId === r.hostId);
+function resolveRound(r: OrderRequest, restaurant: Restaurant, now: number, windowClosed: boolean): OrderRequest {
+  if (r.participants.every((p) => p.paid)) {
+    return { ...r, status: "confirmed", confirmedAt: now, participants: assignCollectionCodes(r) };
+  }
 
-  const stay = r.participants.filter((p) => p.paid);
+  // Before the window closes, people who simply haven't answered yet aren't out.
+  const isOut = (p: Participant) => !!p.declined || (!p.paid && windowClosed);
+  const out = r.participants.filter(isOut);
+  const stay = r.participants.filter((p) => !isOut(p)).map(clearConsent);
+  const released = [...r.released, ...out.map((p) => release(p, p.declineReason ?? (p.declined ? "declined" : "timed_out")))];
   const removedUserIds = [...r.removedUserIds, ...out.map((p) => p.userId)];
   const removedNames = [...r.removedNames, ...out.map((p) => p.name)];
-  const stayTotal = stay.reduce((sum, p) => sum + basketTotal(p.basket, restaurant), 0);
 
-  if (r.round === 1 && !hostOut && stay.length > 0 && stayTotal >= restaurant.deal.minTotal) {
-    return {
-      ...r,
-      round: 2,
-      participants: stay.map((p) => ({ ...p, paid: false })),
-      removedUserIds,
-      removedNames,
-      acceptDeadline: now + ACCEPT_WINDOW_MS,
-    };
+  if (r.round === 1 && stay.length > 0 && priceGroup(stay, restaurant).discountEligible) {
+    return { ...r, round: 2, participants: stay, released, removedUserIds, removedNames, acceptDeadline: now + ACCEPT_WINDOW_MS };
   }
 
   // Cancelled parties keep their members so everyone involved can see what happened. Nobody is charged.
   return {
     ...r,
     status: "cancelled",
-    cancelReason: hostOut
-      ? CANCEL_REASONS.hostDidNotAccept
-      : r.round === 1
-        ? CANCEL_REASONS.notEnoughAccepted
-        : CANCEL_REASONS.secondRoundFailed,
+    cancelReason: r.round === 1 ? CANCEL_REASONS.notEnoughAccepted : CANCEL_REASONS.secondRoundFailed,
     closedAt: now,
     removedUserIds,
     removedNames,
-    participants: r.participants.map((p) => ({ ...p, paid: false })),
+    released: [...released, ...stay.map((p) => release(p, "group_fell_through"))],
+    participants: r.participants.map(clearConsent),
   };
 }
 
-/** Resolves the round early once every member has either paid or declined. */
+/**
+ * Resolves the round once every member has answered, or as soon as anyone declines the
+ * round-2 fallback: nobody should be asked to accept a quote that can no longer go through.
+ */
 function resolveIfSettled(r: OrderRequest, restaurant: Restaurant, now: number): OrderRequest {
-  return r.participants.every((p) => p.paid || p.declined) ? resolveRound(r, restaurant, now) : r;
+  const answered = r.participants.every((p) => p.paid || p.declined);
+  const fallbackDeclined = r.round === 2 && r.participants.some((p) => p.declined);
+  return answered || fallbackDeclined ? resolveRound(r, restaurant, now, false) : r;
 }
 
 // ---------------------------------------------------------------------------
@@ -261,6 +370,21 @@ export function shapeBotBasket(r: OrderRequest, restaurant: Restaurant, basket: 
   let shaped = basket;
   while (basketTotal(shaped, restaurant) < need) shaped = changeQty(shaped, topUp.id, 1);
   return shaped;
+}
+
+/** Display name for a friend id ("bot-priya" → "Priya"). */
+export function friendName(userId: string): string {
+  return BOT_NAMES.find((n) => botId(n) === userId) ?? userId.replace(/^bot-/, "").replace(/^./, (c) => c.toUpperCase());
+}
+
+/** Whether a friend has an invite to this party that they haven't acted on yet. */
+export function isInvited(r: OrderRequest, userId: string): boolean {
+  return !!r.invites?.some((i) => i.userId === userId && i.status === "pending");
+}
+
+/** Invites still on their way while the party is filling (shown as "invited…" in the member list). */
+export function pendingInvites(r: OrderRequest) {
+  return r.status === "open" ? (r.invites ?? []).filter((i) => i.status === "pending" && !r.participants.some((p) => p.userId === i.userId)) : [];
 }
 
 /** A bot name not yet used in this party. */
@@ -308,12 +432,18 @@ function reduceRequest(r: OrderRequest, action: PartyAction | Extract<Action, { 
   const member = "userId" in action ? r.participants.find((p) => p.userId === action.userId) : undefined;
 
   switch (action.type) {
-    case "JOIN":
+    case "JOIN": {
       if (r.status !== "open" || r.participants.some((p) => p.userId === action.user.userId)) return r;
-      return { ...r, participants: [...r.participants, newParticipant(action.user)] };
+      // Joining settles your invite, if you had one.
+      const invites = r.invites?.map((i) => (i.userId === action.user.userId ? { ...i, status: "joined" as const } : i));
+      return { ...r, participants: [...r.participants, newParticipant(action.user)], ...(invites && { invites }) };
+    }
 
     case "LEAVE":
-      if (r.status !== "open" || !member || action.userId === r.hostId) return r;
+      // Anyone, the host included, can leave while the party is open. The party stays open for the
+      // rest (even if empty, until it expires): the host's only role was creating it and choosing the
+      // collection point, so nobody is promoted. A quote or a placed order has its own rules.
+      if (r.status !== "open" || !member) return r;
       return { ...r, participants: r.participants.filter((p) => p.userId !== action.userId) };
 
     case "ADD_ITEM":
@@ -325,8 +455,8 @@ function reduceRequest(r: OrderRequest, action: PartyAction | Extract<Action, { 
       if (r.status !== "open" || !member || member.finalised) return r;
       if (!member.basket.some((l) => l.itemId === action.itemId)) return r;
       const basket = changeQty(member.basket, action.itemId, -1);
-      // Emptying your basket before joining properly takes you out of the party (the host stays).
-      if (basket.length === 0 && action.userId !== r.hostId) {
+      // Emptying your basket before joining properly takes you out of the party.
+      if (basket.length === 0) {
         return { ...r, participants: r.participants.filter((p) => p.userId !== action.userId) };
       }
       return updateParticipant(r, action.userId, (p) => ({ ...p, basket }));
@@ -342,27 +472,43 @@ function reduceRequest(r: OrderRequest, action: PartyAction | Extract<Action, { 
       return lockDealIfReached(next, restaurant, action.now);
     }
 
-    case "ACCEPT_AND_PAY": {
-      if (r.status !== "deal_achieved" || !member || member.paid || member.declined || action.now >= r.acceptDeadline!) return r;
-      const next = updateParticipant(r, action.userId, (p) => ({ ...p, paid: true }));
+    case "ACCEPT_AND_PAY":
+    case "DECLINE": {
+      // Answers for an earlier round (a stale bot decision, a double click after repricing) and late
+      // answers are ignored, so nobody's consent carries over to a different price.
+      if (r.status !== "deal_achieved" || action.round !== r.round || action.now >= r.acceptDeadline!) return r;
+      if (!member || member.paid || member.declined) return r;
+      const next = updateParticipant(r, action.userId, (p) =>
+        action.type === "ACCEPT_AND_PAY" ? { ...p, paid: true } : { ...p, declined: true, declineReason: action.reason ?? "declined" },
+      );
       return resolveIfSettled(next, restaurant, action.now);
     }
 
-    case "DECLINE": {
-      if (r.status !== "deal_achieved" || !member || member.paid || member.declined || action.now >= r.acceptDeadline!) return r;
-      const next = updateParticipant(r, action.userId, (p) => ({ ...p, declined: true }));
-      return resolveIfSettled(next, restaurant, action.now);
+    case "CANCEL_ENTRY":
+      if (releasedEntry(r, action.userId)?.choice !== "pending") return r;
+      return { ...r, released: r.released.map((e) => (e.userId === action.userId ? { ...e, choice: "cancelled" } : e)) };
+
+    case "HANDOVER": {
+      const check = checkHandover(r, action.code);
+      if (!check.ok) return r;
+      const next = updateParticipant(r, check.participant.userId, (p) => ({ ...p, collectedAt: action.now }));
+      return next.participants.every((p) => p.collectedAt !== undefined) ? { ...next, status: "collected", completedAt: action.now } : next;
     }
 
     case "SET_EXPIRY":
       return r.status === "open" ? { ...r, expiresAt: action.expiresAt } : r;
 
+    case "SET_ACCEPT_DEADLINE":
+      return r.status === "deal_achieved" ? { ...r, acceptDeadline: action.deadline } : r;
+
     case "TICK": {
       if (r.status === "open" && action.now >= r.expiresAt) {
-        return { ...r, status: "expired", cancelReason: CANCEL_REASONS.expired, closedAt: action.now };
+        // No match in this window. Baskets are kept so each person can start a new party with theirs.
+        const released = r.participants.filter((p) => p.basket.length > 0).map((p) => release(p, "no_match"));
+        return { ...r, status: "expired", cancelReason: CANCEL_REASONS.expired, closedAt: action.now, released: [...r.released, ...released] };
       }
-      if (r.status === "deal_achieved" && action.now >= r.acceptDeadline!) return resolveRound(r, restaurant, action.now);
-      if (r.confirmedAt !== undefined && !isTerminal(r.status)) {
+      if (r.status === "deal_achieved" && action.now >= r.acceptDeadline!) return resolveRound(r, restaurant, action.now, true);
+      if (r.confirmedAt !== undefined && ["confirmed", "preparing", "out_for_delivery"].includes(r.status)) {
         const elapsed = action.now - r.confirmedAt;
         const reached = DELIVERY_STAGES.filter((s) => elapsed >= s.afterMs).at(-1);
         if (reached && reached.status !== r.status) return { ...r, status: reached.status };
@@ -395,7 +541,42 @@ function newRequest(
     round: 1,
     removedUserIds: [],
     removedNames: [],
+    attempt: 1,
+    released: [],
   };
+}
+
+/**
+ * "Start a new party with your basket" for one person: a fresh party with only their basket, at the same
+ * restaurant and collection point. Nobody else is moved. Idempotent: a second click finds the entry already
+ * retried. Refused (state unchanged) if the restaurant already has an open party at that collection point
+ * (one party per restaurant per point), the duration isn't one of RETRY_DURATIONS, or none of the basket
+ * is still on the menu.
+ */
+function retryEntry(state: AppState, action: Extract<Action, { type: "RETRY_ENTRY" }>, catalog: Catalog): AppState {
+  const old = state.requests.find((r) => r.id === action.requestId);
+  const entry = releasedEntry(old, action.userId);
+  if (!old || !entry || entry.choice !== "pending" || state.requests.some((r) => r.id === action.newRequestId)) return state;
+  const restaurant = catalog.restaurants.find((x) => x.id === old.restaurantId);
+  if (!restaurant || !catalog.pickupPoints.some((p) => p.id === old.pickupPointId)) return state;
+  if (openPartyFor(state, old.restaurantId, old.pickupPointId)) return state;
+  if (!RETRY_DURATIONS.includes(action.durationMin)) return state;
+  const basket = entry.basket.filter((l) => restaurant.menu.some((m) => m.id === l.itemId));
+  if (basket.length === 0) return state;
+
+  const host: Participant = {
+    ...newParticipant({ userId: entry.userId, name: entry.name, isBot: entry.isBot }),
+    basket,
+    finalised: true,
+    cutlery: entry.cutlery,
+  };
+  const fresh = newRequest(action.newRequestId, old.restaurantId, old.pickupPointId, action.durationMin, host, action.now);
+  const retried = lockDealIfReached({ ...fresh, attempt: old.attempt + 1, retryOf: old.id }, restaurant, action.now);
+  const updatedOld: OrderRequest = {
+    ...old,
+    released: old.released.map((e) => (e.userId === action.userId ? { ...e, choice: "retried", retriedAs: action.newRequestId } : e)),
+  };
+  return { ...state, requests: [...state.requests.map((r) => (r.id === old.id ? updatedOld : r)), retried] };
 }
 
 function withoutDraft(state: AppState): AppState {
@@ -415,7 +596,7 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
       return { ...state, demo: { ...state.demo, ...action.patch } };
 
     case "CREATE_REQUEST": {
-      if (!restaurantOf(action.restaurantId) || openPartyFor(state, action.restaurantId)) return state;
+      if (!restaurantOf(action.restaurantId) || openPartyFor(state, action.restaurantId, action.pickupPointId)) return state;
       if (state.requests.some((r) => r.id === action.id)) return state;
       const host = newParticipant(action.user);
       const request = newRequest(action.id, action.restaurantId, action.pickupPointId, action.durationMin, host, action.now);
@@ -458,7 +639,7 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
       const draft = state.draft;
       const restaurant = draft && restaurantOf(draft.restaurantId);
       if (!draft || !restaurant || draft.basket.length === 0) return state;
-      if (openPartyFor(state, draft.restaurantId) || state.requests.some((r) => r.id === action.id)) return state;
+      if (openPartyFor(state, draft.restaurantId, draft.pickupPointId) || state.requests.some((r) => r.id === action.id)) return state;
       const host: Participant = { ...newParticipant(action.user), basket: draft.basket, finalised: true, cutlery: draft.cutlery };
       const request = lockDealIfReached(
         newRequest(action.id, draft.restaurantId, draft.pickupPointId, draft.durationMin, host, action.now),
@@ -468,8 +649,22 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
       return { ...withoutDraft(state), requests: [...state.requests, request] };
     }
 
+    case "RETRY_ENTRY":
+      return retryEntry(state, action, catalog);
+
     case "ADD_FRIEND":
       return state.friends.includes(action.userId) ? state : { ...state, friends: [...state.friends, action.userId] };
+
+    case "INVITE_FRIEND": {
+      // Only your friends, only while the party is filling, only if you're in it, and once per friend.
+      const r = state.requests.find((x) => x.id === action.requestId);
+      if (!r || r.status !== "open" || !state.friends.includes(action.friendId)) return state;
+      if (!r.participants.some((p) => p.userId === action.userId)) return state;
+      if (r.participants.some((p) => p.userId === action.friendId) || isInvited(r, action.friendId)) return state;
+      const invite = { userId: action.friendId, name: friendName(action.friendId), invitedBy: action.userId, at: action.now, status: "pending" as const };
+      const next = { ...r, invites: [...(r.invites ?? []), invite] };
+      return { ...state, requests: state.requests.map((x) => (x === r ? next : x)) };
+    }
 
     case "MARK_ALERT_SEEN":
       return state.seenAlerts.includes(action.key) ? state : { ...state, seenAlerts: [...state.seenAlerts, action.key] };
@@ -481,9 +676,12 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
       return unread.length ? { ...state, readNotifications: [...state.readNotifications, ...unread] } : state;
     }
 
-    case "SET_LOCATION":
+    case "SET_LOCATION": {
       if (state.location === action.pickupPointId || !catalog.pickupPoints.some((p) => p.id === action.pickupPointId)) return state;
-      return { ...state, location: action.pickupPointId };
+      // A draft collects where you are, so it moves with you.
+      const draft = state.draft && { ...state.draft, pickupPointId: action.pickupPointId };
+      return { ...state, location: action.pickupPointId, ...(draft && { draft }) };
+    }
 
     case "FILL_PARTY": {
       const target = state.requests.find((r) => r.id === action.requestId);
@@ -583,13 +781,13 @@ export function notificationsFor(state: AppState, catalog: Catalog = CATALOG, us
           at: r.confirmedAt + stageAfter("out_for_delivery"),
         });
       }
-      if (r.status === "delivered") {
+      if (r.status === "delivered" || r.status === "collected") {
         push({
           ...base,
           key: `${r.id}:ready`,
           kind: "ready",
           title: "Ready to collect",
-          body: `Collect from ${pickup?.name ?? "your collection point"} with PIN ${r.pin}.`,
+          body: `Collect from ${pickup?.name ?? "your collection point"} with PIN ${me.collectionCode}.`,
           at: r.confirmedAt + stageAfter("delivered"),
         });
       }
@@ -626,7 +824,7 @@ export function unreadCount(state: AppState, catalog: Catalog = CATALOG): number
   return notificationsFor(state, catalog).filter((n) => !state.readNotifications.includes(n.key)).length;
 }
 
-export type AlertKind = "filled" | "cancelled" | "expired";
+export type AlertKind = "filled" | "ready" | "cancelled" | "expired";
 
 export interface PartyAlert {
   /** Pass to MARK_ALERT_SEEN once shown. */
@@ -635,16 +833,31 @@ export interface PartyAlert {
   requestId: string;
 }
 
+function alertKindFor(r: OrderRequest, me: Participant): AlertKind | undefined {
+  switch (r.status) {
+    case "deal_achieved":
+      return "filled";
+    case "delivered":
+      return me.paid && me.collectedAt === undefined ? "ready" : undefined;
+    case "cancelled":
+    case "expired":
+      return r.status;
+    default:
+      return undefined;
+  }
+}
+
 /**
- * Global popups still to show, once per party: "Party filled!" while a party you're in
- * is in its acceptance round, and the cancelled / closed popup when one ends without an order.
+ * Global popups still to show, once per party: "Party filled!" while a party you're in is in its
+ * acceptance round, "Your food is ready!" once your paid order is delivered and you haven't collected it,
+ * and the cancelled / closed popup when one ends without an order.
  */
 export function pendingAlerts(state: AppState, userId = ME.userId): PartyAlert[] {
   const alerts: PartyAlert[] = [];
   for (const r of state.requests) {
-    if (!r.participants.some((p) => p.userId === userId)) continue;
-    const kind: AlertKind | undefined =
-      r.status === "deal_achieved" ? "filled" : r.status === "cancelled" ? "cancelled" : r.status === "expired" ? "expired" : undefined;
+    const me = r.participants.find((p) => p.userId === userId);
+    if (!me) continue;
+    const kind = alertKindFor(r, me);
     if (!kind) continue;
     const key = `${r.id}:${kind}`;
     if (!state.seenAlerts.includes(key)) alerts.push({ key, kind, requestId: r.id });

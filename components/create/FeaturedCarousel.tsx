@@ -5,25 +5,27 @@ import Link from "next/link";
 import { useReducedMotion } from "motion/react";
 import { useRef, useState, type MouseEvent } from "react";
 import { DealPill, IconButton, ImageFrame, Marquee, Rating, SectionHeader, cn } from "@/components/ui";
-import type { Restaurant } from "@/lib/types";
+import type { PickupPoint, Restaurant } from "@/lib/types";
 import { PartyOpenPill, etaLabel } from "./bits";
 
 /** Tiles in view on first paint (two whole tiles, inset by the gutter on both sides); their photos load first. */
 const PRIORITY_TILES = 2;
 
 export interface PartyMarker {
-  /** You are already a member of the open party. */
+  /** You are already a member of the open party at your location. */
   mine: boolean;
 }
 
 export interface FeaturedCarouselProps {
   restaurants: Restaurant[];
+  /** Your location: delivery times are measured to it. */
+  point: PickupPoint;
   partyAt: (restaurantId: string) => PartyMarker | undefined;
   onChoose: (event: MouseEvent<HTMLAnchorElement>, restaurantId: string) => void;
 }
 
 /** W6 "Featured": horizontal snap carousel of image tiles with the deal pill on the photo's bottom edge. */
-export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCarouselProps) {
+export function FeaturedCarousel({ restaurants, point, partyAt, onChoose }: FeaturedCarouselProps) {
   const trackRef = useRef<HTMLUListElement>(null);
   const [atEnd, setAtEnd] = useState(false);
   const reduce = useReducedMotion();
@@ -64,7 +66,7 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
             >
               <ArrowRight
                 aria-hidden
-                className={cn("transition-transform duration-300 ease-out", atEnd && "rotate-180")}
+                className={cn("transition-transform duration-200 ease-in-out motion-reduce:transition-none", atEnd && "rotate-180")}
               />
             </IconButton>
           ) : undefined
@@ -98,7 +100,7 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
                 <p className="flex flex-wrap items-center gap-x-1 text-meta text-ink-2">
                   <Rating value={r.rating} />
                   <span aria-hidden>·</span>
-                  <span className="tnum whitespace-nowrap">{etaLabel(r)}</span>
+                  <span className="tnum whitespace-nowrap">{etaLabel(r, point)}</span>
                 </p>
               </Link>
             </li>

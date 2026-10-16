@@ -14,14 +14,15 @@ export function CreateMenuRoute({ restaurantId }: { restaurantId: string }) {
   const router = useRouter();
   const { state, dispatch } = useApp();
   const restaurant = restaurantById(restaurantId);
-  const existingId = openPartyFor(state, restaurantId)?.id;
   const hasDraft = state.draft?.restaurantId === restaurantId;
+  // Arriving without a draft at a restaurant that already has a party at your location: send the host to it.
+  // Once a draft exists, a clash with its collection point is handled on "Create party" (W13).
+  const existingId = hasDraft ? undefined : openPartyFor(state, restaurantId, state.location)?.id;
   // A non-empty basket from another restaurant is only replaced once the host confirms.
   const otherRestaurant =
     state.draft && !hasDraft && state.draft.basket.length > 0 ? restaurantById(state.draft.restaurantId) : undefined;
   const otherDraft = otherRestaurant ? state.draft : undefined;
 
-  // One party per restaurant: if there already is one, send the host to it.
   useEffect(() => {
     if (existingId) router.replace(`/party/${existingId}`);
   }, [existingId, router]);

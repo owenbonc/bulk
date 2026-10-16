@@ -1,15 +1,7 @@
 import { Check, Tag } from "lucide-react";
 import { Marquee, Pill, cn } from "@/components/ui";
-import type { Restaurant } from "@/lib/types";
-
-/** Best deal first: biggest discount, then the lowest threshold to reach, then the nearest. */
-export function byBestDeal(a: Restaurant, b: Restaurant): number {
-  return (
-    b.deal.discountPct - a.deal.discountPct ||
-    a.deal.minTotal - b.deal.minTotal ||
-    a.distanceMiles - b.distanceMiles
-  );
-}
+import { deliveryEta, restaurantMiles } from "@/lib/geo";
+import type { PickupPoint, Restaurant } from "@/lib/types";
 
 /** Lower-case and accent-free, so "taqueria" finds "Taquería". */
 export function normalise(text: string): string {
@@ -23,9 +15,15 @@ export function matchesQuery(restaurant: Restaurant, query: string): boolean {
   return fields.some((field) => normalise(field).includes(query));
 }
 
-/** "25–35 min" */
-export function etaLabel(restaurant: Restaurant): string {
-  return `${restaurant.etaMin[0]}–${restaurant.etaMin[1]} min`;
+/** "18–28 min": the delivery window from the restaurant to a collection point. */
+export function etaLabel(restaurant: Restaurant, point: PickupPoint): string {
+  const [lo, hi] = deliveryEta(restaurant, point);
+  return `${lo}–${hi} min`;
+}
+
+/** "0.4 mi" from a collection point. */
+export function milesLabel(restaurant: Restaurant, point: PickupPoint): string {
+  return `${restaurantMiles(restaurant, point).toFixed(1)} mi`;
 }
 
 /** "£50" for whole pounds, "£42.50" otherwise. */
@@ -46,7 +44,7 @@ export function OfferLine({ restaurant, className }: { restaurant: Restaurant; c
 }
 
 /**
- * Marker for a restaurant that already has an open party, so the "already a party here" popup is never a
+ * Marker for a restaurant that already has an open party at your location, so the "already a party here" popup is never a
  * surprise: "Party open", or "You're in" (same pill as Home) when you are a member. `overlay` lifts it off
  * a photo with the floating shadow.
  */

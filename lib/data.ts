@@ -1,10 +1,11 @@
-import type { AppState, BasketLine, Catalog, OrderRequest, Participant } from "./types";
+import type { AppState, BasketLine, Catalog, DemoSettings, OrderRequest, Participant } from "./types";
 
 export const ME = { userId: "me", name: "You" };
 
 export const BOT_NAMES = [
   "Aisha", "Tom", "Priya", "Kwame", "Sophie", "Liam", "Mei", "Omar", "Hannah", "Jake",
-  "Zara", "Ben", "Yusuf", "Chloe", "Ravi", "Ella", "Noah", "Amara",
+  "Zara", "Ben", "Yusuf", "Chloe", "Ravi", "Ella", "Noah", "Amara", "Leo", "Maya", "Sam", "Ines",
+  "Kai", "Nina", "Dev", "Ruby", "Finn", "Lola",
 ];
 
 /** "Party lasts" options in the create flow, in minutes. */
@@ -17,9 +18,9 @@ export const DEFAULT_LOCATION = "student-centre";
 export const CATALOG: Catalog = {
   pickupPoints: [
     { id: "student-centre", name: "Student Centre", access: "Gordon Street doors, just inside by the bike racks", lat: 51.5249, lng: -0.1325 },
-    { id: "main-library", name: "Main Library", access: "Main entrance under the Wilkins Building portico, next to the porters' lodge", lat: 51.5246, lng: -0.134 },
-    { id: "ramsay-hall", name: "Ramsay Hall", access: "Reception desk, Maple Street entrance. Holds orders until 11pm", lat: 51.5226, lng: -0.1381 },
-    { id: "ioe-bedford-way", name: "IOE Bedford Way", access: "Up the Bedford Way steps, by the security desk on level 2", lat: 51.5228, lng: -0.1289 },
+    { id: "main-library", name: "Main Library", access: "Main entrance under the Wilkins Building portico, next to the porters' lodge", lat: 51.5246, lng: -0.1339 },
+    { id: "ramsay-hall", name: "Ramsay Hall", access: "Reception desk, Maple Street entrance. Holds orders until 11pm", lat: 51.5219, lng: -0.1398 },
+    { id: "ioe-bedford-way", name: "IOE Bedford Way", access: "Up the Bedford Way steps, by the security desk on level 2", lat: 51.5228, lng: -0.1281 },
   ],
   restaurants: [
     {
@@ -32,8 +33,9 @@ export const CATALOG: Catalog = {
       rating: 4.6,
       ratingCount: 412,
       ratingLabel: "Very good",
-      etaMin: [20, 30],
-      distanceMiles: 0.4,
+      lat: 51.5196,
+      lng: -0.1361,
+      prepMin: 15,
       featured: true,
       deliveryFee: 349,
       deal: { label: "20% off when the party spends £40", short: "20% off", minTotal: 4000, discountPct: 20 },
@@ -58,8 +60,9 @@ export const CATALOG: Catalog = {
       rating: 4.8,
       ratingCount: 586,
       ratingLabel: "Excellent",
-      etaMin: [25, 35],
-      distanceMiles: 0.3,
+      lat: 51.5205,
+      lng: -0.1306,
+      prepMin: 18,
       featured: true,
       deliveryFee: 299,
       deal: { label: "15% off when the party spends £35", short: "15% off", minTotal: 3500, discountPct: 15 },
@@ -85,8 +88,9 @@ export const CATALOG: Catalog = {
       rating: 4.5,
       ratingCount: 318,
       ratingLabel: "Very good",
-      etaMin: [15, 25],
-      distanceMiles: 0.6,
+      lat: 51.5316,
+      lng: -0.1233,
+      prepMin: 10,
       deliveryFee: 249,
       deal: { label: "15% off when the party spends £35", short: "15% off", minTotal: 3500, discountPct: 15 },
       menu: [
@@ -110,8 +114,9 @@ export const CATALOG: Catalog = {
       rating: 4.3,
       ratingCount: 147,
       ratingLabel: "Good",
-      etaMin: [30, 40],
-      distanceMiles: 0.7,
+      lat: 51.5272,
+      lng: -0.1368,
+      prepMin: 22,
       deliveryFee: 349,
       deal: { label: "25% off when the party spends £50", short: "25% off", minTotal: 5000, discountPct: 25 },
       menu: [
@@ -136,8 +141,9 @@ export const CATALOG: Catalog = {
       rating: 4.7,
       ratingCount: 268,
       ratingLabel: "Excellent",
-      etaMin: [15, 25],
-      distanceMiles: 0.2,
+      lat: 51.5207,
+      lng: -0.1345,
+      prepMin: 10,
       deliveryFee: 299,
       deal: { label: "20% off when the party spends £40", short: "20% off", minTotal: 4000, discountPct: 20 },
       menu: [
@@ -162,8 +168,9 @@ export const CATALOG: Catalog = {
       rating: 4.4,
       ratingCount: 231,
       ratingLabel: "Very good",
-      etaMin: [25, 35],
-      distanceMiles: 0.9,
+      lat: 51.5176,
+      lng: -0.1205,
+      prepMin: 16,
       deliveryFee: 329,
       deal: { label: "20% off when the party spends £45", short: "20% off", minTotal: 4500, discountPct: 20 },
       menu: [
@@ -188,8 +195,9 @@ export const CATALOG: Catalog = {
       rating: 4.2,
       ratingCount: 96,
       ratingLabel: "Good",
-      etaMin: [30, 40],
-      distanceMiles: 0.8,
+      lat: 51.5245,
+      lng: -0.1386,
+      prepMin: 20,
       deliveryFee: 399,
       deal: { label: "25% off when the party spends £55", short: "25% off", minTotal: 5500, discountPct: 25 },
       menu: [
@@ -213,8 +221,9 @@ export const CATALOG: Catalog = {
       rating: 4.6,
       ratingCount: 174,
       ratingLabel: "Very good",
-      etaMin: [20, 30],
-      distanceMiles: 0.5,
+      lat: 51.5226,
+      lng: -0.1242,
+      prepMin: 13,
       featured: true,
       deliveryFee: 299,
       deal: { label: "20% off when the party spends £40", short: "20% off", minTotal: 4000, discountPct: 20 },
@@ -239,8 +248,9 @@ export const CATALOG: Catalog = {
       rating: 4.7,
       ratingCount: 342,
       ratingLabel: "Excellent",
-      etaMin: [20, 30],
-      distanceMiles: 0.5,
+      lat: 51.5279,
+      lng: -0.1332,
+      prepMin: 15,
       deliveryFee: 349,
       deal: { label: "20% off when the party spends £45", short: "20% off", minTotal: 4500, discountPct: 20 },
       menu: [
@@ -263,8 +273,9 @@ export const CATALOG: Catalog = {
       rating: 4.5,
       ratingCount: 233,
       ratingLabel: "Very good",
-      etaMin: [25, 35],
-      distanceMiles: 0.8,
+      lat: 51.5302,
+      lng: -0.1196,
+      prepMin: 17,
       deliveryFee: 299,
       deal: { label: "15% off when the party spends £35", short: "15% off", minTotal: 3500, discountPct: 15 },
       menu: [
@@ -288,8 +299,9 @@ export const CATALOG: Catalog = {
       rating: 4.4,
       ratingCount: 189,
       ratingLabel: "Very good",
-      etaMin: [20, 30],
-      distanceMiles: 0.6,
+      lat: 51.5199,
+      lng: -0.1276,
+      prepMin: 14,
       deliveryFee: 329,
       deal: { label: "25% off when the party spends £50", short: "25% off", minTotal: 5000, discountPct: 25 },
       menu: [
@@ -313,8 +325,9 @@ export const CATALOG: Catalog = {
       rating: 4.2,
       ratingCount: 128,
       ratingLabel: "Good",
-      etaMin: [25, 35],
-      distanceMiles: 1.0,
+      lat: 51.5188,
+      lng: -0.1355,
+      prepMin: 17,
       deliveryFee: 279,
       deal: { label: "15% off when the party spends £40", short: "15% off", minTotal: 4000, discountPct: 15 },
       menu: [
@@ -346,7 +359,7 @@ function seedParty(
   participants: Participant[],
 ): OrderRequest {
   return {
-    id: `seed-${restaurantId}`,
+    id: `seed-${restaurantId}-${pickupPointId}`,
     restaurantId,
     pickupPointId,
     hostId: participants[0].userId,
@@ -357,46 +370,90 @@ function seedParty(
     round: 1,
     removedUserIds: [],
     removedNames: [],
+    attempt: 1,
+    released: [],
   };
 }
 
+/** Persisted-state version (see `AppState.version`). Bump when the saved shape changes. */
+export const STATE_VERSION = 4;
+
+export const DEFAULT_DEMO: DemoSettings = { botsPaused: false, botWontAccept: false, botDeclinesAgain: false, botSilent: false, myPaymentFails: false };
+
 /**
- * Initial demo state: six bot-hosted open parties (two at 75%+ for Highlights); Kumo Ramen, Levant Kitchen,
- * Hikari Sushi, Baan Thai, Seoul Bowl and Pasta Fresca are free for creating a party.
+ * Initial demo state: three bot-hosted open parties at every collection point, one of them a highlight (75%+),
+ * ids `seed-<restaurantId>-<pickupPointId>`. Slice House and Burger Yard run parties at two points each; Kumo
+ * Ramen only at Ramsay Hall, so it is free to host at the Student Centre; Baan Thai and Pasta Fresca have none.
  */
 export function seedState(now: number): AppState {
   return {
-    demo: { botsPaused: false, botWontAccept: false },
-    friends: [],
+    version: STATE_VERSION,
+    demo: DEFAULT_DEMO,
+    // Three demo friends (not in any seeded party) so "Invite friends" works from a fresh start.
+    friends: ["bot-chloe", "bot-maya", "bot-nina"],
     seenAlerts: [],
     readNotifications: [],
     location: DEFAULT_LOCATION,
     requests: [
+      // Student Centre
       // £28.00 / £35 → 80%
       seedParty("burger-yard", "student-centre", now, 6, 14, [
         bot("Aisha", [{ itemId: "by-classic", qty: 1 }, { itemId: "by-fries", qty: 1 }], true),
         bot("Tom", [{ itemId: "by-hot-chicken", qty: 1 }, { itemId: "by-cola", qty: 1 }]),
-      ]),
-      // £31.80 / £40 → 79%
-      seedParty("pono-poke", "main-library", now, 11, 9, [
-        bot("Priya", [{ itemId: "pp-salmon", qty: 1 }, { itemId: "pp-coconut", qty: 1 }]),
-        bot("Liam", [{ itemId: "pp-spicy-tuna", qty: 1 }], true),
-        bot("Mei", [{ itemId: "pp-wakame", qty: 1 }]),
       ]),
       // £27.25 / £40 → 68%
       seedParty("slice-house", "student-centre", now, 8, 22, [
         bot("Sophie", [{ itemId: "sh-margherita", qty: 1 }, { itemId: "sh-lemonade", qty: 1 }]),
         bot("Omar", [{ itemId: "sh-pepperoni", qty: 1 }], true),
       ]),
+      // £13.75 / £40 → 34%
+      seedParty("levant-kitchen", "student-centre", now, 3, 41, [
+        bot("Leo", [{ itemId: "lk-falafel", qty: 1 }, { itemId: "lk-mint-lemonade", qty: 1 }]),
+      ]),
+
+      // Main Library
+      // £31.80 / £40 → 79%
+      seedParty("pono-poke", "main-library", now, 11, 8, [
+        bot("Priya", [{ itemId: "pp-salmon", qty: 1 }, { itemId: "pp-coconut", qty: 1 }]),
+        bot("Liam", [{ itemId: "pp-spicy-tuna", qty: 1 }], true),
+        bot("Mei", [{ itemId: "pp-wakame", qty: 1 }]),
+      ]),
       // £31.95 / £55 → 58%
       seedParty("golden-lantern", "main-library", now, 4, 38, [
         bot("Zara", [{ itemId: "gl-kung-pao", qty: 1 }, { itemId: "gl-egg-rice", qty: 1 }], true),
         bot("Ben", [{ itemId: "gl-char-siu", qty: 1 }, { itemId: "gl-dumplings", qty: 1 }]),
       ]),
+      // £14.45 / £45 → 32%
+      seedParty("hikari-sushi", "main-library", now, 5, 27, [
+        bot("Ravi", [{ itemId: "hs-salmon-nigiri", qty: 1 }, { itemId: "hs-takoyaki", qty: 1 }], true),
+      ]),
+
+      // Ramsay Hall
+      // £30.50 / £35 → 87%
+      seedParty("kumo-ramen", "ramsay-hall", now, 9, 17, [
+        bot("Yusuf", [{ itemId: "kr-tonkotsu", qty: 1 }, { itemId: "kr-edamame", qty: 1 }]),
+        bot("Ella", [{ itemId: "kr-miso", qty: 1 }], true),
+      ]),
       // £27.50 / £50 → 55%
       seedParty("masala-lane", "ramsay-hall", now, 3, 31, [
         bot("Hannah", [{ itemId: "ml-butter-chicken", qty: 1 }, { itemId: "ml-naan", qty: 1 }]),
         bot("Jake", [{ itemId: "ml-biryani", qty: 1 }], true),
+      ]),
+      // £14.50 / £40 → 36%
+      seedParty("slice-house", "ramsay-hall", now, 2, 48, [
+        bot("Noah", [{ itemId: "sh-nduja", qty: 1 }]),
+      ]),
+
+      // IOE Bedford Way
+      // £39.65 / £50 → 79%
+      seedParty("seoul-bowl", "ioe-bedford-way", now, 7, 12, [
+        bot("Amara", [{ itemId: "sb-bibimbap", qty: 1 }, { itemId: "sb-banana-milk", qty: 1 }]),
+        bot("Sam", [{ itemId: "sb-fried-chicken", qty: 1 }], true),
+        bot("Ines", [{ itemId: "sb-tteokbokki", qty: 1 }, { itemId: "sb-japchae", qty: 1 }]),
+      ]),
+      // £17.75 / £35 → 51%
+      seedParty("burger-yard", "ioe-bedford-way", now, 4, 35, [
+        bot("Kai", [{ itemId: "by-bacon-jam", qty: 1 }, { itemId: "by-shake", qty: 1 }]),
       ]),
       // £15.00 / £45 → 33%
       seedParty("taqueria-verde", "ioe-bedford-way", now, 2, 46, [

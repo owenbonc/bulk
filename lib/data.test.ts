@@ -53,6 +53,13 @@ describe("catalog", () => {
       "IOE Bedford Way",
     ]);
     expect(CATALOG.pickupPoints.every((p) => p.access.length > 0)).toBe(true);
+    // Around UCL, Bloomsbury.
+    for (const p of [...CATALOG.pickupPoints, ...CATALOG.restaurants]) {
+      expect(p.lat).toBeGreaterThan(51.51);
+      expect(p.lat).toBeLessThan(51.54);
+      expect(p.lng).toBeGreaterThan(-0.15);
+      expect(p.lng).toBeLessThan(-0.11);
+    }
     expect(DEFAULT_LOCATION).toBe(CATALOG.pickupPoints[0].id);
   });
 });
@@ -68,16 +75,38 @@ describe("seedState", () => {
     }
   });
 
-  it("seeds 6 parties at distinct restaurants, leaving 6 restaurants without one", () => {
-    const ids = seedState(0).requests.map((r) => r.restaurantId);
-    expect(ids).toHaveLength(6);
-    expect(new Set(ids).size).toBe(6);
-    expect(CATALOG.restaurants.filter((r) => !ids.includes(r.id))).toHaveLength(6);
+  it("seeds 2–4 parties at every collection point with readable ids", () => {
+    const requests = seedState(0).requests;
+    for (const point of CATALOG.pickupPoints) {
+      const n = requests.filter((r) => r.pickupPointId === point.id).length;
+      expect(n).toBeGreaterThanOrEqual(2);
+      expect(n).toBeLessThanOrEqual(4);
+    }
+    for (const r of requests) expect(r.id).toBe(`seed-${r.restaurantId}-${r.pickupPointId}`);
+    expect(new Set(requests.map((r) => r.id)).size).toBe(requests.length);
   });
 
-  it("starts at the Student Centre with nothing seen, read or drafted", () => {
+  it("keeps the demo restaurants: Burger Yard open at the Student Centre, Kumo Ramen free there but open elsewhere", () => {
+    const requests = seedState(0).requests;
+    const at = (restaurantId: string, pickupPointId: string) =>
+      requests.some((r) => r.restaurantId === restaurantId && r.pickupPointId === pickupPointId);
+    expect(at("burger-yard", "student-centre")).toBe(true);
+    expect(at("kumo-ramen", "student-centre")).toBe(false);
+    expect(requests.some((r) => r.restaurantId === "kumo-ramen")).toBe(true);
+    expect(CATALOG.restaurants.filter((r) => !requests.some((x) => x.restaurantId === r.id)).length).toBeGreaterThan(0);
+  });
+
+  it("bot names are unique across the seed", () => {
+    const names = seedState(0).requests.flatMap((r) => r.participants.map((p) => p.name));
+    expect(new Set(names).size).toBe(names.length);
+  });
+
+  it("starts at the Student Centre with nothing seen, read or drafted, and three demo friends to invite", () => {
     const s = seedState(0);
-    expect(s).toMatchObject({ location: "student-centre", friends: [], seenAlerts: [], readNotifications: [] });
+    expect(s).toMatchObject({ location: "student-centre", seenAlerts: [], readNotifications: [] });
+    expect(s.friends).toEqual(["bot-chloe", "bot-maya", "bot-nina"]);
+    // The demo friends aren't already in a seeded party.
+    expect(s.requests.flatMap((r) => r.participants).some((p) => s.friends.includes(p.userId))).toBe(false);
     expect(s.draft).toBeUndefined();
   });
 });

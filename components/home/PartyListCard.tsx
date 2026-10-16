@@ -7,7 +7,7 @@ import { Avatar, Countdown, DealPill, ImageFrame, Marquee, Pill, ProgressPie, Ra
 import { ME } from "@/lib/data";
 import { DELIVERY_STEPS } from "@/lib/requests";
 import { useApp } from "@/lib/store";
-import { Eta } from "./parts";
+import { Eta, PartyPlaceLine, placeText } from "./parts";
 import type { HomeParty } from "./useHomeParties";
 
 /** Your parties open on their status page; any other party opens on its menu to join. */
@@ -27,14 +27,15 @@ const MAX_FACES = 3;
 /**
  * "Other parties" card (wireframe 1): image left (with "You're in" on it when you're in the party); timer,
  * people and the red deal pill stacked in the right column, so cards stack with even gaps; name, rating and
- * delivery time below with the progress on the right. `priority` loads the image eagerly (the first cards
+ * delivery time to its collection point below, then where it collects ("Here" or "5 min walk"), with the
+ * progress on the right. `priority` loads the image eagerly (the first cards
  * in the list).
  */
 export function PartyListCard({ party, priority = false }: { party: HomeParty; priority?: boolean }) {
   const { now } = useApp();
   const nameId = useId();
   const descId = useId();
-  const { request, restaurant, progress, me } = party;
+  const { request, restaurant, progress, place, me, contribution } = party;
   const open = request.status === "open";
   const people = request.participants;
   const faces = [...people].sort((a, b) => Number(b.userId === ME.userId) - Number(a.userId === ME.userId)).slice(0, MAX_FACES);
@@ -42,6 +43,7 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
     restaurant.deal.short,
     open ? `${formatPrice(progress.left, { trim: true })} left` : stageLabel(party),
     `${people.length} in party`,
+    placeText(place),
     me ? "you're in" : null,
     open ? `closes in ${Math.max(1, Math.ceil((request.expiresAt - now) / 60_000))} min` : null,
   ]
@@ -103,8 +105,9 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
             <span aria-hidden className="text-meta text-ink-2">
               ·
             </span>
-            <Eta restaurant={restaurant} />
+            {place.point && <Eta restaurant={restaurant} point={place.point} />}
           </p>
+          <PartyPlaceLine place={place} className="mt-0.5" />
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <span className="tnum text-body text-ink-2">
@@ -115,6 +118,7 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
           <ProgressPie
             value={progress.total}
             max={progress.target}
+            contribution={contribution || undefined}
             size={32}
             label={`${progress.pct}% of the way to ${restaurant.deal.short}`}
           />
