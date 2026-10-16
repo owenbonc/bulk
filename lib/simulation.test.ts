@@ -107,8 +107,8 @@ describe("botAcceptActions", () => {
   });
 
   it("bots also accept in parties you're not in", () => {
-    const s = run(seedState(T0), [{ type: "FILL_PARTY", requestId: "seed-burger-yard", now: T0 }]);
-    expect(party(respond(s, 1), "seed-burger-yard").status).toBe("confirmed");
+    const s = run(seedState(T0), [{ type: "FILL_PARTY", requestId: "seed-burger-yard-student-centre", now: T0 }]);
+    expect(party(respond(s, 1), "seed-burger-yard-student-centre").status).toBe("confirmed");
   });
 
   it("with 'a bot won't accept' on, exactly one bot declines in round 1 and round 2 succeeds", () => {
@@ -194,7 +194,7 @@ describe("end-to-end demo runs", () => {
     for (let seed = 0; seed < 120; seed++) {
       const rand = mulberry32(seed);
       const botWontAccept = seed % 2 === 1;
-      const restaurant = ["kumo-ramen", "levant-kitchen"][seed % 4 < 2 ? 0 : 1];
+      const restaurant = ["kumo-ramen", "baan-thai"][seed % 4 < 2 ? 0 : 1];
       const menu = CATALOG.restaurants.find((r) => r.id === restaurant)!.menu;
       let s: AppState = { ...seedState(T0), demo: { botsPaused: false, botWontAccept } };
       s = run(s, [

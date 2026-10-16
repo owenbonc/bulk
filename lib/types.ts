@@ -43,9 +43,11 @@ export interface Restaurant {
   ratingCount: number;
   /** "Excellent" | "Very good" | "Good" */
   ratingLabel: string;
-  /** Estimated delivery window in minutes, e.g. [25, 35]. */
-  etaMin: [number, number];
-  distanceMiles: number;
+  /** Where the kitchen is; distance and delivery estimate are measured from here (see `lib/geo.ts`). */
+  lat: number;
+  lng: number;
+  /** Minutes from order to food leaving the kitchen; the ride to the collection point is added on top. */
+  prepMin: number;
   featured?: boolean;
 }
 
@@ -54,8 +56,8 @@ export interface PickupPoint {
   name: string;
   /** Where exactly to wait, e.g. "Inside the main doors, by the post room". */
   access: string;
-  lat?: number;
-  lng?: number;
+  lat: number;
+  lng: number;
 }
 
 export interface Catalog {

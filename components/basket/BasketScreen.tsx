@@ -3,7 +3,8 @@
 import { ArrowLeft, Timer, UsersRound, UtensilsCrossed, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Button, Countdown, Divider, IconButton, Switch, TopBar, toast } from "@/components/ui";
+import { PartyExistsPopup } from "@/components/create/PartyExistsPopup";
+import { Button, Countdown, Divider, IconButton, Switch, TopBar } from "@/components/ui";
 import { DEFAULT_DURATION_MIN, ME } from "@/lib/data";
 import type { Preview } from "@/lib/requests";
 import {
@@ -124,13 +125,16 @@ function HostBasket({ restaurantId }: { restaurantId: string }) {
   const restaurant = restaurantById(restaurantId);
 
   const draft = state.draft?.restaurantId === restaurantId ? state.draft : undefined;
-  const existing = openPartyFor(state, restaurantId);
-  const hosting = existing && myEntry(existing) ? existing : undefined;
+  // One party per restaurant per collection point: the party already collecting where this draft would.
+  const existing = openPartyFor(state, restaurantId, draft?.pickupPointId ?? state.location);
+  const hosting = !draft && existing && myEntry(existing) ? existing : undefined;
 
   const submitted = useRef(false);
   const [busy, setBusy] = useState(false);
+  const [clash, setClash] = useState<{ open: boolean; partyId?: string }>({ open: false });
 
-  // Already in the party here: go to it. Otherwise make sure there is a draft to edit.
+  // No draft and already in the party here (e.g. back from its status page): go to it. Otherwise make sure
+  // there is a draft to edit.
   useEffect(() => {
     if (submitted.current || !restaurant) return;
     if (hosting) router.replace(`/party/${hosting.id}/status`);
@@ -153,10 +157,10 @@ function HostBasket({ restaurantId }: { restaurantId: string }) {
 
   const create = () => {
     if (!draft || draft.basket.length === 0) return;
-    // One party per restaurant: if one opened while you were choosing, join that instead.
+    // The collection point already has a party here (it opened while you were choosing, or you picked that
+    // point in the settings): offer it instead (W13).
     if (existing) {
-      toast(`There's already a party at ${restaurant.name}`, { description: "Join it instead and share the deal." });
-      router.push(`/party/${existing.id}`);
+      setClash({ open: true, partyId: existing.id });
       return;
     }
     askNotificationPermission();
@@ -168,29 +172,32 @@ function HostBasket({ restaurantId }: { restaurantId: string }) {
   };
 
   return (
-    <BasketLayout
-      restaurant={restaurant}
-      pickup={pickupById(view.pickupPointId)}
-      partyIcon={<Timer aria-hidden />}
-      partyLine={
-        <>
-          Party lasts <span className="tnum">{view.durationMin}</span> min
-        </>
-      }
-      basket={view.basket}
-      preview={preview}
-      locked={busy}
-      onAdd={(itemId) => dispatch({ type: "DRAFT_ITEM", itemId, delta: 1 })}
-      onRemove={(itemId) => dispatch({ type: "DRAFT_ITEM", itemId, delta: -1 })}
-      menuHref={`/create/${restaurantId}`}
-      cutlery={view.cutlery}
-      cutleryDisabled={!draft}
-      onCutlery={(cutlery) => dispatch({ type: "DRAFT_SET", cutlery })}
-      ctaLabel="Create party"
-      ctaEmptyLabel="Add something to create a party"
-      busy={busy}
-      onSubmit={create}
-    />
+    <>
+      <BasketLayout
+        restaurant={restaurant}
+        pickup={pickupById(view.pickupPointId)}
+        partyIcon={<Timer aria-hidden />}
+        partyLine={
+          <>
+            Party lasts <span className="tnum">{view.durationMin}</span> min
+          </>
+        }
+        basket={view.basket}
+        preview={preview}
+        locked={busy}
+        onAdd={(itemId) => dispatch({ type: "DRAFT_ITEM", itemId, delta: 1 })}
+        onRemove={(itemId) => dispatch({ type: "DRAFT_ITEM", itemId, delta: -1 })}
+        menuHref={`/create/${restaurantId}`}
+        cutlery={view.cutlery}
+        cutleryDisabled={!draft}
+        onCutlery={(cutlery) => dispatch({ type: "DRAFT_SET", cutlery })}
+        ctaLabel="Create party"
+        ctaEmptyLabel="Add something to create a party"
+        busy={busy}
+        onSubmit={create}
+      />
+      <PartyExistsPopup open={clash.open} partyId={clash.partyId} onOpenChange={(open) => setClash((c) => ({ ...c, open }))} />
+    </>
   );
 }
 

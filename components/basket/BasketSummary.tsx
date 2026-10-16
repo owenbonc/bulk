@@ -1,6 +1,7 @@
 import { Clock, MapPin } from "lucide-react";
 import type { ReactNode } from "react";
 import { DealPill, LegendDot, Marquee, ProgressPie, cn, formatPrice } from "@/components/ui";
+import { deliveryEta } from "@/lib/geo";
 import type { Preview } from "@/lib/requests";
 import type { PickupPoint, Restaurant } from "@/lib/types";
 
@@ -19,7 +20,7 @@ export interface BasketSummaryProps {
  * behind a hairline. In a narrow container the deal block stacks below the facts.
  */
 export function BasketSummary({ restaurant, pickup, partyIcon, partyLine, preview }: BasketSummaryProps) {
-  const [lo, hi] = restaurant.etaMin;
+  const [lo, hi] = pickup ? deliveryEta(restaurant, pickup) : [restaurant.prepMin, restaurant.prepMin + 10];
 
   return (
     <section aria-label="Order summary" className="@container">
