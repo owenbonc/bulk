@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG, DEFAULT_DEMO, DEFAULT_LOCATION, ME, seedState, STATE_VERSION } from "./data";
 import { CANCEL_REASONS, type Action, queueTotal, reduce, stubbornBot } from "./requests";
-import { botAcceptActions, botJoinActions, botTarget } from "./simulation";
+import { INVITE_ACCEPT_MS, botAcceptActions, botJoinActions, botTarget, friendJoinActions } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
 const T0 = 1_000_000;
@@ -224,5 +224,29 @@ describe("end-to-end demo runs", () => {
       ]);
       expectDemoOutcome(party(playOut(s, id, rand), id), botWontAccept, `seed ${seed}`);
     }
+  });
+});
+
+describe("friendJoinActions", () => {
+  function invited(demo: Partial<AppState["demo"]> = {}) {
+    const s = { ...withMyParty(true, demo), friends: ["bot-chloe"] };
+    return run(s, [{ type: "INVITE_FRIEND", requestId: "r1", userId: ME.userId, friendId: "bot-chloe", now: T0 }]);
+  }
+
+  it("an invited friend joins a few seconds later with a finalised basket, even with bots paused", () => {
+    const s = invited({ botsPaused: true });
+    expect(friendJoinActions(s, T0 + 1000, always)).toEqual([]);
+    const after = run(s, friendJoinActions(s, T0 + INVITE_ACCEPT_MS, always));
+    const chloe = party(after).participants.find((p) => p.userId === "bot-chloe")!;
+    expect(chloe).toMatchObject({ name: "Chloe", finalised: true });
+    expect(chloe.basket.length).toBeGreaterThan(0);
+    expect(party(after).invites?.[0].status).toBe("joined");
+    // Nothing more to do once they've joined.
+    expect(friendJoinActions(after, T0 + INVITE_ACCEPT_MS + 1000, always)).toEqual([]);
+  });
+
+  it("does nothing once the party has stopped filling", () => {
+    const s = run(invited(), [{ type: "TICK", now: T0 + 15 * 60_000 }]);
+    expect(friendJoinActions(s, T0 + 15 * 60_000, always)).toEqual([]);
   });
 });

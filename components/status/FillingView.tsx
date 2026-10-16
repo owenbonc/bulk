@@ -1,6 +1,6 @@
 "use client";
 
-import { BellRing, House, LogOut, MapPin, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { BellRing, House, LogOut, MapPin, ShoppingBag, UserPlus, UtensilsCrossed } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { ME } from "@/lib/data";
 import { basketTotal } from "@/lib/split";
 import { previewSplit, progressOf, useApp } from "@/lib/store";
 import type { OrderRequest, PickupPoint, Restaurant } from "@/lib/types";
+import { InviteSheet } from "./InviteSheet";
 import { MemberList } from "./MemberList";
 import { OrderSummary } from "./OrderSummary";
 import { PartySection } from "./PartySection";
@@ -24,6 +25,7 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
   const { now, dispatch } = useApp();
   const router = useRouter();
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const me = request.participants.find((p) => p.userId === ME.userId);
 
   const leave = () => {
@@ -79,6 +81,11 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
           </div>
 
           <NotifyCaption />
+          {me && (
+            <Button variant="secondary" size="sm" icon={<UserPlus />} className="self-start" onClick={() => setInviteOpen(true)}>
+              Invite friends
+            </Button>
+          )}
         </section>
 
         <section aria-labelledby="order-title" className="flex flex-col gap-group">
@@ -124,6 +131,8 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
           </Button>
         )}
       </BottomBar>
+
+      <InviteSheet open={inviteOpen} onOpenChange={setInviteOpen} request={request} restaurant={restaurant} />
 
       <Popup
         open={confirmLeave}

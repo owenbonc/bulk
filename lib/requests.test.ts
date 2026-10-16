@@ -857,3 +857,30 @@ describe("collection handover", () => {
     expect(req(run(s, { type: "TICK", now: T0 + 999_000 })).status).toBe("collected");
   });
 });
+
+describe("invite friends", () => {
+  const invite = (friendId: string, userId = "me", now = T0 + 500): Action => ({ type: "INVITE_FRIEND", requestId: "r1", userId, friendId, now });
+  const withFriends = (s: AppState): AppState => ({ ...s, friends: ["bot-chloe", "bot-ravi"] });
+
+  it("invites a friend to a filling party you're in, once", () => {
+    const s = run(withFriends(run(emptyState(), create)), invite("bot-chloe"), invite("bot-chloe"));
+    expect(req(s).invites).toEqual([{ userId: "bot-chloe", name: "Chloe", invitedBy: "me", at: T0 + 500, status: "pending" }]);
+  });
+
+  it("only friends, only while filling, only from someone in the party, never someone already in it", () => {
+    const base = withFriends(run(emptyState(), create, { type: "JOIN", requestId: "r1", user: { userId: "bot-ravi", name: "Ravi", isBot: true } }));
+    expect(req(run(base, invite("bot-stranger"))).invites).toBeUndefined();
+    expect(req(run(base, invite("bot-ravi"))).invites).toBeUndefined();
+    expect(req(run(base, invite("bot-chloe", "bot-nobody"))).invites).toBeUndefined();
+    expect(req(run(withFriends(dealState()), invite("bot-chloe"))).invites).toBeUndefined();
+  });
+
+  it("joining settles the invite", () => {
+    const s = run(withFriends(run(emptyState(), create)), invite("bot-chloe"), { type: "JOIN", requestId: "r1", user: { userId: "bot-chloe", name: "Chloe", isBot: true } });
+    expect(req(s).invites?.[0].status).toBe("joined");
+  });
+
+  it("the seed gives you three friends to invite", () => {
+    expect(seedState(T0).friends).toHaveLength(3);
+  });
+});

@@ -375,7 +375,8 @@ export function seedState(now: number): AppState {
   return {
     version: STATE_VERSION,
     demo: DEFAULT_DEMO,
-    friends: [],
+    // Three demo friends (not in any seeded party) so "Invite friends" works from a fresh start.
+    friends: ["bot-chloe", "bot-ravi", "bot-ella"],
     seenAlerts: [],
     readNotifications: [],
     location: DEFAULT_LOCATION,

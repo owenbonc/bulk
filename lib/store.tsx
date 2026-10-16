@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useReducer, useRef, 
 import { Logo } from "@/components/brand/Logo";
 import { CATALOG, ME, seedState, STATE_VERSION } from "./data";
 import { type Action, isTerminal, notificationsFor, pendingAlerts, reduce, releasedEntry } from "./requests";
-import { botAcceptActions, botJoinActions, botTarget } from "./simulation";
+import { botAcceptActions, botJoinActions, botTarget, friendJoinActions } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
 export {
@@ -133,6 +133,7 @@ function ClientProvider({ children }: { children: ReactNode }) {
         }
       }
       botAcceptActions(s, t, Math.random).forEach(rawDispatch);
+      friendJoinActions(s, t, Math.random).forEach(rawDispatch);
     }, HEARTBEAT_MS);
     return () => window.clearInterval(id);
   }, []);

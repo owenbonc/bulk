@@ -1,5 +1,5 @@
 import { CATALOG, ME } from "./data";
-import { type Action, botId, freeBotName, shapeBotBasket, stubbornBot } from "./requests";
+import { type Action, botId, freeBotName, pendingInvites, shapeBotBasket, stubbornBot } from "./requests";
 import type { AppState, BasketLine, OrderRequest } from "./types";
 
 /** Chance per second that each waiting bot responds once the deal is reached. */
@@ -45,6 +45,35 @@ export function botJoinActions(state: AppState, now: number, rand: () => number)
     ),
     { type: "FINALISE_ENTRY", requestId: r.id, userId: user.userId, now },
   ];
+}
+
+/** How long an invited (simulated) friend takes to accept and join. */
+export const INVITE_ACCEPT_MS = 4_000;
+
+/**
+ * Invited friends accept a few seconds after the invite: they join the party, pick a main and maybe a
+ * side or drink, and finalise. Unlike strangers this happens even with bots paused, because you asked
+ * them to come. Nothing happens once the party has stopped filling.
+ */
+export function friendJoinActions(state: AppState, now: number, rand: () => number): Action[] {
+  const actions: Action[] = [];
+  for (const r of state.requests) {
+    const restaurant = restaurantOf(r);
+    if (r.status !== "open" || !restaurant) continue;
+    for (const invite of pendingInvites(r)) {
+      if (now < invite.at + INVITE_ACCEPT_MS) continue;
+      const mains = restaurant.menu.filter((m) => m.category === "main");
+      const extras = restaurant.menu.filter((m) => m.category !== "main");
+      const items = [mains[Math.floor(rand() * mains.length)].id];
+      if (extras.length && rand() < 0.5) items.push(extras[Math.floor(rand() * extras.length)].id);
+      actions.push(
+        { type: "JOIN", requestId: r.id, user: { userId: invite.userId, name: invite.name, isBot: true } },
+        ...items.map((itemId): Action => ({ type: "ADD_ITEM", requestId: r.id, userId: invite.userId, itemId })),
+        { type: "FINALISE_ENTRY", requestId: r.id, userId: invite.userId, now },
+      );
+    }
+  }
+  return actions;
 }
 
 /**
