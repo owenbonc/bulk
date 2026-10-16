@@ -1,3 +1,4 @@
+import { DealRow, estimateNote } from "@/components/shared/DealRow";
 import { Divider, Price, SummaryRow, formatPrice } from "@/components/ui";
 import type { CostLine } from "@/lib/split";
 import type { BasketLine, Restaurant } from "@/lib/types";
@@ -5,16 +6,18 @@ import type { BasketLine, Restaurant } from "@/lib/types";
 export interface OrderSummaryProps {
   restaurant: Restaurant;
   basket: BasketLine[];
-  /** Your share of the party's cost. */
-  cost: CostLine;
+  /** Your share of the party's cost. A preview also says whether the deal applies yet and how far off it is. */
+  cost: CostLine & { discountEligible?: boolean; progress?: { left: number } };
   /** Finalised members sharing the delivery fee. */
   members: number;
   /** estimate: projected while filling · exact: during the acceptance round · paid: after payment. */
   mode: "estimate" | "exact" | "paid";
+  /** Paid mode: say what the deal saved you under "You paid". Off where the screen already says it. */
+  savedHint?: boolean;
 }
 
 /** Your items and what you pay: the open "Order" rows on the status page, grouped by hairline dividers. */
-export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderSummaryProps) {
+export function OrderSummary({ restaurant, basket, cost, members, mode, savedHint = true }: OrderSummaryProps) {
   const lines = basket.flatMap((line) => {
     const item = restaurant.menu.find((m) => m.id === line.itemId);
     return item ? [{ ...line, item }] : [];
@@ -35,7 +38,7 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
         <SummaryRow
           label="You paid"
           value={<Price pence={cost.total} />}
-          hint={cost.discount > 0 ? `You saved ${formatPrice(cost.discount)} with the deal` : undefined}
+          hint={savedHint && cost.discount > 0 ? `You saved ${formatPrice(cost.discount)} with the deal` : undefined}
           strong
         />
       </div>
@@ -43,6 +46,9 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
   }
 
   const estimate = mode === "estimate";
+  // A preview says whether the deal applies yet; an exact quote always has it.
+  const eligible = cost.discountEligible !== false;
+  const subtotal = lines.reduce((sum, l) => sum + l.item.price * l.qty, 0);
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col gap-2">
@@ -56,12 +62,11 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
       </ul>
       <Divider />
       <div className="flex flex-col gap-2">
-        <SummaryRow
-          label={`Group deal (${restaurant.deal.short})`}
-          hint={estimate ? "when the party fills" : undefined}
-          value={<Price pence={cost.discount} negative />}
-          tone="accent"
-        />
+        {estimate ? (
+          <DealRow restaurant={restaurant} subtotal={subtotal} discount={cost.discount} eligible={eligible} left={cost.progress?.left ?? 0} />
+        ) : (
+          <SummaryRow label={`Group deal (${restaurant.deal.short})`} value={<Price pence={cost.discount} negative />} tone="accent" />
+        )}
         <SummaryRow
           label="Delivery share"
           hint={
@@ -78,7 +83,7 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
       </div>
       <Divider />
       <SummaryRow label={estimate ? "Estimated total" : "Total"} value={<Price pence={cost.total} />} strong />
-      {estimate && <p className="-mt-1 text-meta text-ink-3">Final total is confirmed when the party fills.</p>}
+      {estimate && <p className="-mt-1 text-meta text-ink-3">{estimateNote(eligible)}</p>}
     </div>
   );
 }

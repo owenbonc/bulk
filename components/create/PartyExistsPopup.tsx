@@ -1,9 +1,10 @@
 "use client";
 
-import { Button, Countdown, LegendDot, Popup, ProgressBar, formatPrice } from "@/components/ui";
+import { MapPin } from "lucide-react";
+import { Button, Countdown, LegendDot, Marquee, Popup, ProgressBar, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { basketTotal } from "@/lib/requests";
-import { progressOf, restaurantById, useApp } from "@/lib/store";
+import { pickupById, progressOf, restaurantById, useApp } from "@/lib/store";
 
 /** A bold "!" in a lucide-style rounded stroke, matching the other popup illustrations. */
 function Exclamation() {
@@ -18,11 +19,14 @@ function Exclamation() {
 export interface PartyExistsPopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The open party at the restaurant you tapped. Kept while the popup animates out. */
+  /** The open party at the restaurant you tapped, at the collection point you'd create at. Kept while the popup animates out. */
   partyId?: string;
 }
 
-/** W13: the restaurant already has an open party (one per restaurant), so point to it instead of creating one. */
+/**
+ * W13: the restaurant already has an open party at this collection point (one per restaurant per point), so
+ * point to it instead of creating one.
+ */
 export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPopupProps) {
   const { state, now } = useApp();
   const party = partyId ? state.requests.find((r) => r.id === partyId) : undefined;
@@ -37,11 +41,12 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
   const mine = Boolean(me);
   // Your basket's share of the progress, once it counts toward the deal.
   const contribution = me?.finalised ? Math.min(basketTotal(me.basket, restaurant), progress.total) : 0;
-  const hosting = party.hostId === ME.userId;
+  const hosting = mine && party.hostId === ME.userId;
   const host = party.participants.find((p) => p.userId === party.hostId)?.name;
   const people = party.participants.length;
   const isOpen = party.status === "open";
   const left = formatPrice(progress.left, { trim: true });
+  const pickup = pickupById(party.pickupPointId);
 
   const title = hosting ? "You're already hosting here" : mine ? "You're already in this party" : "There's already a party here";
   const reachable = isOpen && progress.left > 0;
@@ -88,6 +93,12 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
       }
     >
       <div className="rounded-card bg-surface-2 p-card text-left">
+        {pickup && (
+          <p className="mb-2 flex min-w-0 items-center gap-1 text-meta text-ink-2">
+            <MapPin aria-hidden className="size-3.5 shrink-0 text-accent-ink" />
+            <Marquee>Collect from {pickup.name}</Marquee>
+          </p>
+        )}
         <div className="flex items-baseline justify-between gap-3 text-meta">
           <span className="tnum font-semibold text-ink">
             {formatPrice(progress.total, { trim: true })} / {formatPrice(progress.target, { trim: true })}

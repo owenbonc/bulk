@@ -1,10 +1,36 @@
 "use client";
 
 import { Check, ChevronDown, LocateFixed, MapPin } from "lucide-react";
-import { useRef, useState } from "react";
-import { Marquee, Sheet, cn } from "@/components/ui";
+import { useEffect, useRef, useState } from "react";
+import { Marquee, Sheet, cn, scrollRootTo } from "@/components/ui";
 import { CATALOG } from "@/lib/data";
-import { pickupById, useApp } from "@/lib/store";
+import { partiesNear, pickupById, useApp } from "@/lib/store";
+
+/**
+ * After you switch location (not on mount): jumps the screen back to the top, so the new set of parties or
+ * restaurants starts from its first row, and calls `onSwitch` with the new collection point id. The jump is
+ * instant (it happens under the closing sheet's scrim), so the screen's own fade or row glide is the only motion.
+ */
+export function useLocationSwitch(onSwitch?: (pickupPointId: string) => void) {
+  const { state } = useApp();
+  const seen = useRef(state.location);
+  const callback = useRef(onSwitch);
+  useEffect(() => {
+    callback.current = onSwitch;
+  });
+  useEffect(() => {
+    if (seen.current === state.location) return;
+    seen.current = state.location;
+    scrollRootTo({ top: 0, behavior: "auto" });
+    callback.current?.(state.location);
+  }, [state.location]);
+}
+
+/** "3 here · 9 nearby": open parties collecting at a point and within a short walk of it. */
+function partyCountLabel(here: number, nearby: number): string {
+  if (nearby === 0) return "No parties nearby yet";
+  return `${here} here · ${nearby} ${nearby === 1 ? "party" : "parties"} nearby`;
+}
 
 export interface LocationSheetProps {
   open: boolean;
@@ -12,12 +38,13 @@ export interface LocationSheetProps {
 }
 
 /**
- * Bottom sheet listing the collection points, your current location first, as a radio group. Arrow keys
+ * Bottom sheet listing the collection points, your current location first, as a radio group, each with its
+ * access note and how many parties Home shows from there ("3 here · 9 parties nearby"). Arrow keys
  * and Home/End move the selection within the group (roving tabindex); tapping, Enter or Space picks a point
  * and closes the sheet.
  */
 export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
-  const { state, dispatch } = useApp();
+  const { state, now, dispatch } = useApp();
   const current = state.location;
   const radioRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -38,7 +65,7 @@ export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
       open={open}
       onOpenChange={onOpenChange}
       title="Your location"
-      description="Parties deliver to one of these collection points."
+      description="Home shows the parties collecting near you, and distances and delivery times are measured from here."
     >
       <div
         role="radiogroup"
@@ -76,6 +103,8 @@ export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
         {points.map((point, i) => {
           const selected = point.id === current;
           const Icon = point.id === pinned ? LocateFixed : MapPin;
+          const near = partiesNear(state.requests, point.id, now);
+          const here = near.filter((p) => p.place.here).length;
           return (
             <div key={point.id}>
               {i > 0 && <div aria-hidden className="ml-[68px] h-px bg-line" />}
@@ -108,6 +137,9 @@ export function LocationSheet({ open, onOpenChange }: LocationSheetProps) {
                   )}
                   <Marquee className="text-body font-semibold text-ink">{point.name}</Marquee>
                   {point.access && <span className="block text-meta text-pretty text-ink-2">{point.access}</span>}
+                  <span className={cn("tnum mt-0.5 block text-meta font-semibold", selected ? "text-accent-ink" : "text-ink-2")}>
+                    {partyCountLabel(here, near.length)}
+                  </span>
                 </span>
                 <Check
                   aria-hidden
@@ -146,7 +178,9 @@ export function LocationButton({ variant = "stacked", className }: LocationButto
         aria-label={`Current location: ${point?.name ?? "not set"}. Change location`}
         onClick={() => setOpen(true)}
         className={cn(
-          "flex h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full pr-2.5 pl-1.5 text-left",
+          "relative flex h-10 max-w-full min-w-0 items-center gap-1.5 rounded-full pr-2.5 pl-1.5 text-left",
+          // 40px pill, like the bell beside it, with a 44px hit area.
+          "before:absolute before:inset-x-0 before:-inset-y-0.5",
           "transition-[scale,background-color] duration-100 ease-out active:scale-[0.97] active:bg-ink/[0.06] hover:bg-ink/[0.04]",
           className,
         )}

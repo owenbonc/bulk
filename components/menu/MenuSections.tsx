@@ -56,7 +56,7 @@ export function TopPicks({ restaurant, controls }: { restaurant: Restaurant; con
             <p className="text-meta font-semibold text-ink">
               <Price pence={item.price} originalPence={item.originalPrice} />
             </p>
-            <p className="mt-0.5 line-clamp-2 text-meta text-ink-2">{item.description}</p>
+            <p className="mt-0.5 text-meta text-ink-2 text-pretty">{item.description}</p>
           </li>
         ))}
       </ul>
@@ -118,7 +118,7 @@ function MenuRow({ item, controls }: { item: MenuItem; controls: ItemControls })
       <div className="min-w-0 flex-1">
         <h3 className="font-sans text-body leading-snug font-semibold text-ink">{item.name}</h3>
         {/* Reserves the width the expanded stepper grows over. */}
-        <p className="mt-0.5 line-clamp-2 pr-[76px] text-meta text-ink-2">{item.description}</p>
+        <p className="mt-0.5 pr-[76px] text-meta text-ink-2 text-pretty">{item.description}</p>
         <p className="mt-1 text-body font-medium text-ink">
           <Price pence={item.price} originalPence={item.originalPrice} />
         </p>

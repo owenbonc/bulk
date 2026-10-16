@@ -1,13 +1,15 @@
 "use client";
 
-import { BellRing, House, MapPin, ShoppingBag, UtensilsCrossed } from "lucide-react";
+import { BellRing, House, LogOut, MapPin, ShoppingBag, UserPlus, UtensilsCrossed } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { BottomBar, Button, Countdown, EXIT, LegendDot, Marquee, ProgressPie, SectionHeader, formatPrice } from "@/components/ui";
+import { BottomBar, Button, Countdown, EXIT, LegendDot, Marquee, Popup, ProgressPie, SectionHeader, formatPrice, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { basketTotal } from "@/lib/split";
 import { previewSplit, progressOf, useApp } from "@/lib/store";
 import type { OrderRequest, PickupPoint, Restaurant } from "@/lib/types";
+import { InviteSheet } from "./InviteSheet";
 import { MemberList } from "./MemberList";
 import { OrderSummary } from "./OrderSummary";
 import { PartySection } from "./PartySection";
@@ -20,8 +22,18 @@ export interface ViewProps {
 
 /** W5: the party is still filling. Timer, progress, your projected order and who's in. */
 export function FillingView({ request, restaurant, pickup }: ViewProps) {
-  const { now } = useApp();
+  const { now, dispatch } = useApp();
+  const router = useRouter();
+  const [confirmLeave, setConfirmLeave] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
   const me = request.participants.find((p) => p.userId === ME.userId);
+
+  const leave = () => {
+    dispatch({ type: "LEAVE", requestId: request.id, userId: ME.userId });
+    setConfirmLeave(false);
+    toast("You left the party");
+    router.push("/");
+  };
   const progress = progressOf(request, restaurant);
   const preview = me && previewSplit(request, restaurant, ME.userId, me.basket);
   // Your finalised basket is part of the party's spend: its share of the pie is drawn in --mine.
@@ -69,6 +81,11 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
           </div>
 
           <NotifyCaption />
+          {me && (
+            <Button variant="secondary" size="sm" icon={<UserPlus />} className="self-start" onClick={() => setInviteOpen(true)}>
+              Invite friends
+            </Button>
+          )}
         </section>
 
         <section aria-labelledby="order-title" className="flex flex-col gap-group">
@@ -103,13 +120,48 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
         </PartySection>
       </div>
 
-      <BottomBar material={false}>
-        <Button variant="glass" block icon={<House />} href="/">
-          Back to home
+      <BottomBar material={false} className="flex gap-2">
+        <Button variant="glass" block={!me?.finalised} icon={<House />} href="/" className={me?.finalised ? "min-w-0 flex-1" : undefined}>
+          {me?.finalised ? "Home" : "Back to home"}
         </Button>
+        {/* Committed to the party but it hasn't filled yet: you can still leave. */}
+        {me?.finalised && (
+          <Button variant="glass" icon={<LogOut />} className="min-w-0 flex-1 text-offer" onClick={() => setConfirmLeave(true)}>
+            Leave party
+          </Button>
+        )}
       </BottomBar>
+
+      <InviteSheet open={inviteOpen} onOpenChange={setInviteOpen} request={request} restaurant={restaurant} pickup={pickup} />
+
+      <Popup
+        open={confirmLeave}
+        onOpenChange={setConfirmLeave}
+        icon={<LogOut />}
+        iconTone="offer"
+        title="Leave the party?"
+        description={leaveCopy(request)}
+        action={
+          <div className="flex w-full flex-col gap-2">
+            <Button size="lg" block variant="danger" icon={<LogOut />} className="ring-1 ring-offer/30 ring-inset" onClick={leave}>
+              Leave party
+            </Button>
+            <Button size="lg" block variant="secondary" onClick={() => setConfirmLeave(false)}>
+              Stay in the party
+            </Button>
+          </div>
+        }
+      />
     </>
   );
+}
+
+/** What leaving does, for the "Leave the party?" confirmations (the leave popup and the info sheet). */
+export function leaveCopy(request: OrderRequest): string {
+  const othersIn = request.participants.some((p) => p.userId !== ME.userId);
+  if (!othersIn) return "Your basket will be removed. The party stays open for others to join until its timer runs out. Nothing is charged.";
+  const host = request.hostId === ME.userId ? ", even though you created it" : "";
+  return `Your basket will be removed. The party stays open for everyone else${host}, and their prices are recalculated. Nothing is charged.`;
 }
 
 export function CollectionPoint({ pickup }: { pickup: PickupPoint }) {

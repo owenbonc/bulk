@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { IconButton, Marquee, Sheet, cn } from "@/components/ui";
 import type { NotificationKind } from "@/lib/requests";
-import { useApp, useNotifications } from "@/lib/store";
+import { hasCollected, useApp, useNotifications } from "@/lib/store";
 import { timeAgo } from "./parts";
 
 const ICONS: Record<NotificationKind, { icon: LucideIcon; tone: string }> = {
@@ -41,6 +41,12 @@ export function NotificationsButton() {
   }
 
   const isFresh = (key: string) => freshKeys.includes(key) || !state.readNotifications.includes(key);
+  // "Ready to collect" opens the simulated PIN handover until you've collected.
+  const hrefFor = (kind: NotificationKind, requestId: string) => {
+    const request = state.requests.find((r) => r.id === requestId);
+    const handover = kind === "ready" && request && !hasCollected(request);
+    return `/party/${requestId}/status${handover ? "?handover=1" : ""}`;
+  };
 
   return (
     <>
@@ -71,7 +77,7 @@ export function NotificationsButton() {
                 <li key={n.key}>
                   {i > 0 && <div aria-hidden className="ml-[76px] h-px bg-line" />}
                   <Link
-                    href={`/party/${n.requestId}/status`}
+                    href={hrefFor(n.kind, n.requestId)}
                     onClick={() => setOpen(false)}
                     className="flex gap-4 px-5 py-3 transition-colors duration-100 ease-out active:bg-surface-2 hover:bg-surface-hover"
                   >
