@@ -1,13 +1,16 @@
 import type { Metadata, Viewport } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import Link from "next/link";
-import DemoControls from "@/components/DemoControls";
-import NotificationBanner from "@/components/NotificationBanner";
+import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
+import { CircleAlert, CircleCheck, Info, LoaderCircle, LucideProvider, TriangleAlert } from "lucide-react";
+import { MotionConfig } from "motion/react";
+import { Toaster } from "sonner";
+import PartyAlerts from "@/components/PartyAlerts";
+import { DemoHotkey } from "@/components/demo";
+import { DeviceFrame } from "@/components/ui/DeviceFrame";
 import { AppProvider } from "@/lib/store";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -16,33 +19,63 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
+  subsets: ["latin"],
+  axes: ["opsz"],
+});
+
 export const metadata: Metadata = {
-  title: "Bulk — group food orders",
-  description: "Pool food orders with people nearby to unlock group deals.",
+  title: { default: "Bulk", template: "%s · Bulk" },
+  description: "Join a party with students nearby and unlock the group deal.",
+  applicationName: "Bulk",
+  appleWebApp: { capable: true, title: "Bulk", statusBarStyle: "default" },
+  formatDetection: { telephone: false },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  viewportFit: "cover",
+  interactiveWidget: "resizes-content",
+  // Must be a literal colour: --bg.
+  themeColor: "#f4f5ee",
+  colorScheme: "light",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full">
-        <AppProvider>
-          <div className="mx-auto flex min-h-screen max-w-md flex-col bg-white shadow-sm">
-            <header className="sticky top-0 z-20 border-b border-stone-200 bg-white/95 px-4 py-3 backdrop-blur">
-              <Link href="/" className="text-lg font-bold tracking-tight">
-                🛵 Bulk
-              </Link>
-              <span className="ml-2 text-xs text-stone-500">group orders for halls</span>
-            </header>
-            <NotificationBanner />
-            <main className="flex-1 px-4 py-4 pb-24">{children}</main>
-          </div>
-          <DemoControls />
-        </AppProvider>
+    <html lang="en-GB" className={`${figtree.variable} ${geistMono.variable} ${bricolage.variable}`}>
+      <body>
+        <LucideProvider size={20} strokeWidth={1.75}>
+          <MotionConfig reducedMotion="user">
+            {/* Full screen on a phone; an iPhone 16 Pro frame on the laptop. Sheets, popups and toasts stay inside it. */}
+            <DeviceFrame>
+              <AppProvider>
+                {children}
+                <PartyAlerts />
+                {/* Its panel portals to <body>: outside the phone, bottom-right of the laptop window. */}
+                <DemoHotkey />
+              </AppProvider>
+              <Toaster
+                position="top-center"
+                className="bulk-toaster"
+                offset={{ top: "calc(var(--safe-top) + 56px)" }}
+                mobileOffset={{ top: "calc(var(--safe-top) + 56px)", left: "16px", right: "16px" }}
+                gap={8}
+                visibleToasts={3}
+                duration={3200}
+                icons={{
+                  success: <CircleCheck />,
+                  info: <Info />,
+                  warning: <TriangleAlert />,
+                  error: <CircleAlert />,
+                  loading: <LoaderCircle className="animate-spin" />,
+                }}
+              />
+            </DeviceFrame>
+          </MotionConfig>
+        </LucideProvider>
       </body>
     </html>
   );

@@ -1,50 +1,66 @@
-import { BOT_NAMES, CATALOG, ME } from "./data";
-import type { Action } from "./requests";
-import type { AppState, OrderRequest } from "./types";
+import { CATALOG, ME } from "./data";
+import { type Action, botId, freeBotName, shapeBotBasket, stubbornBot } from "./requests";
+import type { AppState, BasketLine, OrderRequest } from "./types";
 
-/** Chance per second that each waiting bot accepts & pays once a deal is achieved. */
+/** Chance per second that each waiting bot responds once the deal is reached. */
 const BOT_ACCEPT_CHANCE = 0.3;
 
 function meIn(r: OrderRequest) {
   return r.participants.find((p) => p.userId === ME.userId);
 }
 
-/** The bot that refuses to accept when the "a bot won't accept" demo switch is on. */
-export function stubbornBot(r: OrderRequest) {
-  return r.participants.find((p) => p.isBot);
+function restaurantOf(r: OrderRequest) {
+  return CATALOG.restaurants.find((x) => x.id === r.restaurantId);
+}
+
+/** The open party you've finalised in, which bots join; undefined while bots are paused. */
+export function botTarget(state: AppState): OrderRequest | undefined {
+  if (state.demo.botsPaused) return undefined;
+  return state.requests.find((x) => x.status === "open" && meIn(x)?.finalised);
 }
 
 /**
- * One bot joins a request you're queued in: picks 1–2 items and finalises.
- * Only advances requests where you've finalised, so you're never dropped mid-basket.
+ * One bot joins an open party you've joined (your basket is finalised): it picks a main,
+ * maybe a side or drink, and finalises. Parties where you're still choosing are left
+ * alone, so the deal never locks you out mid-basket.
  */
 export function botJoinActions(state: AppState, now: number, rand: () => number): Action[] {
-  if (state.demo.botsPaused) return [];
-  const r = state.requests.find((x) => x.status === "open" && meIn(x)?.finalised);
-  if (!r) return [];
-  const name = BOT_NAMES.find((n) => !r.participants.some((p) => p.name === n));
+  const r = botTarget(state);
+  const restaurant = r && restaurantOf(r);
+  if (!r || !restaurant) return [];
+  const name = freeBotName(r);
   if (!name) return [];
 
-  const user = { userId: `bot-${name.toLowerCase()}`, name, isBot: true };
-  const menu = CATALOG.restaurants.find((x) => x.id === r.restaurantId)!.menu;
-  const picks = Array.from({ length: 1 + Math.floor(rand() * 2) }, () => menu[Math.floor(rand() * menu.length)]);
+  const mains = restaurant.menu.filter((m) => m.category === "main");
+  const extras = restaurant.menu.filter((m) => m.category !== "main");
+  const picked: BasketLine[] = [{ itemId: mains[Math.floor(rand() * mains.length)].id, qty: 1 }];
+  if (extras.length && rand() < 0.5) picked.push({ itemId: extras[Math.floor(rand() * extras.length)].id, qty: 1 });
+  const basket = shapeBotBasket(r, restaurant, picked, state.demo.botWontAccept);
+
+  const user = { userId: botId(name), name, isBot: true };
   return [
     { type: "JOIN", requestId: r.id, user },
-    ...picks.map((item): Action => ({ type: "ADD_ITEM", requestId: r.id, userId: user.userId, itemId: item.id })),
+    ...basket.flatMap((line) =>
+      Array.from({ length: line.qty }, (): Action => ({ type: "ADD_ITEM", requestId: r.id, userId: user.userId, itemId: line.itemId })),
+    ),
     { type: "FINALISE_ENTRY", requestId: r.id, userId: user.userId, now },
   ];
 }
 
-/** Bots in deal-achieved requests you're part of accept & pay at random moments. */
+/**
+ * Bots in parties that reached the deal respond at random moments: they accept and pay
+ * in both rounds. With "a bot won't accept" on, exactly one bot declines in round 1 only,
+ * so the demo shows the fallback round succeeding.
+ */
 export function botAcceptActions(state: AppState, now: number, rand: () => number): Action[] {
   const actions: Action[] = [];
   for (const r of state.requests) {
-    if (r.status !== "deal_achieved" || !meIn(r)) continue;
-    const stubborn = state.demo.botWontAccept ? stubbornBot(r)?.userId : undefined;
+    const restaurant = restaurantOf(r);
+    if (r.status !== "deal_achieved" || !restaurant) continue;
+    const stubborn = state.demo.botWontAccept && r.round === 1 ? stubbornBot(r, restaurant)?.userId : undefined;
     for (const p of r.participants) {
-      if (p.isBot && !p.paid && p.userId !== stubborn && rand() < BOT_ACCEPT_CHANCE) {
-        actions.push({ type: "ACCEPT_AND_PAY", requestId: r.id, userId: p.userId, now });
-      }
+      if (!p.isBot || p.paid || p.declined || rand() >= BOT_ACCEPT_CHANCE) continue;
+      actions.push({ type: p.userId === stubborn ? "DECLINE" : "ACCEPT_AND_PAY", requestId: r.id, userId: p.userId, now });
     }
   }
   return actions;
