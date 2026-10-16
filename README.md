@@ -1,10 +1,74 @@
-# Bulk: group food orders for halls
+# Bulk
 
-Phase 1 barebones build for the Claude hackathon ("Specification SIMPLE NEW"). Students near each other pool food orders to unlock restaurant group deals and share one delivery fee.
+**Order together. Unlock the deal. Share one delivery.**
 
-**Journey:** Home (the parties near you) → tap a party → choose food → Join party → deal reached → notification → accept & pay → delivery to the party's collection point → show your PIN and collect. Or **Create a party** → pick a restaurant → build your basket and choose the collection point and how long it lasts → your party goes live.
+Group food ordering for students, built for the Claude hackathon.
 
-Everything runs in the browser. Other participants are simulated bots, and payment and delivery are simulated. No real money is involved.
+Bulk lets students nearby pool their food orders from one restaurant into a **party**. Together they unlock the restaurant's group deal and split one delivery fee. Everyone still chooses and pays for their own food, and collects their own bag with their own PIN.
+
+<p align="center">
+  <img src="docs/images/home.png" alt="Home: highlights and parties near the Student Centre, each with a timer and progress to its deal" width="200">
+  <img src="docs/images/basket.png" alt="Basket: your Hot Honey Pepperoni unlocks the party's 20% deal; Join party for £11.96" width="200">
+  <img src="docs/images/party-filled.png" alt="Party filled! Confirm and pay within 0:59 to lock in 20% off" width="200">
+  <img src="docs/images/ready.png" alt="Your food is ready! Collect from Student Centre with your PIN" width="200">
+</p>
+
+## The problem
+
+Ordering alone is the most expensive way to get food delivered, and students do it all the time.
+
+- **Fees stack up on small orders.** On a £12 Uber Eats order, fees add about **£3.93**: a 12% service fee (£1.44) plus delivery (£2.49 in our example). Under £10 there's also a £0.99 small-order fee, so a £9 order pays **£4.56** in fees, about half the food again.
+- **Deals check one basket.** Restaurant offers like Deliveroo's Midweek Special (30% off orders of £20 or more) never apply to one student's £12 order.
+- **Students feel it.** 63% of students skip meals to save money.
+
+## What it saves
+
+The same Burger Yard order (£12.75 of food), ordered two ways in the demo:
+
+| | Ordering alone | In a Bulk party of 3 |
+|---|---|---|
+| Food | £12.75 | £12.75 |
+| Group deal (15% off, unlocks at £35) | not reached | −£1.91 |
+| Delivery (£2.49) | £2.49 | £0.83 (÷ 3) |
+| **You pay** | **£15.24** | **£11.67** |
+
+Same food from the same restaurant, **23% less**. Prices come from the demo's sample menu.
+
+## How it works
+
+1. **Find a party.** Home shows the parties collecting near you, each with a timer and progress towards its restaurant's deal.
+2. **Add your own food.** Order exactly what you want. The basket shows your share before you commit.
+3. **Join and watch it fill.** Friends can fill a party in seconds; students nearby fill the rest.
+4. **Deal reached.** Everyone gets 60 seconds to accept and pay their exact price.
+5. **One courier.** The whole order goes to the party's collection point, tracked live.
+6. **Collect your bag.** Show your own 4-digit PIN and pick up your labelled bag.
+
+Nothing open near you? **Create a party**: pick a restaurant, a collection point and how long it stays open.
+
+## Built for ordering with strangers
+
+Nobody holds anyone else's money or food, and drop-outs cost nothing.
+
+- You pay only for your own food, and only once the party reaches the deal.
+- You get your own 4-digit PIN and a labelled bag at a set pickup point: hall reception, the porters' lodge or a security desk.
+- Anyone can leave while the party is filling, the host too.
+- If someone drops out at payment, the rest get one repriced round, but only if they still reach the deal. Otherwise nobody is charged, and your basket is saved so you can start a new party in one tap.
+
+## Why it can fill
+
+Demand is already dense where students live. About **7,000 UCL students** live in halls, and at roughly £150 a month on takeaways that's around **14,000 takeaway orders a week** from UCL halls alone (both estimates). Anyone you've shared a party with can be added as a friend and invited to your next one in one tap.
+
+## What's next
+
+1. **Pilot** in one UCL hall, on Uber Eats group orders where guests pay for themselves. No partnership needed.
+2. **Measure** how fast parties fill, what each person saves and how many courier trips we save.
+3. **Partner** with Uber Eats: API access and per-person handover, building on Uber's early-access Consumer Delivery API.
+
+Platforms already batch orders to save courier time: about half of Uber Eats UK orders are stacked, and Meituan pools almost 5 million orders a day.
+
+## About this demo
+
+Everything runs in the browser. The other students are simulated, and so are payment, delivery and the handover. No real money is involved. The sections below are for running and developing the demo.
 
 ## Run it
 
@@ -63,3 +127,11 @@ Open the demo controls (press **d**, or from the account sheet). Tick **Pause bo
 - `components/status/NewPartyCard.tsx`, `HandoverSheet.tsx`, `InviteSheet.tsx`: start a new party with your basket, show your PIN to the courier, invite friends
 - `components/demo/DriverHandoverTool.tsx`: the presenter's driver handover in the demo panel
 - `docs/superpowers/specs/`: design spec for this phase
+
+## Sources
+
+- Uber Eats UK fees (2026); Deliveroo Help Centre (2025): fee and Midweek Special examples
+- Save the Student National Student Money Survey (2026): 63% of students skip meals to save money
+- Nationwide / Censuswide student survey (Sept 2025): £150 a month on takeaways
+- UCL halls: average of two published figures (6,000 beds; about 8,000 allocated a year)
+- The Grocer (2024); Rest of World (2024); Uber UK (2022); Uber Developers (2026): order stacking, Meituan pooling, Consumer Delivery API
