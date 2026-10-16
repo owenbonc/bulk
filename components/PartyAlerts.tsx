@@ -1,15 +1,19 @@
 "use client";
 
-import { BellRing, CircleX, TimerOff } from "lucide-react";
+import { BellRing, CircleX, ShoppingBag, TimerOff } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Countdown, Popup } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { CANCEL_REASONS, type PartyAlert } from "@/lib/requests";
-import { restaurantById, useApp, useNextAlert } from "@/lib/store";
+import { hasCollected, pickupById, restaurantById, useApp, useNextAlert } from "@/lib/store";
 
 /** Pause between one popup closing and the next opening, so they never cross-fade into each other. */
 const BETWEEN_MS = 320;
+
+const statusPathOf = (id: string) => `/party/${id}/status`;
+/** The status page with the simulated PIN handover running. */
+const handoverPathOf = (id: string) => `${statusPathOf(id)}?handover=1`;
 
 function notifyBrowser(title: string, body: string, tag: string, onClick: () => void) {
   if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
@@ -25,10 +29,17 @@ function notifyBrowser(title: string, body: string, tag: string, onClick: () => 
   }
 }
 
+function readyLine(pickupPointId: string, pin: string | undefined): string {
+  const place = pickupById(pickupPointId)?.name ?? "your collection point";
+  return pin ? `Collect from ${place} · PIN ${pin}` : `Collect from ${place}`;
+}
+
 /**
  * Global party popups, mounted once in the root layout. W11 "Party filled!" when a party you're in
- * reaches its deal, W12 "Order cancelled" / "Party closed" when one ends without an order, naming the
- * restaurant above the reason. Each shows once per party: the alert is marked seen (MARK_ALERT_SEEN) the moment it opens.
+ * reaches its deal; "Your food is ready!" when your paid order is delivered (not while you're on that
+ * party's status page, which already shows it); W12 "Order cancelled" / "Party closed" when one ends
+ * without an order, naming the restaurant above the reason. Each shows once per party: the alert is
+ * marked seen (MARK_ALERT_SEEN) the moment it opens, or straight away when it is skipped.
  */
 export default function PartyAlerts() {
   const { state, now, dispatch } = useApp();
@@ -40,8 +51,10 @@ export default function PartyAlerts() {
 
   const request = current ? state.requests.find((r) => r.id === current.requestId) : undefined;
   const restaurant = request ? restaurantById(request.restaurantId) : undefined;
-  // "Party filled!" stops making sense once the acceptance round is over.
-  const stale = current?.kind === "filled" && request?.status !== "deal_achieved";
+  // "Party filled!" stops making sense once the acceptance round is over, "ready" once you've collected.
+  const stale =
+    (current?.kind === "filled" && request?.status !== "deal_achieved") ||
+    (current?.kind === "ready" && !!request && (hasCollected(request) || pathname === statusPathOf(request.id)));
   const visible = open && !stale && !!request && !!restaurant;
 
   const nextKey = next?.key;
@@ -52,7 +65,9 @@ export default function PartyAlerts() {
   const meOut =
     next?.request.participants.find((p) => p.userId === ME.userId)?.declined ||
     (!next?.request.participants.some((p) => p.userId === ME.userId) && next?.request.removedUserIds.includes(ME.userId));
-  const skip = nextKind !== "filled" && !!meOut;
+  // The status page already shows the order is ready, so the popup isn't needed there.
+  const onReadyPage = nextKind === "ready" && !!nextRequestId && pathname === statusPathOf(nextRequestId);
+  const skip = (nextKind !== "filled" && !!meOut) || onReadyPage;
 
   useEffect(() => {
     if (visible || !nextKey || !nextKind || !nextRequestId) return;
@@ -65,26 +80,32 @@ export default function PartyAlerts() {
         setCurrent({ key: nextKey, kind: nextKind, requestId: nextRequestId });
         setOpen(true);
         dispatch({ type: "MARK_ALERT_SEEN", key: nextKey });
+        const party = state.requests.find((x) => x.id === nextRequestId);
+        const r = restaurantById(party?.restaurantId ?? "");
         if (nextKind === "filled") {
-          const r = restaurantById(state.requests.find((x) => x.id === nextRequestId)?.restaurantId ?? "");
           notifyBrowser(
             "Party filled!",
             r ? `${r.name}: confirm and pay within a minute to lock in ${r.deal.short}.` : "Confirm and pay within a minute to lock in the deal.",
             nextKey,
-            () => router.push(`/party/${nextRequestId}/status`),
+            () => router.push(statusPathOf(nextRequestId)),
+          );
+        }
+        if (nextKind === "ready" && party) {
+          notifyBrowser("Your food is ready!", readyLine(party.pickupPointId, party.pin), nextKey, () =>
+            router.push(handoverPathOf(nextRequestId)),
           );
         }
       },
       hasShown ? BETWEEN_MS : 0,
     );
     return () => window.clearTimeout(timer);
-    // `state` is read only to name the restaurant in the notification.
+    // `state` is read only to name the restaurant and collection point in the notification.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visible, nextKey, nextKind, nextRequestId, hasShown, skip, dispatch, router]);
 
   if (!current || !request || !restaurant) return null;
 
-  const statusPath = `/party/${request.id}/status`;
+  const statusPath = statusPathOf(request.id);
   const onPartyPage = pathname === `/party/${request.id}` || pathname.startsWith(`/party/${request.id}/`);
 
   if (current.kind === "filled") {
@@ -111,6 +132,36 @@ export default function PartyAlerts() {
             }}
           >
             Go to order
+          </Button>
+        }
+      />
+    );
+  }
+
+  if (current.kind === "ready") {
+    const pickup = pickupById(request.pickupPointId);
+    return (
+      <Popup
+        open={visible}
+        onOpenChange={setOpen}
+        icon={<ShoppingBag className="animate-arrive" />}
+        title="Your food is ready!"
+        description={
+          <>
+            Collect from {pickup?.name ?? "your collection point"} · PIN{" "}
+            <span className="tnum font-mono font-semibold text-ink">{request.pin}</span>
+          </>
+        }
+        action={
+          <Button
+            size="lg"
+            block
+            onClick={() => {
+              setOpen(false);
+              router.push(handoverPathOf(request.id));
+            }}
+          >
+            Collect my order
           </Button>
         }
       />

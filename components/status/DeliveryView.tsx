@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, House, MapPin, PiggyBank } from "lucide-react";
+import { Check, House, MapPin, PackageCheck, PiggyBank } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { BottomBar, Button, Countdown, EASE_OUT, Marquee, Pill, SPRING, SectionHeader, cn, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
@@ -36,8 +36,16 @@ function subline(status: RequestStatus, pickupName: string): string {
 /** Time from payment to "Ready to collect" in the simulated delivery. */
 const DELIVERED_AFTER_MS = DELIVERY_STAGES.find((s) => s.status === "delivered")?.afterMs ?? 0;
 
-/** W10: everyone paid. Delivery progress, live map while on its way, collection PIN, your order, the party. */
-export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
+export interface DeliveryViewProps extends ViewProps {
+  /** Starts the simulated PIN handover once the order is ready to collect. */
+  onCollect: () => void;
+}
+
+/**
+ * W10: everyone paid. Delivery progress, live map while on its way, collection PIN, your order, the party.
+ * Once it's ready to collect, "I've collected my food" runs the simulated PIN handover.
+ */
+export function DeliveryView({ request, restaurant, pickup, onCollect }: DeliveryViewProps) {
   const { now } = useApp();
   const reduce = useReducedMotion();
   const me = request.participants.find((p) => p.userId === ME.userId)!;
@@ -134,7 +142,12 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
         </PartySection>
       </div>
 
-      <BottomBar material={false} className="flex justify-end">
+      <BottomBar material={false} className="flex justify-end gap-2">
+        {delivered && (
+          <Button variant="glass" icon={<PackageCheck />} className="min-w-0 flex-1" onClick={onCollect}>
+            I&apos;ve collected my food
+          </Button>
+        )}
         <Button variant="glass" icon={<House />} href="/">
           Home
         </Button>
@@ -174,16 +187,20 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-/** Pickup PIN as four digit tiles. They turn lime with a single spring entrance once the order is ready to collect. */
-function PinTiles({ pin, ready, reduce }: { pin: string; ready: boolean; reduce: boolean }) {
+/**
+ * Pickup PIN as four digit tiles. They turn lime with a single spring entrance once the order is ready to
+ * collect. `size="lg"` is the handover sheet's larger set, without the label.
+ */
+export function PinTiles({ pin, ready, reduce, size = "md" }: { pin: string; ready: boolean; reduce: boolean; size?: "md" | "lg" }) {
+  const large = size === "lg";
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1">
-      <span className="text-caption text-ink-2">Pickup PIN</span>
+    <div className={cn("flex shrink-0 flex-col gap-1", large ? "items-center" : "items-end")}>
+      {!large && <span className="text-caption text-ink-2">Pickup PIN</span>}
       <motion.div
         key={ready ? "ready" : "waiting"}
         role="img"
         aria-label={`Pickup PIN ${pin.split("").join(" ")}`}
-        className="flex gap-1.5"
+        className={cn("flex", large ? "gap-2" : "gap-1.5")}
         initial={ready ? (reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }) : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={SPRING}
@@ -193,7 +210,8 @@ function PinTiles({ pin, ready, reduce }: { pin: string; ready: boolean; reduce:
             key={i}
             aria-hidden
             className={cn(
-              "tnum grid h-11 w-8 place-items-center rounded-chip font-mono text-hero font-semibold",
+              "tnum grid place-items-center rounded-chip font-mono text-hero font-semibold",
+              large ? "h-16 w-12" : "h-11 w-8",
               ready ? "bg-accent text-on-accent" : "bg-surface-2 text-ink",
             )}
           >

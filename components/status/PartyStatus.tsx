@@ -2,7 +2,8 @@
 
 import { CircleSlash, CircleX, House, Info, SearchX, TimerOff, UserX } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { EASE_OUT, EXIT, IconButton, Marquee, TopBar, formatPrice, scrollRootTo, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { CANCEL_REASONS } from "@/lib/requests";
@@ -10,12 +11,14 @@ import { pickupById, previewSplit, progressOf, restaurantById, useApp } from "@/
 import type { OrderRequest } from "@/lib/types";
 import { AcceptView } from "./AcceptView";
 import { ClosedView } from "./ClosedView";
+import { CollectedView } from "./CollectedView";
 import { DeliveryView } from "./DeliveryView";
 import { FillingView } from "./FillingView";
+import { HANDOVER_MS, HandoverSheet, type HandoverPhase } from "./HandoverSheet";
 import { HelpSheet } from "./HelpSheet";
 import { PaySheet } from "./PaySheet";
 
-type View = "filling" | "accept" | "delivery" | "closed" | "removed" | "missed";
+type View = "filling" | "accept" | "delivery" | "collected" | "closed" | "removed" | "missed";
 
 function viewFor(request: OrderRequest): View {
   const me = request.participants.find((p) => p.userId === ME.userId);
@@ -25,16 +28,22 @@ function viewFor(request: OrderRequest): View {
   if (request.status === "expired" || request.status === "cancelled") return "closed";
   if (request.status === "open") return "filling";
   if (!me) return "missed";
+  if (request.status === "delivered" && me.collected) return "collected";
   return request.status === "deal_achieved" ? "accept" : "delivery";
 }
 
 /**
  * The party status page (/party/[id]/status). Switches on the party's status: filling (W5), accept
- * and pay (W9), paid and on its way (W10), or a closed state. The pay and help sheets stay mounted so
- * they can animate closed when the status moves on underneath them.
+ * and pay (W9), paid and on its way (W10), collected, or a closed state. The pay, help and handover sheets
+ * stay mounted so they can animate closed when the status moves on underneath them.
+ *
+ * `?handover=1` (from the "ready" popup or notification) runs the simulated PIN handover as soon as the
+ * order is ready to collect and you haven't collected it: the courier "accepts" the code after
+ * HANDOVER_MS, COLLECT is dispatched and the param is dropped from the URL.
  */
 export function PartyStatus({ id }: { id: string }) {
   const { state, now, dispatch } = useApp();
+  const router = useRouter();
   const request = state.requests.find((r) => r.id === id);
   const restaurant = request && restaurantById(request.restaurantId);
   const pickup = request && pickupById(request.pickupPointId);
@@ -42,6 +51,47 @@ export function PartyStatus({ id }: { id: string }) {
   const [helpOpen, setHelpOpen] = useState(false);
   const [payOpen, setPayOpen] = useState(false);
   const [declinedHere, setDeclinedHere] = useState(false);
+
+  const statusPath = `/party/${id}/status`;
+  const wantsHandover = useSearchParams().get("handover") === "1";
+  const mine = request?.participants.find((p) => p.userId === ME.userId);
+  const canCollect = request?.status === "delivered" && !!mine?.paid && !mine.collected;
+  const [handover, setHandover] = useState<{ open: boolean; phase: HandoverPhase }>({ open: false, phase: "showing" });
+
+  // The param arms one handover each time it appears in the URL (including on arrival).
+  const [armed, setArmed] = useState(wantsHandover);
+  const [lastWants, setLastWants] = useState(wantsHandover);
+  if (wantsHandover !== lastWants) {
+    setLastWants(wantsHandover);
+    if (wantsHandover) setArmed(true);
+  }
+  if (armed && !handover.open) {
+    setArmed(false);
+    if (canCollect) setHandover({ open: true, phase: "showing" });
+  }
+
+  const startHandover = () => setHandover({ open: true, phase: "showing" });
+  const closeHandover = () => {
+    setHandover((h) => ({ ...h, open: false }));
+    if (wantsHandover) router.replace(statusPath, { scroll: false });
+  };
+
+  // A param that has nothing to hand over (already collected, or not ready) is dropped.
+  useEffect(() => {
+    if (wantsHandover && !armed && !handover.open && !canCollect) router.replace(statusPath, { scroll: false });
+  }, [wantsHandover, armed, handover.open, canCollect, router, statusPath]);
+
+  // The simulated courier checks the code, then you've collected.
+  const checking = handover.open && handover.phase === "showing";
+  useEffect(() => {
+    if (!checking) return;
+    const timer = window.setTimeout(() => {
+      setHandover({ open: true, phase: "accepted" });
+      dispatch({ type: "COLLECT", requestId: id, userId: ME.userId });
+      if (new URLSearchParams(window.location.search).has("handover")) router.replace(statusPath, { scroll: false });
+    }, HANDOVER_MS);
+    return () => window.clearTimeout(timer);
+  }, [checking, dispatch, id, router, statusPath]);
 
   const view: View | "missing" = request && restaurant && pickup ? viewFor(request) : "missing";
 
@@ -71,7 +121,10 @@ export function PartyStatus({ id }: { id: string }) {
       content = <AcceptView request={request} restaurant={restaurant} pickup={pickup} onPay={() => setPayOpen(true)} />;
       break;
     case "delivery":
-      content = <DeliveryView request={request} restaurant={restaurant} pickup={pickup} />;
+      content = <DeliveryView request={request} restaurant={restaurant} pickup={pickup} onCollect={startHandover} />;
+      break;
+    case "collected":
+      content = <CollectedView request={request} restaurant={restaurant} pickup={pickup} />;
       break;
     case "removed":
       content = (
@@ -125,7 +178,7 @@ export function PartyStatus({ id }: { id: string }) {
       <TopBar
         left={
           <div className="flex min-w-0 items-center gap-2">
-            {view !== "delivery" && <HomeButton />}
+            {view !== "delivery" && view !== "collected" && <HomeButton />}
             <Marquee as="p" className="pr-2 font-display text-emphasis font-semibold tracking-[-0.01em] text-ink">
               {restaurant.name}
             </Marquee>
@@ -150,6 +203,16 @@ export function PartyStatus({ id }: { id: string }) {
           {content}
         </motion.main>
       </AnimatePresence>
+
+      {request.pin && (
+        <HandoverSheet
+          open={handover.open}
+          onOpenChange={(open) => (open ? startHandover() : closeHandover())}
+          phase={handover.phase}
+          pin={request.pin}
+          pickupName={pickup.name}
+        />
+      )}
 
       <HelpSheet open={helpOpen} onOpenChange={setHelpOpen} request={request} restaurant={restaurant} pickup={pickup} />
 
