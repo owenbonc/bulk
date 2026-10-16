@@ -4,8 +4,6 @@ Lead designer's brief for the front-end redesign. Every agent builds to this fil
 
 Wireframes: `design/wireframes/p01.png` … `p14.png` (hand-drawn, numbered as below). Read the ones for your screens before writing code. Red handwriting = behaviour notes; green = sizing notes; yellow = sorting notes.
 
-Reference skills (read the parts relevant to your work): `design/skills/apple-design.md`, `design/skills/emil-design-eng.md`, `design/skills/animate.md`, `design/skills/mobile-native.md`, `design/skills/impeccable/SKILL.md` and `design/skills/impeccable/craft-floor.md`.
-
 This repo runs **Next.js 16** (App Router), React 19, Tailwind v4. APIs differ from older Next versions: read the relevant guide in `node_modules/next/dist/docs/` before using a Next API you are unsure of.
 
 ## 1. Product in one line

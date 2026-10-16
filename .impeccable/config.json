@@ -1,7 +1,0 @@
-{
-  "detector": {
-    "ignoreRules": ["icon-tile-stack"],
-    "ignoreFiles": [],
-    "ignoreValues": []
-  }
-}

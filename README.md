@@ -126,7 +126,6 @@ Open the demo controls (press **d**, or from the account sheet). Tick **Pause bo
 - `app/`: screens (`/` home, `/create` restaurants, `/create/[restaurantId]` menu and basket, `/party/[id]` menu and basket for joiners, `/party/[id]/status` party status)
 - `components/status/NewPartyCard.tsx`, `HandoverSheet.tsx`, `InviteSheet.tsx`: start a new party with your basket, show your PIN to the courier, invite friends
 - `components/demo/DriverHandoverTool.tsx`: the presenter's driver handover in the demo panel
-- `docs/superpowers/specs/`: design spec for this phase
 
 ## Sources
 
