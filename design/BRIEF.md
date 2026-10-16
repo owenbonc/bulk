@@ -40,7 +40,7 @@ Warm, friendly, food-first. Unique without being loud: cream paper background (e
 | `--accent-soft` | `#eef3cf` | Tinted backgrounds (deal pill, highlights) |
 | `--accent-ink` | `#4a5706` | Accent-coloured **text and icons** on light backgrounds |
 | `--on-accent` | `#1b1d14` | Text on accent fills. **Never white text on lime** (contrast fails) |
-| `--offer` | `#d9452b` | Sale prices, "Offer" tags, your-contribution slice, urgent timers |
+| `--offer` | `#c93a22` | **Deal pills (solid fill, white text, 5.1:1)**, sale prices, "Offer" tags, your-contribution slice, urgent timers |
 | `--offer-soft` | `#fbe4dd` | Offer tag background |
 | `--success` | `#2f7d4f` | Paid ticks |
 | `--scrim` | `rgba(27,29,20,0.38)` | Modal/sheet dimming |
@@ -60,6 +60,8 @@ Dark mode: not required for the demo. Do not add it.
 - Radii: 12px (chips, steppers), 18px (cards), 24px (sheets, image tiles), 999px (pills, round buttons).
 - Spacing on a 4px grid. Screen side padding 16px. Sections separated by 28–32px; groups inside a section 12px.
 - Shadows only on floating layers (bottom bar, sheets, popups, floating bubbles): soft, offset downward, e.g. `0 8px 24px -8px rgba(27,29,20,0.18), 0 2px 6px -2px rgba(27,29,20,0.08)`. Cards on the page use a 1px `--line` border, no shadow.
+- **Glass controls.** Every round icon button (account, create +, bell, location, back, search, info), the Home search bar, and the big action buttons (Join party, Create party, Accept and pay) are **clear glass**: `background: rgba(255,255,255,0.5); backdrop-filter: blur(20px) saturate(180%)`, a 1px `rgba(255,255,255,0.75)` border with a brighter top edge (inset highlight `inset 0 1px 0 rgba(255,255,255,0.9)`), and the floating shadow. Icons and labels are `--ink`; the create button's `+` is `--accent-ink` so it still reads as primary. Big glass action buttons stay prominent through size (56px tall), bold 17px label and a lime price chip on the right ("£7.29" on `--accent`). Solid fallback under `prefers-reduced-transparency`. The menu's "View basket" bubble and the your-party card are **not** glass.
+- **Deal pills** are solid `--offer` red with white bold text everywhere (cards, menu, create page).
 - Floating chrome (top bars, bottom bar, sticky info bubble) is **translucent material**: `background: rgba(247,245,236,0.78); backdrop-filter: blur(20px) saturate(160%)` with content scrolling underneath, per apple-design §12. Provide a solid fallback under `prefers-reduced-transparency: reduce`.
 - Hairline dividers between menu rows, not boxes around every row (avoid cards inside cards).
 
@@ -100,7 +102,8 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - Top bar (translucent): left = location button: pin icon + current location name ("UCL Student Centre" default, label "Current location" above it in 12px `--ink-2`) + chevron; opens a bottom sheet listing 4 locations (the collection points) with "Current location" first. Right = bell button with an accent dot when there are unread notifications; opens a notifications sheet (deal reached, payment needed, order placed, on its way, ready to collect, cancelled), newest first, each linking to its party.
 - **Highlights · n** (horizontal snap carousel, `scroll-snap-type: x mandatory`, `touch-action: pan-x pan-y`): parties at ≥75% of their deal. Card ~72% screen width: food image (top, 4:3) with a deal pill overlapping the image's bottom-right edge ("25% off", `--accent` fill, `--on-accent` text); below: restaurant name, "4.6 ★ (250)", est. delivery "25–35 min"; right side "£5 left" in bold with a small progress pie. Arrow button top-right of the section scrolls the carousel.
 - **Other parties · n** (vertical list): wide card, food image left (square, ~96px), right: deal pill on a tab that sits on the card's top-right edge, timer "12:04 left", "3 in party"; below image: restaurant name, "5.0 ★ (500) · 20–30 min"; right: "£24 / £50" and the progress pie.
-- Parties you are already in show a small "You're in" accent pill and route to their status page.
+- Parties you are already in stay in the lists with a small "You're in" pill and route to their status page.
+- **Your-party card** (not in the hand-drawn wireframes; lead designer's spec): floats directly above the bottom bar for anyone in a non-terminal party (host or joiner). Same anatomy as an "Other parties" card (image left, details, progress pie right) but compact (one 76px row) and **solid `--accent` lime with `--ink` text**, radius 22px, floating shadow. Eyebrow 11px uppercase "Your party · Host" (or "Your party"); restaurant name 15px semibold; status line 13px that changes with the party: open → "£8 left · 12:04 left"; deal reached → "Accept and pay · 0:47" (in `--offer`, bold); paid waiting → "Paid · waiting for 2 others"; preparing/on its way → "On its way · arrives 19:40"; delivered → "Ready to collect · PIN 4821". Right side: progress pie (open) or chevron. Tap → `/party/[id]/status`. Multiple parties: show the most urgent first (pay now > on its way > ready > filling) with page dots; swipe sideways (scroll-snap) for the others. Enters with a spring slide-up when you join/create; a single soft pulse when its status changes. List bottom padding accounts for it.
 - Bottom bar (fixed, translucent, safe-area aware, stays while scrolling): account button (left, round), search field (centre, pill, filters the lists live by restaurant, cuisine or dish name; empty state "No parties match 'xyz'"), create button (right, round, `--accent` fill, `+` icon) → `/create`.
 - Empty state for no parties: illustration-free, one line + "Create a party" button.
 
@@ -127,12 +130,12 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - Empty basket → CTA disabled with "Add something to join".
 
 ### W5 Party status: filling — `/party/[id]/status`
-- Top bar: home button (left), restaurant name, help button (right, circle "?"): sheet with "Report a problem" (simulated: shows "Thanks, we've logged this" toast), "Share party link" (copies URL, toast), "Leave party" (only while open and not host).
+- Top bar: home button (left), restaurant name, **info button** (right, lucide `Info` icon, aria-label "More information"): sheet with party details (restaurant, deal terms, collection point + access note), "How it works" (party fills → 60s to accept and pay → one second round if someone drops out → otherwise cancelled, nobody charged), then actions: "Share party link" (copies URL, toast), "Report a problem" (simulated: "Thanks, we've logged this" toast), "Leave party" (only while open and not host).
 - Section "Filling the party" with "📍 Collection point name" on the right (pin icon, not emoji).
 - Timer card: big countdown (34px tabular) left, "75% filled" + progress pie right.
 - Caption: "We'll notify you when the deal is reached."
 - "Order": your items with prices; then Group deal (25% off) −£x, Delivery share £x, **Total** (projected; label "Estimated").
-- "Party": members with "Host" tag; you shown as "You"; members still choosing shown as "choosing…".
+- "Party" section (never "Group"): members with "Host" tag; you shown as "You"; members still choosing shown as "choosing…". **If you are the host and nobody else has joined, hide the whole Party section**; it appears (animated in) when the first person joins. Same rule on W9 and W10.
 - Bottom: "Back to home" button (secondary, with home icon).
 
 ### W9 Party status: deal reached, accept and pay — same route, status `deal_achieved`
