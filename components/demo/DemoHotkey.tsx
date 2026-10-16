@@ -38,9 +38,10 @@ function useFocusPassThrough(panel: HTMLElement | null) {
 
 /**
  * Press "d" anywhere (outside text fields) to toggle a floating demo-controls panel. Keyboard-driven and
- * used constantly while presenting, so it appears and disappears instantly. Portalled to <body> above every
- * layer and kept clickable while a vaul sheet or Radix dialog is open (those set pointer-events: none on
- * the body).
+ * used constantly while presenting, so it appears and disappears instantly. Portalled to <body>: on the
+ * laptop that puts it outside the phone frame, in the bottom-right corner of the window, so it never covers
+ * the phone; on a phone it floats above the bottom controls. Kept clickable while a vaul sheet or Radix
+ * dialog is open (those set pointer-events: none on the body).
  */
 export function DemoHotkey() {
   const [open, setOpen] = useState(false);
@@ -68,7 +69,7 @@ export function DemoHotkey() {
       ref={setPanel}
       aria-label="Demo controls"
       {...{ [PASS_THROUGH_ATTR]: "" }}
-      className="pointer-events-auto fixed right-3 bottom-[calc(env(safe-area-inset-bottom)+88px)] z-[70] w-[300px] max-w-[calc(100vw-24px)] rounded-card bg-surface p-4 pt-3 shadow-popup ring-1 ring-line min-[900px]:top-6 min-[900px]:right-auto min-[900px]:bottom-auto min-[900px]:left-[calc(50%+239px)]"
+      className="pointer-events-auto fixed right-3 bottom-[calc(var(--safe-bottom)+88px)] z-[70] max-h-[calc(100dvh-var(--safe-bottom)-112px)] w-[300px] max-w-[calc(100vw-24px)] overflow-y-auto overscroll-contain rounded-card bg-surface p-4 pt-3 shadow-popup ring-1 ring-line frame:right-6 frame:bottom-6 frame:max-h-[calc(100dvh-48px)]"
     >
       <div className="mb-1 flex items-center justify-between gap-2">
         <h2 className="text-emphasis font-semibold text-ink">Demo controls</h2>

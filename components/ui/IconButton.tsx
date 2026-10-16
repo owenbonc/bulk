@@ -39,11 +39,14 @@ function variantClasses(variant: IconButtonVariant, iconColor: IconButtonIconCol
   return cn(v.surface, iconColor === "accent" ? "text-accent-ink" : iconColor === "ink" ? "text-ink" : v.text);
 }
 
-const sizes: Record<IconButtonSize, string> = {
-  // 36px visual, 44px hit area.
-  sm: "size-9 before:absolute before:-inset-1 [&_svg]:size-[18px]",
-  md: "size-11",
-  lg: "size-12 [&_svg]:size-[22px]",
+// Every size reaches a 44px hit area: the visible disc plus an invisible ::before ring.
+const sizes: Record<IconButtonSize, { box: string; badge: string }> = {
+  // 32px: close buttons in sheets and popups.
+  sm: { box: "size-8 before:absolute before:-inset-1.5 [&_svg]:size-4", badge: "top-[3px] right-[3px] size-2" },
+  // 40px: every round control on a screen (account, create, bell, back, search, info, section arrows).
+  md: { box: "size-10 before:absolute before:-inset-0.5", badge: "top-[5px] right-[5px] size-2.5" },
+  // 44px.
+  lg: { box: "size-11 [&_svg]:size-[22px]", badge: "top-1.5 right-1.5 size-2.5" },
 };
 
 interface OwnProps {
@@ -51,6 +54,7 @@ interface OwnProps {
   "aria-label": string;
   /** Default `glass`. */
   variant?: IconButtonVariant;
+  /** md 40px (default), sm 32px, lg 44px; all with a 44px hit area. */
   size?: IconButtonSize;
   /** Icon colour; defaults to the variant's. `accent` draws it in --accent-ink so a glass button still reads as the primary action. */
   iconColor?: IconButtonIconColor;
@@ -66,16 +70,22 @@ type AsLink = OwnProps &
 
 export type IconButtonProps = AsButton | AsLink;
 
-function Badge() {
+function Badge({ size }: { size: IconButtonSize }) {
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute top-[7px] right-[7px] size-2.5 rounded-full border border-accent-ink/40 bg-accent ring-2 ring-bg"
+      className={cn(
+        "pointer-events-none absolute rounded-full border border-accent-ink/40 bg-accent ring-2 ring-bg",
+        sizes[size].badge,
+      )}
     />
   );
 }
 
-/** Round icon-only button, 44px, clear glass by default. Pass `href` to render a Next.js Link. */
+/**
+ * Round icon-only button: 40px visible with a 44px hit area, clear glass by default. Pass `href` to render a
+ * Next.js Link.
+ */
 export function IconButton(props: IconButtonProps) {
   if (props.href !== undefined) {
     const { variant = "glass", size = "md", iconColor, badge, disabled, className, children, href, onClick, ...rest } = props;
@@ -92,10 +102,10 @@ export function IconButton(props: IconButtonProps) {
           }
           onClick?.(e);
         }}
-        className={cn(base, positioned(className), variantClasses(variant, iconColor), sizes[size], className)}
+        className={cn(base, positioned(className), variantClasses(variant, iconColor), sizes[size].box, className)}
       >
         {children}
-        {badge && <Badge />}
+        {badge && <Badge size={size} />}
       </Link>
     );
   }
@@ -105,10 +115,10 @@ export function IconButton(props: IconButtonProps) {
     <button
       {...rest}
       type={type}
-      className={cn(base, positioned(className), variantClasses(variant, iconColor), sizes[size], className)}
+      className={cn(base, positioned(className), variantClasses(variant, iconColor), sizes[size].box, className)}
     >
       {children}
-      {badge && <Badge />}
+      {badge && <Badge size={size} />}
     </button>
   );
 }

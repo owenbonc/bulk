@@ -149,12 +149,12 @@ describe("one party per restaurant", () => {
     expect(s.draft?.basket).toEqual([{ itemId: "sh-margherita", qty: 1 }]);
   });
 
-  it("the seed has one open party per restaurant, with two restaurants free", () => {
+  it("the seed has one open party per restaurant, with six restaurants free", () => {
     const s = seedState(T0);
     const withParty = s.requests.filter((r) => r.status === "open").map((r) => r.restaurantId);
     expect(new Set(withParty).size).toBe(withParty.length);
     expect(withParty).toHaveLength(6);
-    expect(CATALOG.restaurants.filter((r) => !openPartyFor(s, r.id))).toHaveLength(2);
+    expect(CATALOG.restaurants.filter((r) => !openPartyFor(s, r.id))).toHaveLength(6);
   });
 });
 
@@ -573,11 +573,11 @@ describe("notificationsFor", () => {
     const cancelled = run(dealState(), { type: "TICK", now: DEAL_AT + ACCEPT_WINDOW_MS });
     expect(notificationsFor(cancelled)[0]).toMatchObject({
       kind: "cancelled",
-      title: "Order cancelled",
+      title: "Order cancelled at Slice House",
       body: "Not enough people accepted to keep the deal. Nobody was charged.",
     });
     const expired = run(emptyState(), create, { type: "TICK", now: T0 + 15 * 60_000 });
-    expect(notificationsFor(expired)[0]).toMatchObject({ kind: "expired", title: "Party closed" });
+    expect(notificationsFor(expired)[0]).toMatchObject({ kind: "expired", title: "Party closed at Slice House" });
   });
 
   it("MARK_NOTIFICATIONS_READ clears the unread count", () => {

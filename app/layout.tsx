@@ -5,6 +5,7 @@ import { MotionConfig } from "motion/react";
 import { Toaster } from "sonner";
 import PartyAlerts from "@/components/PartyAlerts";
 import { DemoHotkey } from "@/components/demo";
+import { DeviceFrame } from "@/components/ui/DeviceFrame";
 import { AppProvider } from "@/lib/store";
 import "./globals.css";
 
@@ -48,31 +49,31 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body>
         <LucideProvider size={20} strokeWidth={1.75}>
           <MotionConfig reducedMotion="user">
-            {/* The phone column: full width on phones; from the `desk` breakpoint (wider than the column) it is
-                centred on sand with side hairlines. */}
-            <div className="relative mx-auto min-h-dvh w-full max-w-column bg-bg desk:shadow-column">
+            {/* Full screen on a phone; an iPhone 16 Pro frame on the laptop. Sheets, popups and toasts stay inside it. */}
+            <DeviceFrame>
               <AppProvider>
                 {children}
                 <PartyAlerts />
+                {/* Its panel portals to <body>: outside the phone, bottom-right of the laptop window. */}
                 <DemoHotkey />
               </AppProvider>
-            </div>
-            <Toaster
-              position="top-center"
-              className="bulk-toaster"
-              offset={{ top: "calc(env(safe-area-inset-top) + 12px)" }}
-              mobileOffset={{ top: "calc(env(safe-area-inset-top) + 8px)", left: "16px", right: "16px" }}
-              gap={8}
-              visibleToasts={3}
-              duration={3200}
-              icons={{
-                success: <CircleCheck />,
-                info: <Info />,
-                warning: <TriangleAlert />,
-                error: <CircleAlert />,
-                loading: <LoaderCircle className="animate-spin" />,
-              }}
-            />
+              <Toaster
+                position="top-center"
+                className="bulk-toaster"
+                offset={{ top: "calc(var(--safe-top) + 56px)" }}
+                mobileOffset={{ top: "calc(var(--safe-top) + 56px)", left: "16px", right: "16px" }}
+                gap={8}
+                visibleToasts={3}
+                duration={3200}
+                icons={{
+                  success: <CircleCheck />,
+                  info: <Info />,
+                  warning: <TriangleAlert />,
+                  error: <CircleAlert />,
+                  loading: <LoaderCircle className="animate-spin" />,
+                }}
+              />
+            </DeviceFrame>
           </MotionConfig>
         </LucideProvider>
       </body>

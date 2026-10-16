@@ -15,7 +15,10 @@ export interface PaySheetProps {
   restaurant: Restaurant;
   /** Your exact share in pence. */
   amount: number;
-  /** Acceptance round (2 is the fallback round). A new round starts the sheet over. */
+  /**
+   * Acceptance round. Round 2 is the final round: any drop-out cancels the order, and the pay and
+   * decline copy says so. A new round starts the sheet over.
+   */
   round: number;
   /** End of the acceptance round. */
   deadline: number;
@@ -29,6 +32,7 @@ export interface PaySheetProps {
  * "Decline" that asks for confirmation before removing you from the order.
  */
 export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadline, now, onPay, onDecline }: PaySheetProps) {
+  const finalRound = round === 2;
   const [step, setStep] = useState<"pay" | "decline">("pay");
   const [paying, setPaying] = useState(false);
 
@@ -93,7 +97,7 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadli
       }}
       dismissible={!paying}
       title={step === "pay" ? "Accept and pay" : "Decline this order?"}
-      description="Simulated payment, no real money"
+      description={step === "pay" ? "Simulated payment, no real money" : undefined}
       footer={footer}
     >
       <AnimatePresence mode="wait" initial={false}>
@@ -105,14 +109,14 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadli
             animate={{ opacity: 1, x: 0, transition: SPRING }}
             exit={{ opacity: 0, transition: EXIT }}
           >
-            <div className="flex items-baseline justify-between gap-4 rounded-card bg-surface-2 px-4 py-3.5">
+            <div className="flex items-baseline justify-between gap-3 rounded-card bg-surface-2 p-card">
               <span className="min-w-0 text-body text-ink-2">
                 Your share at <span className="font-semibold text-ink">{restaurant.name}</span>
               </span>
               <Price pence={amount} className="shrink-0 font-display text-title font-semibold text-ink" />
             </div>
 
-            <div className="flex items-center gap-3 rounded-card border border-line px-4 py-3">
+            <div className="flex items-center gap-3 rounded-card border border-line p-card">
               <span aria-hidden className="grid h-9 w-12 shrink-0 place-items-center rounded-md bg-ink text-bg">
                 <CreditCard className="size-[18px]" />
               </span>
@@ -126,8 +130,10 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadli
             </div>
 
             <p className="text-meta text-ink-2">
-              Accept within <Countdown until={deadline} now={now} className="font-semibold" /> to lock in {restaurant.deal.short}. If
-              someone drops out, the rest get one more round. Otherwise nobody is charged.
+              Accept within <Countdown until={deadline} now={now} className="font-semibold" /> to lock in {restaurant.deal.short}.
+              {finalRound
+                ? " This is the final round: if anyone drops out, the order is cancelled and nobody is charged."
+                : " If someone drops out, the rest get one more round. Otherwise nobody is charged."}
             </p>
           </motion.div>
         ) : (
@@ -138,8 +144,10 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadli
             exit={{ opacity: 0, transition: EXIT }}
           >
             <p className="text-body text-ink-2">
-              You&apos;ll be taken out of this order and won&apos;t be charged. If the others still reach{" "}
-              {formatPrice(restaurant.deal.minTotal, { trim: true })} without you, they get a second round to accept.
+              You&apos;ll be taken out of this order and won&apos;t be charged.
+              {finalRound
+                ? " This is the final round, so the order will be cancelled for everyone."
+                : ` If the others still reach ${formatPrice(restaurant.deal.minTotal, { trim: true })} without you, they get a second round to accept.`}
             </p>
           </motion.div>
         )}

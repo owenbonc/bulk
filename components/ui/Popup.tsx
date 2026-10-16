@@ -5,6 +5,7 @@ import { X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import type { ReactNode } from "react";
 import { cn } from "./cn";
+import { usePortalContainer } from "./frame";
 import { IconButton } from "./IconButton";
 import { isPassThrough } from "./layers";
 import { EASE_OUT, EXIT, SPRING } from "./motion";
@@ -20,7 +21,7 @@ const iconTones: Record<PopupIconTone, string> = {
 export interface PopupProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Large illustration icon, sized to 88px for you, e.g. `<BellRing className="animate-ring" />`. */
+  /** Large illustration icon, sized to 76px on a 120px disc for you, e.g. `<BellRing className="animate-ring" />`. */
   icon?: ReactNode;
   /** Tinted disc behind the icon. */
   iconTone?: PopupIconTone;
@@ -36,8 +37,9 @@ export interface PopupProps {
 }
 
 /**
- * Centred dialog over a blurred, dimmed backdrop: close X top-left, icon, title, body, action.
- * Focus is trapped while open, Escape closes, and the card springs in from 0.95.
+ * Centred dialog over a blurred, dimmed backdrop: close X top-left, icon, title, body, action. Renders
+ * inside the phone (the frame's portal layer). Focus is trapped while open, Escape closes, and the card
+ * springs in from 0.95.
  */
 export function Popup({
   open,
@@ -51,12 +53,13 @@ export function Popup({
   dismissible = true,
 }: PopupProps) {
   const reduce = useReducedMotion();
+  const container = usePortalContainer();
 
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <AnimatePresence>
         {open && (
-          <Dialog.Portal forceMount>
+          <Dialog.Portal forceMount container={container}>
             <Dialog.Overlay asChild forceMount>
               <motion.div
                 className="fixed inset-0 z-[60] bg-scrim backdrop-blur-[8px] [@media(prefers-reduced-transparency:reduce)]:backdrop-blur-none"
@@ -65,7 +68,7 @@ export function Popup({
                 exit={{ opacity: 0, transition: EXIT }}
               />
             </Dialog.Overlay>
-            <div className="pointer-events-none fixed inset-0 z-[60] grid place-items-center p-4">
+            <div className="pointer-events-none fixed inset-0 z-[60] grid place-items-center px-4 pt-[calc(var(--safe-top)+8px)] pb-[max(16px,var(--safe-bottom))]">
               <Dialog.Content
                 asChild
                 forceMount
@@ -78,7 +81,7 @@ export function Popup({
                 }}
               >
                 <motion.div
-                  className="pointer-events-auto relative w-full max-w-[358px] rounded-popup bg-surface px-6 pt-12 pb-6 text-center shadow-popup outline-none"
+                  className="pointer-events-auto relative w-full max-w-[358px] rounded-popup bg-surface px-5 pt-11 pb-5 text-center shadow-popup outline-none"
                   initial={{ opacity: 0, scale: reduce ? 1 : 0.95 }}
                   animate={{ opacity: 1, scale: 1, transition: reduce ? { duration: 0.2 } : SPRING }}
                   exit={{ opacity: 0, scale: reduce ? 1 : 0.97, transition: EXIT }}
@@ -87,7 +90,7 @@ export function Popup({
                     <div
                       aria-hidden
                       className={cn(
-                        "mx-auto mb-6 grid size-36 place-items-center rounded-full [&_svg]:size-[88px]",
+                        "mx-auto mb-5 grid size-30 place-items-center rounded-full [&_svg]:size-[76px]",
                         iconTones[iconTone],
                       )}
                     >
@@ -97,11 +100,11 @@ export function Popup({
                   <Dialog.Title className="font-display text-title font-semibold text-ink">{title}</Dialog.Title>
                   {description && (
                     <Dialog.Description asChild>
-                      <div className="mx-auto mt-2 max-w-[30ch] text-body text-pretty text-ink-2">{description}</div>
+                      <div className="mx-auto mt-1.5 max-w-[32ch] text-body text-pretty text-ink-2">{description}</div>
                     </Dialog.Description>
                   )}
-                  {children && <div className="mt-4">{children}</div>}
-                  {action && <div className="mt-7 flex flex-col gap-2">{action}</div>}
+                  {children && <div className="mt-3">{children}</div>}
+                  {action && <div className="mt-6 flex flex-col gap-2">{action}</div>}
                   {dismissible && (
                     <Dialog.Close asChild>
                       <IconButton aria-label="Close" size="sm" variant="soft" className="absolute top-3 left-3">

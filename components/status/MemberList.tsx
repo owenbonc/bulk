@@ -2,7 +2,7 @@
 
 import { Check, UserPlus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Avatar, Card, IconButton, Pill, SPRING, SPRING_SNAPPY, cn } from "@/components/ui";
+import { Avatar, Card, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { basketCount } from "@/lib/split";
 import { useApp } from "@/lib/store";
@@ -50,12 +50,12 @@ export function MemberList({ request, mode }: { request: OrderRequest; mode: Mem
                 transition={SPRING}
                 className="relative"
               >
-                {i > 0 && <div aria-hidden className="absolute top-0 right-0 left-[60px] h-px bg-line" />}
-                <div className="flex min-h-[60px] items-center gap-3 px-4 py-2.5">
+                {i > 0 && <div aria-hidden className="absolute top-0 right-0 left-14 h-px bg-line" />}
+                <div className="flex min-h-14 items-center gap-3 px-card py-2">
                   <Avatar name={p.name} you={you} />
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <span className={cn("truncate text-body text-ink", you && "font-semibold")}>{you ? "You" : p.name}</span>
-                    {p.userId === request.hostId && <Pill tone="outline">Host</Pill>}
+                    <Marquee className={cn("text-body text-ink", you && "font-semibold")}>{you ? "You" : p.name}</Marquee>
+                    {p.userId === request.hostId && <Pill tone="outline" className="shrink-0">Host</Pill>}
                   </div>
                   <Trailing participant={p} mode={mode} you={you} friend={state.friends.includes(p.userId)} onAddFriend={() => dispatch({ type: "ADD_FRIEND", userId: p.userId })} />
                 </div>

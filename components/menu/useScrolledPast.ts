@@ -1,10 +1,12 @@
 "use client";
 
 import { useEffect, useState, type RefObject } from "react";
+import { getScrollTop, scrollTopOf, subscribeScroll } from "@/components/ui";
 
 /**
- * True once `ref` has scrolled fully above a line `offset` px from the top of the viewport (the bottom edge
- * of the fixed top bar). Driven by an IntersectionObserver, so it costs nothing while scrolling.
+ * True once the bottom edge of `ref` has scrolled above a line `offset` px from the top of the phone screen
+ * (e.g. the bottom of the floating top bar). Measured in the app's scroll coordinates, so it works in the
+ * laptop phone frame (scaled, scrolling inside the frame) and on a phone (the document scrolls).
  */
 export function useScrolledPast(ref: RefObject<HTMLElement | null>, offset: number): boolean {
   const [past, setPast] = useState(false);
@@ -12,28 +14,50 @@ export function useScrolledPast(ref: RefObject<HTMLElement | null>, offset: numb
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const observer = new IntersectionObserver(
-      ([entry]) => setPast(!entry.isIntersecting && entry.boundingClientRect.top < offset),
-      { rootMargin: `-${Math.round(offset)}px 0px 0px 0px`, threshold: 0 },
-    );
+    const update = () => setPast(getScrollTop() + offset >= scrollTopOf(el) + el.offsetHeight);
+    update();
+    const unsubscribe = subscribeScroll(update);
+    const observer = new ResizeObserver(update);
     observer.observe(el);
-    return () => observer.disconnect();
+    window.addEventListener("resize", update);
+    return () => {
+      unsubscribe();
+      observer.disconnect();
+      window.removeEventListener("resize", update);
+    };
   }, [ref, offset]);
 
   return past;
 }
 
-/** Live height of the first <header> inside `ref` (the TopBar, including its safe-area padding). */
-export function useHeaderHeight(ref: RefObject<HTMLElement | null>, fallback = 56): number {
-  const [height, setHeight] = useState(fallback);
+export interface HeaderMetrics {
+  /** Height of the bar including its status-bar padding, in CSS px. */
+  height: number;
+  /** The status bar's safe area (--safe-top) the bar is padded by, in CSS px. */
+  safeTop: number;
+}
+
+/** Live size of the first <header> inside `ref` (the TopBar, including its --safe-top padding). */
+export function useHeaderMetrics(ref: RefObject<HTMLElement | null>): HeaderMetrics {
+  const [metrics, setMetrics] = useState<HeaderMetrics>({ height: 110, safeTop: 62 });
 
   useEffect(() => {
     const header = ref.current?.querySelector("header");
     if (!header) return;
-    const observer = new ResizeObserver(() => setHeight(header.offsetHeight));
+    const measure = () => {
+      const safeTop = Number.parseFloat(getComputedStyle(header).paddingTop) || 0;
+      const height = header.offsetHeight;
+      setMetrics((m) => (m.height === height && m.safeTop === safeTop ? m : { height, safeTop }));
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
     observer.observe(header);
-    return () => observer.disconnect();
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, [ref]);
 
-  return height;
+  return metrics;
 }

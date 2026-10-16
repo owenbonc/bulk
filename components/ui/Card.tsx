@@ -2,13 +2,13 @@ import type { ComponentPropsWithRef, ReactNode } from "react";
 import { cn } from "./cn";
 
 export interface CardProps extends ComponentPropsWithRef<"div"> {
-  /** Inner padding: 16px by default, or none for edge-to-edge content. */
+  /** Inner padding: 12px (the card token) by default, or none for edge-to-edge content. */
   padded?: boolean;
 }
 
 /** White card with a 1px --line border and 18px radius. No shadow: cards sit on the page, they do not float. */
 export function Card({ padded = true, className, ...rest }: CardProps) {
-  return <div {...rest} className={cn("rounded-card border border-line bg-surface", padded && "p-4", className)} />;
+  return <div {...rest} className={cn("rounded-card border border-line bg-surface", padded && "p-card", className)} />;
 }
 
 export type SummaryTone = "default" | "muted" | "accent" | "offer";
@@ -25,7 +25,7 @@ export interface SummaryRowProps {
   value: ReactNode;
   /** Caption under the label, e.g. "when the party fills". */
   hint?: ReactNode;
-  /** The total line: larger and bold. */
+  /** The total line: 15px semibold ink. */
   strong?: boolean;
   /** Colour of the value. */
   tone?: SummaryTone;

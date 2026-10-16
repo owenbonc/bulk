@@ -19,7 +19,7 @@ export function PartySection({ request, children }: { request: OrderRequest; chi
       {show && (
         <motion.section
           aria-labelledby="party-title"
-          className="flex flex-col gap-3"
+          className="flex flex-col gap-group"
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0, transition: SPRING }}
           exit={{ opacity: 0, transition: EXIT }}

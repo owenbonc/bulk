@@ -2,52 +2,74 @@
 
 import { ChevronDown, MapPin, Timer } from "lucide-react";
 import type { ReactNode } from "react";
-import { Countdown, Divider, ProgressBar, cn, formatPrice } from "@/components/ui";
+import { Countdown, Divider, Marquee, ProgressBar, cn, formatPrice } from "@/components/ui";
 import type { Progress } from "@/lib/requests";
 
 export type SettingsFocus = "duration" | "pickup";
 
 /* The full bubble sits on the page as a card; the compact copy floats at the top between the back and
-   search buttons as its own clear-glass pill. Collection point names are short ("Student Centre", the
-   longest "IOE Bedford Way"), so both show the whole name on one line on a 375px phone: the full join
-   bubble needs about 331px of the 343px column, the compact one about 254px of the 263px between the
-   buttons. */
-const fullShell = "flex items-stretch rounded-[22px] border border-line bg-surface";
-const compactShell = "glass flex h-11 min-w-0 items-stretch rounded-full";
-
-function progressText(p: Progress) {
-  return `${formatPrice(p.total, { trim: true })} of ${formatPrice(p.target, { trim: true })} towards the deal`;
-}
+   search buttons as its own clear-glass pill. The collection point takes the space that is left and
+   scrolls (Marquee) if its name doesn't fit. */
+const fullShell = "flex items-stretch rounded-card border border-line bg-surface";
+const compactShell = "glass flex h-10 min-w-0 items-stretch rounded-full";
 
 // ---------------------------------------------------------------------------
 // Join: "£X left" with a thin bar | pin + collection point | live countdown
 // ---------------------------------------------------------------------------
 
 export interface JoinInfoBubbleProps {
+  /** The party's finalised spend towards the deal. */
   progress: Progress;
+  /** Your basket subtotal in pence: drawn after the party's spend as your pulsing contribution. */
+  mine: number;
   pickupName: string;
   expiresAt: number;
   now: number;
   compact?: boolean;
 }
 
-export function JoinInfoBubble({ progress, pickupName, expiresAt, now, compact = false }: JoinInfoBubbleProps) {
-  const left = formatPrice(progress.left, { trim: true });
+/**
+ * The bar shows the party's finalised spend in lime, then your basket as a pulsing --mine segment, so you
+ * see what you would add; "£X left" is what is still needed with your basket counted.
+ */
+export function JoinInfoBubble({ progress, mine, pickupName, expiresAt, now, compact = false }: JoinInfoBubbleProps) {
+  const withMine = progress.total + mine;
+  const leftPence = Math.max(0, progress.target - withMine);
+  const left = formatPrice(leftPence, { trim: true });
+  const gbp = (pence: number) => formatPrice(pence, { trim: true });
+  const valueText =
+    `${gbp(progress.total)} of ${gbp(progress.target)} towards the deal` +
+    (mine > 0 ? `, ${gbp(withMine)} with your basket` : "");
+  const bar = (size: "hairline" | "sm") => (
+    <ProgressBar
+      value={withMine}
+      max={progress.target}
+      contribution={mine > 0 ? mine : undefined}
+      size={size}
+      label="Deal progress"
+      valueText={valueText}
+    />
+  );
+  const pickup = (
+    <>
+      <span className="sr-only">Collection point: </span>
+      {pickupName}
+    </>
+  );
 
   if (compact) {
     return (
       <div role="group" aria-label="Party summary" className={cn(compactShell, "w-full gap-1.5 px-3 text-meta")}>
-        <span className="flex shrink-0 flex-col justify-center gap-[5px]">
-          <span className="tnum leading-none font-semibold whitespace-nowrap text-ink">{left} left</span>
-          <ProgressBar value={progress.total} max={progress.target} size="hairline" label="Deal progress" valueText={progressText(progress)} />
+        <span className="flex min-w-14 shrink-0 flex-col justify-center gap-[5px]">
+          <span className="tnum leading-none font-semibold whitespace-nowrap text-ink">
+            {leftPence > 0 ? `${left} left` : "Unlocked"}
+          </span>
+          {bar("hairline")}
         </span>
         <Divider orientation="vertical" className="my-2.5" />
-        <span className="flex flex-1 items-center justify-center gap-0.5 text-ink">
+        <span className="flex min-w-0 flex-1 items-center gap-0.5 text-ink">
           <MapPin aria-hidden className="size-3.5 shrink-0 text-accent-ink" />
-          <span className="font-medium whitespace-nowrap">
-            <span className="sr-only">Collection point: </span>
-            {pickupName}
-          </span>
+          <Marquee className="font-medium">{pickup}</Marquee>
         </span>
         <Divider orientation="vertical" className="my-2.5" />
         <Countdown until={expiresAt} now={now} className="shrink-0 self-center font-semibold text-ink" />
@@ -57,22 +79,25 @@ export function JoinInfoBubble({ progress, pickupName, expiresAt, now, compact =
 
   return (
     <div role="group" aria-label="Party summary" className={fullShell}>
-      <div className="flex shrink-0 flex-col justify-center gap-2 py-3 pr-3 pl-3.5">
+      <div className="flex min-w-24 shrink-0 flex-col justify-center gap-2 py-2.5 pr-3 pl-3">
         <span className="tnum text-emphasis leading-none font-semibold whitespace-nowrap text-ink">
-          {left} <span className="font-medium text-ink-2">left</span>
+          {leftPence > 0 ? (
+            <>
+              {left} <span className="font-medium text-ink-2">left</span>
+            </>
+          ) : (
+            "Unlocked"
+          )}
         </span>
-        <ProgressBar value={progress.total} max={progress.target} size="sm" label="Deal progress" valueText={progressText(progress)} />
+        {bar("sm")}
       </div>
-      <Divider orientation="vertical" className="my-3" />
-      <div className="flex flex-1 items-center gap-1 px-2.5 py-3">
+      <Divider orientation="vertical" className="my-2.5" />
+      <div className="flex min-w-0 flex-1 items-center gap-1 px-2.5 py-2.5">
         <MapPin aria-hidden className="size-4 shrink-0 text-accent-ink" />
-        <span className="text-meta leading-snug font-medium text-ink">
-          <span className="sr-only">Collection point: </span>
-          {pickupName}
-        </span>
+        <Marquee className="text-meta font-medium text-ink">{pickup}</Marquee>
       </div>
-      <Divider orientation="vertical" className="my-3" />
-      <div className="flex shrink-0 flex-col items-start justify-center gap-0.5 py-3 pr-3.5 pl-3">
+      <Divider orientation="vertical" className="my-2.5" />
+      <div className="flex shrink-0 flex-col items-start justify-center gap-0.5 py-2.5 pr-3 pl-2.5">
         <span className="flex items-center gap-1 text-caption whitespace-nowrap text-ink-2">
           <Timer aria-hidden className="size-3.5" />
           Closes in
@@ -104,7 +129,7 @@ export function CreateInfoBubble({ durationMin, pickupName, onEdit, compact = fa
           value={<span className="tnum">{durationMin} min</span>}
           label={`Party lasts ${durationMin} minutes. Change`}
           onClick={() => onEdit("duration")}
-          className="shrink-0 pl-3.5"
+          className="shrink-0 pl-3"
         />
         <Divider orientation="vertical" className="my-2.5" />
         <Setting
@@ -128,7 +153,7 @@ export function CreateInfoBubble({ durationMin, pickupName, onEdit, compact = fa
         onClick={() => onEdit("duration")}
         className="shrink-0"
       />
-      <Divider orientation="vertical" className="my-3" />
+      <Divider orientation="vertical" className="my-2.5" />
       <Setting
         caption="Collect from"
         icon={<MapPin aria-hidden className="size-4 shrink-0 text-accent-ink" />}
@@ -160,7 +185,7 @@ function Setting({ caption, value, label, icon, compact = false, onClick, classN
       onClick={onClick}
       className={cn(
         "flex items-center text-left transition-colors duration-100 ease-out",
-        compact ? "gap-1 px-2.5 active:bg-ink/[0.06] hover:bg-ink/[0.03]" : "gap-2 px-3.5 py-3 active:bg-surface-2 hover:bg-surface-hover",
+        compact ? "gap-1 px-2.5 active:bg-ink/[0.06] hover:bg-ink/[0.03]" : "gap-2 px-3 py-2.5 active:bg-surface-2 hover:bg-surface-hover",
         className,
       )}
     >
@@ -173,7 +198,7 @@ function Setting({ caption, value, label, icon, compact = false, onClick, classN
           )}
         >
           {icon}
-          <span className="whitespace-nowrap">{value}</span>
+          <Marquee>{value}</Marquee>
         </span>
       </span>
       <ChevronDown aria-hidden className={cn("shrink-0 text-ink-2", compact ? "size-3.5" : "size-4")} />

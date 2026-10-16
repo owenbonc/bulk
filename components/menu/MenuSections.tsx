@@ -1,7 +1,7 @@
 "use client";
 
 import { SearchX } from "lucide-react";
-import { Button, ImageFrame, Price, SectionHeader, Stepper } from "@/components/ui";
+import { Button, ImageFrame, Marquee, Price, SectionHeader, Stepper } from "@/components/ui";
 import type { MenuCategory, MenuItem, Restaurant } from "@/lib/types";
 
 /** How the screen reads and changes your quantities, whichever basket (party or draft) backs it. */
@@ -34,12 +34,12 @@ export function TopPicks({ restaurant, controls }: { restaurant: Restaurant; con
   if (picks.length === 0) return null;
 
   return (
-    <section aria-labelledby="top-picks" className="flex flex-col gap-3">
+    <section aria-labelledby="top-picks" className="flex flex-col gap-group">
       <SectionHeader title="Top picks" id="top-picks" />
-      <ul className="no-scrollbar -mx-4 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 [touch-action:pan-x_pan-y]">
+      <ul className="no-scrollbar -mx-gutter flex snap-x snap-mandatory scroll-px-gutter gap-3 overflow-x-auto overscroll-x-contain px-gutter pb-1 [touch-action:pan-x_pan-y]">
         {picks.map((item) => (
-          <li key={item.id} className="w-[148px] shrink-0 snap-start">
-            <ImageFrame src={item.image} alt={item.name} ratio="1/1" radius="card" emoji={restaurant.emoji} sizes="148px">
+          <li key={item.id} className="w-[140px] shrink-0 snap-start">
+            <ImageFrame src={item.image} alt={item.name} ratio="1/1" radius="card" emoji={restaurant.emoji} sizes="140px">
               <Stepper
                 qty={controls.qtyOf(item.id)}
                 label={item.name}
@@ -50,11 +50,13 @@ export function TopPicks({ restaurant, controls }: { restaurant: Restaurant; con
                 className="absolute right-2 bottom-2"
               />
             </ImageFrame>
-            <h3 className="mt-2.5 font-sans text-body leading-snug font-semibold text-ink">{item.name}</h3>
+            <Marquee as="h3" className="mt-2 font-sans text-body leading-snug font-semibold text-ink">
+              {item.name}
+            </Marquee>
             <p className="text-meta font-semibold text-ink">
               <Price pence={item.price} originalPence={item.originalPrice} />
             </p>
-            <p className="mt-0.5 truncate text-meta text-ink-2">{item.description}</p>
+            <p className="mt-0.5 line-clamp-2 text-meta text-ink-2">{item.description}</p>
           </li>
         ))}
       </ul>
@@ -80,8 +82,8 @@ export function MenuList({ restaurant, controls, query, onClearQuery }: MenuList
 
   if (groups.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-3 px-6 pt-12 text-center">
-        <span aria-hidden className="grid size-14 place-items-center rounded-full bg-surface-2 text-ink-2">
+      <div className="flex flex-col items-center gap-3 px-6 pt-10 text-center">
+        <span aria-hidden className="grid size-12 place-items-center rounded-full bg-surface-2 text-ink-2">
           <SearchX />
         </span>
         <p className="text-body text-ink-2" role="status">
@@ -95,7 +97,7 @@ export function MenuList({ restaurant, controls, query, onClearQuery }: MenuList
   }
 
   return (
-    <div className="flex flex-col gap-7">
+    <div className="flex flex-col gap-section">
       {groups.map((group) => (
         <section key={group.key} aria-labelledby={`menu-${group.key}`}>
           <SectionHeader title={group.title} count={group.items.length} id={`menu-${group.key}`} />
@@ -112,11 +114,12 @@ export function MenuList({ restaurant, controls, query, onClearQuery }: MenuList
 
 function MenuRow({ item, controls }: { item: MenuItem; controls: ItemControls }) {
   return (
-    <li className="flex items-center gap-4 py-4">
+    <li className="flex items-center gap-3 py-3">
       <div className="min-w-0 flex-1">
         <h3 className="font-sans text-body leading-snug font-semibold text-ink">{item.name}</h3>
-        <p className="mt-0.5 line-clamp-2 text-meta text-ink-2">{item.description}</p>
-        <p className="mt-1.5 text-body font-medium text-ink">
+        {/* Reserves the width the expanded stepper grows over. */}
+        <p className="mt-0.5 line-clamp-2 pr-[76px] text-meta text-ink-2">{item.description}</p>
+        <p className="mt-1 text-body font-medium text-ink">
           <Price pence={item.price} originalPence={item.originalPrice} />
         </p>
       </div>

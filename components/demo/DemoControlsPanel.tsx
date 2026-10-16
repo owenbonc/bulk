@@ -12,11 +12,11 @@ const PARTY_PATH = /^\/party\/([^/]+)/;
 
 const STATUS_LABEL: Record<RequestStatus, string> = {
   open: "filling",
-  deal_achieved: "deal reached",
-  confirmed: "order placed",
-  preparing: "preparing",
+  deal_achieved: "paying",
+  confirmed: "placed",
+  preparing: "cooking",
   out_for_delivery: "on its way",
-  delivered: "ready to collect",
+  delivered: "arrived",
   expired: "closed",
   cancelled: "cancelled",
 };
@@ -99,7 +99,7 @@ export function DemoControlsPanel({ className }: { className?: string }) {
               value={party?.id ?? ""}
               onChange={(e) => setPick({ id: e.target.value, path: pathname })}
               className={cn(
-                "h-11 w-full min-w-0 cursor-pointer appearance-none truncate rounded-chip bg-surface pr-10 pl-3.5 text-ink",
+                "h-11 w-full min-w-0 cursor-pointer appearance-none rounded-chip bg-surface pr-10 pl-3.5 text-body text-ink",
                 "ring-1 ring-line-strong ring-inset transition-shadow duration-150 outline-none",
                 "focus-visible:ring-2 focus-visible:ring-accent-ink",
               )}
@@ -108,8 +108,8 @@ export function DemoControlsPanel({ className }: { className?: string }) {
                 const name = restaurantById(r.restaurantId)?.name ?? r.id;
                 return (
                   <option key={r.id} value={r.id}>
+                    {isMine(r) ? "• " : ""}
                     {name} · {STATUS_LABEL[r.status]}
-                    {isMine(r) ? " · you're in" : ""}
                   </option>
                 );
               })}

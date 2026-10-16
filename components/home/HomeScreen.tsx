@@ -24,11 +24,11 @@ export function HomeScreen() {
     <>
       <TopBar left={<LocationButton variant="stacked" className="glass" />} right={<NotificationsButton />} className="[&>div]:px-4" />
 
-      <main className="flex flex-col gap-7 pt-3 pb-6">
+      <main className="flex flex-col gap-section pt-3 pb-6">
         {highlights.length > 0 && <Highlights parties={highlights} />}
 
         {others.length > 0 && (
-          <section aria-labelledby="others-title" className="px-4">
+          <section aria-labelledby="others-title" className="px-gutter">
             <SectionHeader id="others-title" title={highlights.length > 0 ? "Other parties" : "Parties near you"} count={others.length} />
             <ul className="mt-2 flex flex-col gap-3">
               {others.map((p, i) => (

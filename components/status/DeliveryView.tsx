@@ -2,7 +2,7 @@
 
 import { Check, House, MapPin } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { BottomBar, Button, Card, Countdown, EASE_OUT, Pill, SectionHeader, cn } from "@/components/ui";
+import { BottomBar, Button, Card, Countdown, EASE_OUT, Marquee, Pill, SectionHeader, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { DELIVERY_STAGES, DELIVERY_STEPS } from "@/lib/requests";
 import { deliveryStep, previewSplit, useApp } from "@/lib/store";
@@ -49,9 +49,9 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
 
   return (
     <>
-      <div className="flex flex-col gap-8 px-4 pt-3 pb-8">
-        <section aria-labelledby="delivery-title" className="flex flex-col gap-4">
-          <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-section px-gutter pt-2 pb-6">
+        <section aria-labelledby="delivery-title" className="flex flex-col gap-group">
+          <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 id="delivery-title" aria-live="polite" className="font-display text-title font-semibold text-ink">
                 {DELIVERY_STEPS[step]?.label}
@@ -85,20 +85,21 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
                 exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
                 transition={{ duration: 0.45, ease: EASE_OUT }}
               >
-                <div className="pb-4">
+                <div className="pb-group">
                   <LiveMap request={request} restaurant={restaurant} pickup={pickup} />
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <Card className="flex flex-col gap-3">
-            <div className="flex items-start justify-between gap-4">
-              <div className="min-w-0">
+          <Card className="flex flex-col gap-2.5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
                 <h2 className="font-display text-section font-semibold text-ink">Collect from</h2>
-                <p className="mt-2 flex items-start gap-1.5 text-body font-semibold text-ink">
-                  <MapPin aria-hidden className="mt-0.5 size-[18px] shrink-0 text-accent-ink" />
-                  {pickup.name}
+                <p className="mt-1.5 flex items-center gap-1.5 text-body font-semibold text-ink">
+                  <MapPin aria-hidden className="size-4 shrink-0 text-accent-ink" />
+                  <span className="sr-only">Collection point: </span>
+                  <Marquee>{pickup.name}</Marquee>
                 </p>
               </div>
               {request.pin && <PinTiles pin={request.pin} ready={delivered} />}
@@ -107,7 +108,7 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
           </Card>
         </div>
 
-        <section aria-labelledby="order-title" className="flex flex-col gap-3">
+        <section aria-labelledby="order-title" className="flex flex-col gap-group">
           <SectionHeader id="order-title" title="Order" />
           <OrderSummary restaurant={restaurant} basket={me.basket} cost={cost} members={cost.members} mode="paid" />
         </section>
@@ -148,7 +149,7 @@ function StepBar({ step }: { step: number }) {
               )}
             />
           </div>
-          <span aria-hidden className={cn("truncate text-caption", i === step ? "font-semibold text-ink" : i < step ? "text-ink-2" : "text-ink-3")}>
+          <span aria-hidden className={cn("whitespace-nowrap text-caption", i === step ? "font-semibold text-ink" : i < step ? "text-ink-2" : "text-ink-3")}>
             {SHORT_LABELS[s.status]}
           </span>
         </div>
@@ -160,7 +161,7 @@ function StepBar({ step }: { step: number }) {
 /** Pickup PIN as four digit tiles. Turn lime once the order is ready to collect. */
 function PinTiles({ pin, ready }: { pin: string; ready: boolean }) {
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1.5">
+    <div className="flex shrink-0 flex-col items-end gap-1">
       <span className="text-caption text-ink-2">Pickup PIN</span>
       <div role="img" aria-label={`Pickup PIN ${pin.split("").join(" ")}`} className="flex gap-1.5">
         {pin.split("").map((digit, i) => (
@@ -168,7 +169,7 @@ function PinTiles({ pin, ready }: { pin: string; ready: boolean }) {
             key={i}
             aria-hidden
             className={cn(
-              "tnum grid h-12 w-9 place-items-center rounded-chip font-mono text-section font-semibold transition-colors duration-300 ease-out",
+              "tnum grid h-11 w-8 place-items-center rounded-chip font-mono text-hero font-semibold transition-colors duration-300 ease-out",
               ready ? "bg-accent text-on-accent" : "bg-surface-2 text-ink",
             )}
           >

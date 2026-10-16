@@ -2,7 +2,7 @@
 
 import { Check, Timer } from "lucide-react";
 import Link from "next/link";
-import { Avatar, Countdown, DealPill, ImageFrame, Pill, ProgressPie, Rating, formatPrice } from "@/components/ui";
+import { Avatar, Countdown, DealPill, ImageFrame, Marquee, Pill, ProgressPie, Rating, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { DELIVERY_STEPS } from "@/lib/requests";
 import { useApp } from "@/lib/store";
@@ -24,9 +24,10 @@ function stageLabel(party: HomeParty): string {
 const MAX_FACES = 3;
 
 /**
- * "Other parties" card (wireframe 1): image left; timer, people and the deal pill stacked on the right;
- * name, rating and delivery time below with the progress on the right. `priority` loads the image eagerly
- * (the first cards in the list).
+ * "Other parties" card (wireframe 1): image left (with "You're in" on it when you're in the party); timer,
+ * people and the red deal pill stacked in the right column, so cards stack with even gaps; name, rating and
+ * delivery time below with the progress on the right. `priority` loads the image eagerly (the first cards
+ * in the list).
  */
 export function PartyListCard({ party, priority = false }: { party: HomeParty; priority?: boolean }) {
   const { now } = useApp();
@@ -50,7 +51,13 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
           sizes="96px"
           priority={priority}
           className="size-24 shrink-0"
-        />
+        >
+          {me && (
+            <Pill tone="soft" icon={<Check aria-hidden />} className="absolute top-1.5 left-1.5 shadow-float">
+              You&apos;re in
+            </Pill>
+          )}
+        </ImageFrame>
         <div className="flex min-w-0 flex-1 flex-col items-end gap-1.5 pt-0.5 text-right">
           {open ? (
             <span className="inline-flex items-center gap-1.5 text-body font-semibold text-ink">
@@ -68,20 +75,15 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
             </span>
             <span className="tnum">{people.length} in party</span>
           </span>
-          <span className="flex flex-wrap items-center justify-end gap-1.5">
-            {me && (
-              <Pill tone="soft" icon={<Check aria-hidden />}>
-                You&apos;re in
-              </Pill>
-            )}
-            <DealPill label={restaurant.deal.short} size="sm" />
-          </span>
+          <DealPill label={restaurant.deal.short} size="sm" />
         </div>
       </div>
 
       <div className="mt-2.5 flex items-end justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="truncate text-emphasis font-semibold tracking-[-0.01em] text-ink">{restaurant.name}</h3>
+        <div className="min-w-0 flex-1">
+          <Marquee as="h3" className="text-emphasis font-semibold tracking-[-0.01em] text-ink">
+            {restaurant.name}
+          </Marquee>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1">
             <Rating value={restaurant.rating} count={restaurant.ratingCount} />
             <span aria-hidden className="text-meta text-ink-2">

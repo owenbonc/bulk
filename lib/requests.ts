@@ -600,7 +600,7 @@ export function notificationsFor(state: AppState, catalog: Catalog = CATALOG, us
         ...base,
         key: `${r.id}:cancelled`,
         kind: "cancelled",
-        title: "Order cancelled",
+        title: `Order cancelled at ${restaurant.name}`,
         body: `${r.cancelReason ?? CANCEL_REASONS.notEnoughAccepted} Nobody was charged.`,
         at: r.closedAt ?? r.acceptDeadline ?? r.createdAt,
       });
@@ -610,7 +610,7 @@ export function notificationsFor(state: AppState, catalog: Catalog = CATALOG, us
         ...base,
         key: `${r.id}:expired`,
         kind: "expired",
-        title: "Party closed",
+        title: `Party closed at ${restaurant.name}`,
         body: `${r.cancelReason ?? CANCEL_REASONS.expired} Nobody was charged.`,
         at: r.closedAt ?? r.expiresAt,
       });

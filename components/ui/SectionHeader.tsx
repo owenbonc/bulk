@@ -26,13 +26,13 @@ export function SectionHeader({ title, count, onArrowClick, arrowLabel, action, 
   const trailing =
     action ??
     (onArrowClick && (
-      <IconButton aria-label={arrowLabel ?? `More ${title}`} size="sm" variant="outline" onClick={onArrowClick}>
+      <IconButton aria-label={arrowLabel ?? `More ${title}`} onClick={onArrowClick}>
         <ArrowRight />
       </IconButton>
     ));
 
   return (
-    <div className={cn("flex min-h-11 items-center justify-between gap-3", className)}>
+    <div className={cn("flex min-h-10 items-center justify-between gap-3", className)}>
       <Heading id={id} className="font-display text-section font-semibold text-ink">
         {title}
         {count !== undefined && <span className="tnum font-sans text-body font-normal tracking-normal text-ink-3"> · {count}</span>}

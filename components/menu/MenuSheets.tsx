@@ -2,7 +2,7 @@
 
 import { LogOut, MapPin, SlidersHorizontal, Tag, Timer, Users } from "lucide-react";
 import type { ReactNode } from "react";
-import { Button, Countdown, ProgressBar, Sheet, formatPrice } from "@/components/ui";
+import { Button, Countdown, LegendDot, ProgressBar, Sheet, formatPrice } from "@/components/ui";
 import type { Progress } from "@/lib/requests";
 import type { PickupPoint, Restaurant } from "@/lib/types";
 
@@ -25,32 +25,52 @@ export interface DealSheetProps {
 
 export function DealSheet({ open, onOpenChange, mode, restaurant, progress, mine }: DealSheetProps) {
   const { deal } = restaurant;
+  // Join progress counts finalised baskets only, so your basket is added on top; the draft already holds it.
+  const withMine = mode === "join" ? progress.total + mine : progress.total;
+  const left = Math.max(0, progress.target - withMine);
   return (
     <Sheet open={open} onOpenChange={onOpenChange} title={deal.label}>
-      <div className="flex flex-col gap-5 pt-1">
-        <div className="flex flex-col gap-2.5 rounded-card bg-accent-soft p-4">
+      <div className="flex flex-col gap-4 pt-1">
+        <div className="flex flex-col gap-2.5 rounded-card bg-accent-soft p-card">
           <div className="flex items-baseline justify-between gap-3">
             <span className="tnum font-display text-hero font-semibold text-ink">
-              {gbp(progress.total)}
+              {gbp(withMine)}
               <span className="text-section font-medium text-ink-2"> / {gbp(progress.target)}</span>
             </span>
-            <span className="tnum text-body font-semibold text-accent-ink">{progress.left > 0 ? `${gbp(progress.left)} to go` : "Reached"}</span>
+            <span className="tnum text-body font-semibold text-accent-ink">{left > 0 ? `${gbp(left)} to go` : "Unlocked"}</span>
           </div>
           <ProgressBar
-            value={progress.total}
+            value={withMine}
             max={progress.target}
+            contribution={mine > 0 ? mine : undefined}
             size="md"
             label={mode === "join" ? "Party spend towards the deal" : "Your basket towards the deal"}
-            valueText={`${gbp(progress.total)} of ${gbp(progress.target)}`}
+            valueText={
+              mode === "join" && mine > 0
+                ? `${gbp(withMine)} of ${gbp(progress.target)} with your basket (${gbp(progress.total)} from the party)`
+                : `${gbp(progress.total)} of ${gbp(progress.target)}`
+            }
             className="bg-surface!"
           />
+          {mine > 0 && (
+            <span className="flex items-center gap-1.5 text-meta text-ink-2">
+              <LegendDot />
+              Your basket <span className="tnum font-semibold text-ink">{formatPrice(mine)}</span>
+            </span>
+          )}
         </div>
 
         <p className="text-body text-ink">
           {deal.short} when the party spends {gbp(deal.minTotal)}.{" "}
           {mode === "join" ? (
             <>
-              <span className="tnum font-semibold">{gbp(progress.left)}</span> to go.
+              {left > 0 ? (
+                <>
+                  <span className="tnum font-semibold">{gbp(left)}</span> to go{mine > 0 && " with your basket"}.
+                </>
+              ) : (
+                "Your basket unlocks it."
+              )}
             </>
           ) : (
             <>
@@ -149,7 +169,7 @@ export function MoreSheet({ open, onOpenChange, restaurant, pickup, party, now, 
 
 function InfoRow({ icon, title, tone = "neutral", children }: { icon: ReactNode; title: string; tone?: "neutral" | "offer"; children: ReactNode }) {
   return (
-    <li className="flex gap-4 border-b border-line px-5 py-4 last:border-b-0">
+    <li className="flex gap-3 border-b border-line px-5 py-3 last:border-b-0">
       <span
         aria-hidden
         className={

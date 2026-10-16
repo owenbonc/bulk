@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CATALOG, DEFAULT_LOCATION, ME, seedState } from "./data";
 import { type Action, queueTotal, reduce, stubbornBot } from "./requests";
-import { botAcceptActions, botJoinActions } from "./simulation";
+import { botAcceptActions, botJoinActions, botTarget } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
 const T0 = 1_000_000;
@@ -48,6 +48,12 @@ function respond(s: AppState, seconds: number, at = T0 + 1000): AppState {
 }
 
 describe("botJoinActions", () => {
+  it("targets the open party you've finalised in, unless bots are paused", () => {
+    expect(botTarget(withMyParty(false))).toBeUndefined();
+    expect(botTarget(withMyParty(true))?.id).toBe("r1");
+    expect(botTarget(withMyParty(true, { botsPaused: true }))).toBeUndefined();
+  });
+
   it("waits until you've finalised your entry", () => {
     expect(botJoinActions(withMyParty(false), T0, always)).toEqual([]);
   });

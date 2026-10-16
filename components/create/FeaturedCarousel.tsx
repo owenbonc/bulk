@@ -4,7 +4,7 @@ import { ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useReducedMotion } from "motion/react";
 import { useRef, useState, type MouseEvent } from "react";
-import { DealPill, IconButton, ImageFrame, Rating, SectionHeader, cn } from "@/components/ui";
+import { DealPill, IconButton, ImageFrame, Marquee, Rating, SectionHeader, cn } from "@/components/ui";
 import type { Restaurant } from "@/lib/types";
 import { PartyOpenPill, etaLabel } from "./bits";
 
@@ -54,14 +54,12 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
       <SectionHeader
         id="featured-heading"
         title="Featured"
-        className="px-4"
+        className="px-gutter"
         action={
           scrollable ? (
             <IconButton
               aria-label={atEnd ? "Back to the first featured restaurant" : "Next featured restaurant"}
               aria-controls="featured-track"
-              size="sm"
-              variant="outline"
               onClick={step}
             >
               <ArrowRight
@@ -76,29 +74,31 @@ export function FeaturedCarousel({ restaurants, partyAt, onChoose }: FeaturedCar
         id="featured-track"
         ref={trackRef}
         onScroll={updateEnd}
-        className="no-scrollbar mt-2 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain px-4 pb-2 touch-pan-x touch-pan-y"
+        className="no-scrollbar mt-1 flex snap-x snap-mandatory scroll-px-gutter gap-3 overflow-x-auto overscroll-x-contain px-gutter pb-2 touch-pan-x touch-pan-y"
       >
         {restaurants.map((r, i) => {
           const party = partyAt(r.id);
           return (
-            <li key={r.id} className="w-[44%] shrink-0 snap-start">
+            <li key={r.id} className="w-[42%] min-w-0 shrink-0 snap-start">
               <Link
                 href={`/create/${r.id}`}
                 onClick={(e) => onChoose(e, r.id)}
                 aria-haspopup={party ? "dialog" : undefined}
-                className="group block rounded-sheet outline-offset-4"
+                className="group block rounded-card outline-offset-4"
               >
                 <div className="relative transition-transform duration-100 ease-out group-active:scale-[0.97]">
-                  <ImageFrame src={r.image} alt="" ratio="1/1" emoji={r.emoji} sizes="180px" priority={i < PRIORITY_TILES}>
+                  <ImageFrame src={r.image} alt="" ratio="1/1" radius="card" emoji={r.emoji} sizes="170px" priority={i < PRIORITY_TILES}>
                     {party && <PartyOpenPill overlay mine={party.mine} className="absolute top-2 left-2" />}
                   </ImageFrame>
                   <DealPill label={r.deal.short} size="sm" className="absolute right-3 -bottom-3 ring-3 ring-bg" />
                 </div>
-                <p className="mt-4 truncate text-emphasis leading-tight font-semibold text-ink">{r.name}</p>
-                <p className="mt-0.5 flex min-w-0 items-center gap-1 text-meta text-ink-2">
+                <Marquee as="h3" className="mt-3.5 text-emphasis font-semibold text-ink">
+                  {r.name}
+                </Marquee>
+                <p className="flex flex-wrap items-center gap-x-1 text-meta text-ink-2">
                   <Rating value={r.rating} />
                   <span aria-hidden>·</span>
-                  <span className="tnum truncate">{etaLabel(r)}</span>
+                  <span className="tnum whitespace-nowrap">{etaLabel(r)}</span>
                 </p>
               </Link>
             </li>

@@ -4,6 +4,7 @@ import { BellRing, CircleX, TimerOff } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button, Countdown, Popup } from "@/components/ui";
+import { ME } from "@/lib/data";
 import { CANCEL_REASONS, type PartyAlert } from "@/lib/requests";
 import { restaurantById, useApp, useNextAlert } from "@/lib/store";
 
@@ -26,8 +27,8 @@ function notifyBrowser(title: string, body: string, tag: string, onClick: () => 
 
 /**
  * Global party popups, mounted once in the root layout. W11 "Party filled!" when a party you're in
- * reaches its deal, W12 "Order cancelled" / "Party closed" when one ends without an order. Each shows
- * once per party: the alert is marked seen (MARK_ALERT_SEEN) the moment it opens.
+ * reaches its deal, W12 "Order cancelled" / "Party closed" when one ends without an order, naming the
+ * restaurant above the reason. Each shows once per party: the alert is marked seen (MARK_ALERT_SEEN) the moment it opens.
  */
 export default function PartyAlerts() {
   const { state, now, dispatch } = useApp();
@@ -47,9 +48,18 @@ export default function PartyAlerts() {
   const nextKind = next?.kind;
   const nextRequestId = next?.requestId;
   const hasShown = current !== null;
+  // Someone who declined already knows they're out; the cancelled/closed popup isn't for them.
+  const meOut =
+    next?.request.participants.find((p) => p.userId === ME.userId)?.declined ||
+    (!next?.request.participants.some((p) => p.userId === ME.userId) && next?.request.removedUserIds.includes(ME.userId));
+  const skip = nextKind !== "filled" && !!meOut;
 
   useEffect(() => {
     if (visible || !nextKey || !nextKind || !nextRequestId) return;
+    if (skip) {
+      dispatch({ type: "MARK_ALERT_SEEN", key: nextKey });
+      return;
+    }
     const timer = window.setTimeout(
       () => {
         setCurrent({ key: nextKey, kind: nextKind, requestId: nextRequestId });
@@ -70,7 +80,7 @@ export default function PartyAlerts() {
     return () => window.clearTimeout(timer);
     // `state` is read only to name the restaurant in the notification.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visible, nextKey, nextKind, nextRequestId, hasShown, dispatch, router]);
+  }, [visible, nextKey, nextKind, nextRequestId, hasShown, skip, dispatch, router]);
 
   if (!current || !request || !restaurant) return null;
 
@@ -122,6 +132,7 @@ export default function PartyAlerts() {
       title={expired ? "Party closed" : "Order cancelled"}
       description={
         <>
+          <span className="block font-semibold text-ink">{restaurant.name}</span>
           <span className="block">
             {request.cancelReason ?? (expired ? CANCEL_REASONS.expired : CANCEL_REASONS.notEnoughAccepted)}
           </span>

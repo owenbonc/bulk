@@ -1,5 +1,5 @@
 import { Check, Tag } from "lucide-react";
-import { Pill, cn } from "@/components/ui";
+import { Marquee, Pill, cn } from "@/components/ui";
 import type { Restaurant } from "@/lib/types";
 
 /** Best deal first: biggest discount, then the lowest threshold to reach, then the nearest. */
@@ -33,14 +33,14 @@ export function thresholdLabel(pence: number): string {
   return pence % 100 === 0 ? `£${pence / 100}` : `£${(pence / 100).toFixed(2)}`;
 }
 
-/** "Offer: 25% off £50" in tomato with the tag icon. */
+/** "Offer: 25% off £50" in tomato with the tag icon; scrolls (Marquee) if the column is too narrow. */
 export function OfferLine({ restaurant, className }: { restaurant: Restaurant; className?: string }) {
   return (
-    <span className={cn("inline-flex min-w-0 items-center gap-1.5 font-semibold text-offer", className)}>
-      <Tag aria-hidden className="size-4 shrink-0" />
-      <span className="tnum truncate">
+    <span className={cn("flex min-w-0 items-center gap-1 font-semibold text-offer", className)}>
+      <Tag aria-hidden className="size-3.5 shrink-0" />
+      <Marquee className="tnum">
         Offer: {restaurant.deal.short} {thresholdLabel(restaurant.deal.minTotal)}
-      </span>
+      </Marquee>
     </span>
   );
 }

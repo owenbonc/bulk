@@ -56,8 +56,8 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
         </Button>
       }
     >
-      <div className="flex flex-col gap-7 pt-1">
-        <section aria-labelledby="party-lasts" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-section pt-1">
+        <section aria-labelledby="party-lasts" className="flex flex-col gap-group">
           <h3 id="party-lasts" className="font-sans text-body font-semibold text-ink">
             Party lasts
           </h3>
@@ -73,14 +73,14 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
                   aria-label={`${min} minutes`}
                   onClick={() => setDuration(min)}
                   className={cn(
-                    "flex h-16 flex-col items-center justify-center rounded-chip transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.96]",
+                    "flex h-14 flex-col items-center justify-center rounded-chip transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.96]",
                     selected
                       ? "bg-accent text-on-accent"
                       : "bg-surface text-ink ring-1 ring-line ring-inset hover:bg-surface-hover",
                   )}
                 >
                   <span className="tnum font-display text-section leading-none font-semibold">{min}</span>
-                  <span className={cn("mt-1 text-caption", selected ? "text-on-accent" : "text-ink-2")}>min</span>
+                  <span className={cn("mt-0.5 text-caption", selected ? "text-on-accent" : "text-ink-2")}>min</span>
                 </button>
               );
             })}
@@ -88,7 +88,7 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
           <p className="text-meta text-ink-2">If the deal isn&apos;t reached in time, the party closes and nobody is charged.</p>
         </section>
 
-        <section ref={pickupRef} aria-labelledby="collect-from" className="flex scroll-mt-4 flex-col gap-3">
+        <section ref={pickupRef} aria-labelledby="collect-from" className="flex scroll-mt-4 flex-col gap-group">
           <h3 id="collect-from" className="font-sans text-body font-semibold text-ink">
             Collection point
           </h3>
@@ -103,7 +103,7 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
                   aria-checked={selected}
                   onClick={() => setPickup(point.id)}
                   className={cn(
-                    "flex items-start gap-3 rounded-card px-4 py-3.5 text-left transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.98]",
+                    "flex items-start gap-3 rounded-card px-3 py-3 text-left transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.98]",
                     selected
                       ? "bg-accent-soft ring-2 ring-accent-ink ring-inset"
                       : "bg-surface ring-1 ring-line ring-inset hover:bg-surface-hover",
@@ -124,8 +124,8 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-body font-semibold text-ink">{point.name}</span>
-                    <span className="mt-0.5 block text-meta text-ink-2">{point.access}</span>
+                    <span className="block text-body font-semibold text-ink text-pretty">{point.name}</span>
+                    <span className="mt-0.5 block text-meta text-ink-2 text-pretty">{point.access}</span>
                   </span>
                 </button>
               );

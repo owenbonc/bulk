@@ -29,7 +29,7 @@ export function Price({ pence, originalPence, trim, negative, className, origina
         <span className="sr-only">Now </span>
         {now}
       </span>
-      <s className={cn("text-[0.87em] font-normal text-ink-3 decoration-1", originalClassName)}>
+      <s className={cn("text-caption font-normal text-ink-3 decoration-1", originalClassName)}>
         <span className="sr-only">, was </span>
         {was}
       </s>

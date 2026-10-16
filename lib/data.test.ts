@@ -4,9 +4,9 @@ import { CATALOG, DEFAULT_LOCATION, seedState } from "./data";
 const items = CATALOG.restaurants.flatMap((r) => r.menu);
 
 describe("catalog", () => {
-  it("has 8 restaurants spread across cuisines, 3 of them featured", () => {
-    expect(CATALOG.restaurants).toHaveLength(8);
-    expect(new Set(CATALOG.restaurants.map((r) => r.cuisine)).size).toBe(8);
+  it("has 12 restaurants spread across cuisines, 3 of them featured", () => {
+    expect(CATALOG.restaurants).toHaveLength(12);
+    expect(new Set(CATALOG.restaurants.map((r) => r.cuisine)).size).toBe(12);
     expect(CATALOG.restaurants.filter((r) => r.featured)).toHaveLength(3);
   });
 
@@ -66,6 +66,13 @@ describe("seedState", () => {
       expect(CATALOG.pickupPoints.some((p) => p.id === r.pickupPointId)).toBe(true);
       for (const p of r.participants) for (const line of p.basket) expect(restaurant.menu.some((m) => m.id === line.itemId)).toBe(true);
     }
+  });
+
+  it("seeds 6 parties at distinct restaurants, leaving 6 restaurants without one", () => {
+    const ids = seedState(0).requests.map((r) => r.restaurantId);
+    expect(ids).toHaveLength(6);
+    expect(new Set(ids).size).toBe(6);
+    expect(CATALOG.restaurants.filter((r) => !ids.includes(r.id))).toHaveLength(6);
   });
 
   it("starts at the Student Centre with nothing seen, read or drafted", () => {

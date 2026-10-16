@@ -15,29 +15,39 @@ export interface HomeBottomBarProps {
 }
 
 /**
- * Home's floating bottom stack, with no bar behind it: the your-party card, then the clear-glass account
- * button, live party search and create button. It sits above the scrolling list (below sheets) and reserves
- * its own height in the page, so the last card always scrolls clear of it.
+ * Home's floating bottom stack, with no bar, strip or blur band behind it: the solid lime your-party card,
+ * then the clear-glass account button, live party search and create button, each floating on its own. It
+ * sits above the scrolling list (below sheets) and reserves its own height in the page, so the last card
+ * always scrolls clear of it. The your-party card steps aside while the search field has focus.
  */
 export function HomeBottomBar({ query, onQueryChange, mine }: HomeBottomBarProps) {
   const [accountOpen, setAccountOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
 
   return (
     <>
       <BottomBar material={false} className="flex flex-col gap-2">
-        <YourPartyDock parties={mine} />
+        <YourPartyDock parties={mine} hidden={searchFocused} />
         <div className="flex items-center gap-2">
           <IconButton aria-label="Account and demo controls" aria-haspopup="dialog" onClick={() => setAccountOpen(true)}>
             <UserRound />
           </IconButton>
-          <SearchField
-            tone="glass"
-            value={query}
-            onValueChange={onQueryChange}
-            placeholder="Search parties"
-            label="Search parties by restaurant, cuisine or dish"
-            className="flex-1"
-          />
+          {/* Focus moving between the input and its clear button stays "focused", so the card doesn't flicker. */}
+          <div
+            className="min-w-0 flex-1"
+            onFocus={() => setSearchFocused(true)}
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget)) setSearchFocused(false);
+            }}
+          >
+            <SearchField
+              tone="glass"
+              value={query}
+              onValueChange={onQueryChange}
+              placeholder="Search parties"
+              label="Search parties by restaurant, cuisine or dish"
+            />
+          </div>
           <IconButton aria-label="Create a party" iconColor="accent" href="/create">
             <Plus className="size-[22px]" strokeWidth={2.25} />
           </IconButton>
