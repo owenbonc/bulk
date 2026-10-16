@@ -6,11 +6,14 @@ import {
   DELIVERY_STAGES,
   type Action,
   deliveryProgress,
+  hasCollected,
+  isActiveFor,
   isHighlight,
   notificationsFor,
   openPartyFor,
   pendingAlerts,
   progressOf,
+  READY_LINGER_MS,
   queueTotal,
   reduce,
   stubbornBot,
@@ -572,6 +575,65 @@ describe("delivery", () => {
     expect(deliveryProgress(r, T0 + 20_000)).toBe(0.5);
     expect(deliveryProgress(r, T0 + 40_000)).toBe(1);
     expect(deliveryProgress(req(dealState()), T0)).toBe(0);
+  });
+});
+
+describe("COLLECT", () => {
+  const collect = (userId = "me"): Action => ({ type: "COLLECT", requestId: "r1", userId });
+
+  function delivered(): AppState {
+    const s = run(dealState(), pay("me", T0), pay("bot-bob", T0));
+    return run(s, ...DELIVERY_STAGES.map((stage) => ({ type: "TICK", now: T0 + stage.afterMs }) as Action));
+  }
+
+  it("only applies once the party is delivered", () => {
+    let s = run(dealState(), pay("me", T0), pay("bot-bob", T0));
+    for (const stage of DELIVERY_STAGES.slice(0, -1)) {
+      s = run(s, { type: "TICK", now: T0 + stage.afterMs });
+      expect(run(s, collect())).toBe(s);
+    }
+    expect(run(dealState(), collect())).toEqual(dealState());
+    const done = run(delivered(), collect());
+    expect(hasCollected(req(done))).toBe(true);
+    expect(hasCollected(req(done), "bot-bob")).toBe(false);
+  });
+
+  it("only applies to members of the party", () => {
+    const s = delivered();
+    expect(run(s, collect("bot-carl"))).toBe(s);
+    expect(run(s, { type: "COLLECT", requestId: "nope", userId: "me" })).toBe(s);
+  });
+
+  it("is idempotent", () => {
+    const once = run(delivered(), collect());
+    expect(run(once, collect())).toBe(once);
+  });
+
+  it("raises the ready popup once for a delivered order you haven't collected", () => {
+    let s = delivered();
+    expect(pendingAlerts(s)).toEqual([{ key: "r1:ready", kind: "ready", requestId: "r1" }]);
+    expect(pendingAlerts(run(s, collect()))).toEqual([]);
+    s = run(s, { type: "MARK_ALERT_SEEN", key: "r1:ready" });
+    expect(pendingAlerts(s)).toEqual([]);
+  });
+
+  it("drops a collected party from your active parties, and nobody else's", () => {
+    const s = delivered();
+    const at = T0 + 31_000;
+    expect(isActiveFor(req(s), at)).toBe(true);
+    expect(isActiveFor(req(s), T0 + READY_LINGER_MS + 1)).toBe(false);
+    const done = run(s, collect());
+    expect(isActiveFor(req(done), at)).toBe(false);
+    expect(isActiveFor(req(done), at, "bot-bob")).toBe(true);
+  });
+
+  it("treats live parties you're in as active, and others' as not", () => {
+    const s = dealState();
+    expect(isActiveFor(req(s), DEAL_AT)).toBe(true);
+    expect(isActiveFor(req(s), DEAL_AT, "bot-carl")).toBe(false);
+    const open = run(emptyState(), create);
+    expect(isActiveFor(req(open), T0)).toBe(true);
+    expect(isActiveFor(req(open), T0 + 15 * 60_000)).toBe(false);
   });
 });
 

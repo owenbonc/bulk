@@ -81,6 +81,8 @@ export interface Participant {
   cutlery: boolean;
   /** Declined in the current acceptance round; removed when the round resolves. */
   declined?: boolean;
+  /** Has handed over the pickup PIN and collected their food (delivered parties only). */
+  collected?: boolean;
 }
 
 export type RequestStatus =

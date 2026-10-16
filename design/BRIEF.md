@@ -231,3 +231,10 @@ Images: source real, freely licensed food photos (Wikimedia Commons public-domai
 - Accessibility: every icon-only button has an `aria-label`; sheets/popups trap focus (vaul does for sheets; use a dialog element or focus management for popups) and close on Escape; tap targets ≥44px.
 - No new dependencies beyond `lucide-react` (design-system agent installs it) without noting why.
 - Write the current state only in comments; no "previously"/"changed from" comments.
+
+## 10. Location (user decisions)
+
+- **Home shows parties collecting near your location**: your selected collection point's own parties first, then other parties within a short walk, each with its walking distance; switching location shows a different set.
+- **Restaurants stay the same everywhere, with real distances**: distance, delivery estimate and the "Best deals near you" order are computed from the selected location (each collection point and restaurant has coordinates).
+- **One party per restaurant per location**: a restaurant can have a party at each collection point; the "There's already a party" popup only triggers for a party at the location you're in.
+- **Seed**: 2–4 open parties at every collection point (each with at least one highlight), so every location switch shows something new.
