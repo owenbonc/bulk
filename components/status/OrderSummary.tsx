@@ -1,12 +1,12 @@
 import { Divider, Price, SummaryRow, formatPrice } from "@/components/ui";
-import type { CostLine } from "@/lib/split";
+import { targetDiscount, type CostLine } from "@/lib/split";
 import type { BasketLine, Restaurant } from "@/lib/types";
 
 export interface OrderSummaryProps {
   restaurant: Restaurant;
   basket: BasketLine[];
-  /** Your share of the party's cost. */
-  cost: CostLine;
+  /** Your share of the party's cost. A preview also says whether the deal applies yet and how far off it is. */
+  cost: CostLine & { discountEligible?: boolean; progress?: { left: number } };
   /** Finalised members sharing the delivery fee. */
   members: number;
   /** estimate: projected while filling · exact: during the acceptance round · paid: after payment. */
@@ -43,6 +43,8 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
   }
 
   const estimate = mode === "estimate";
+  const notYet = estimate && cost.discountEligible === false;
+  const subtotal = lines.reduce((sum, l) => sum + l.item.price * l.qty, 0);
   return (
     <div className="flex flex-col gap-3">
       <ul className="flex flex-col gap-2">
@@ -58,9 +60,18 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
       <div className="flex flex-col gap-2">
         <SummaryRow
           label={`Group deal (${restaurant.deal.short})`}
-          hint={estimate ? "when the party fills" : undefined}
+          hint={
+            notYet ? (
+              <span className="tnum">
+                not yet eligible · needs {formatPrice(cost.progress?.left ?? 0, { trim: true })} more · then about −
+                {formatPrice(targetDiscount(subtotal, restaurant))}
+              </span>
+            ) : estimate ? (
+              "eligible now"
+            ) : undefined
+          }
           value={<Price pence={cost.discount} negative />}
-          tone="accent"
+          tone={notYet ? "muted" : "accent"}
         />
         <SummaryRow
           label="Delivery share"
@@ -78,7 +89,11 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
       </div>
       <Divider />
       <SummaryRow label={estimate ? "Estimated total" : "Total"} value={<Price pence={cost.total} />} strong />
-      {estimate && <p className="-mt-1 text-meta text-ink-3">Final total is confirmed when the party fills.</p>}
+      {estimate && (
+        <p className="-mt-1 text-meta text-ink-3">
+          {notYet ? "What you'd pay if the party stopped here. " : ""}You&apos;ll accept the exact total before paying.
+        </p>
+      )}
     </div>
   );
 }

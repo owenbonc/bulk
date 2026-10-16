@@ -7,6 +7,7 @@ import { ME } from "@/lib/data";
 import { DELIVERY_STAGES, DELIVERY_STEPS } from "@/lib/requests";
 import { deliveryStep, previewSplit, useApp } from "@/lib/store";
 import type { RequestStatus } from "@/lib/types";
+import { DriverHandover } from "./DriverHandover";
 import type { ViewProps } from "./FillingView";
 import { LiveMap } from "./LiveMap";
 import { MemberList } from "./MemberList";
@@ -28,8 +29,10 @@ function subline(status: RequestStatus, pickupName: string): string {
       return "The kitchen is making your food.";
     case "out_for_delivery":
       return `Your courier is heading to ${pickupName}.`;
+    case "collected":
+      return "Every bag has been handed over. Enjoy!";
     default:
-      return "Show your PIN at the collection point.";
+      return "Show your own code at the collection point to get your bag.";
   }
 }
 
@@ -43,7 +46,8 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
   const me = request.participants.find((p) => p.userId === ME.userId)!;
   const cost = previewSplit(request, restaurant, ME.userId, me.basket);
   const step = deliveryStep(request.status);
-  const delivered = request.status === "delivered";
+  const collected = request.status === "collected";
+  const delivered = request.status === "delivered" || collected;
   const readyAt = request.confirmedAt !== undefined ? request.confirmedAt + DELIVERED_AFTER_MS : undefined;
   const onItsWay = request.status === "out_for_delivery";
   const others = request.participants.length - 1;
@@ -59,7 +63,7 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
               <h1 id="delivery-title" aria-live="polite" className="font-display text-title font-semibold text-ink">
-                {DELIVERY_STEPS[step]?.label}
+                {collected ? "Order complete" : DELIVERY_STEPS[step]?.label}
               </h1>
               <p className="mt-1 text-body text-ink-2">{subline(request.status, pickup.name)}</p>
               {delivered && cost.discount > 0 && (
@@ -76,7 +80,7 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
             </div>
             {delivered ? (
               <Pill tone="success" size="md" icon={<Check strokeWidth={2.5} />} className="mt-1">
-                Ready now
+                {collected ? "Collected" : "Ready now"}
               </Pill>
             ) : (
               readyAt !== undefined && (
@@ -118,11 +122,19 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
                   <Marquee>{pickup.name}</Marquee>
                 </p>
               </div>
-              {request.pin && <PinTiles pin={request.pin} ready={delivered} reduce={!!reduce} />}
             </div>
             <p className="text-meta text-ink-2">{pickup.access}</p>
+            {me.collectedAt !== undefined ? (
+              <p className="flex items-center gap-1.5 text-body font-semibold text-success">
+                <Check aria-hidden className="size-4" strokeWidth={2.5} /> You&apos;ve collected your bag
+              </p>
+            ) : (
+              me.collectionCode && <CodeTiles code={me.collectionCode} ready={delivered} reduce={!!reduce} />
+            )}
           </div>
         </div>
+
+        {!collected && <DriverHandover request={request} />}
 
         <section aria-labelledby="order-title" className="flex flex-col gap-group">
           <SectionHeader id="order-title" title="Order" />
@@ -174,15 +186,18 @@ function StepBar({ step }: { step: number }) {
   );
 }
 
-/** Pickup PIN as four digit tiles. They turn lime with a single spring entrance once the order is ready to collect. */
-function PinTiles({ pin, ready, reduce }: { pin: string; ready: boolean; reduce: boolean }) {
+/**
+ * Your own collection code as digit tiles: it opens only your labelled bag. The tiles turn lime with a
+ * single spring entrance once the order is ready to collect.
+ */
+function CodeTiles({ code: pin, ready, reduce }: { code: string; ready: boolean; reduce: boolean }) {
   return (
-    <div className="flex shrink-0 flex-col items-end gap-1">
-      <span className="text-caption text-ink-2">Pickup PIN</span>
+    <div className="flex flex-col gap-1">
+      <span className="text-caption text-ink-2">Your collection code (only opens your bag)</span>
       <motion.div
         key={ready ? "ready" : "waiting"}
         role="img"
-        aria-label={`Pickup PIN ${pin.split("").join(" ")}`}
+        aria-label={`Your collection code ${pin.split("").join(" ")}`}
         className="flex gap-1.5"
         initial={ready ? (reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }) : false}
         animate={{ opacity: 1, scale: 1 }}

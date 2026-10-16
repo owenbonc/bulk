@@ -17,6 +17,7 @@ const STATUS_LABEL: Record<RequestStatus, string> = {
   preparing: "cooking",
   out_for_delivery: "on its way",
   delivered: "arrived",
+  collected: "collected",
   expired: "closed",
   cancelled: "cancelled",
 };
@@ -81,9 +82,33 @@ export function DemoControlsPanel({ className }: { className?: string }) {
       <Divider />
       <Switch
         label="A bot won't accept"
-        description="One member skips paying when the deal is reached"
+        description="One member declines the first quote; the rest get a repriced second round"
         checked={state.demo.botWontAccept}
         onCheckedChange={(botWontAccept) => dispatch({ type: "SET_DEMO", patch: { botWontAccept } })}
+        className="py-2"
+      />
+      <Divider />
+      <Switch
+        label="…and declines again"
+        description="A bot declines the second round too, so it fails"
+        checked={state.demo.botDeclinesAgain}
+        onCheckedChange={(botDeclinesAgain) => dispatch({ type: "SET_DEMO", patch: { botDeclinesAgain } })}
+        className="py-2"
+      />
+      <Divider />
+      <Switch
+        label="A bot never answers"
+        description="The 60-second window runs out on one member"
+        checked={state.demo.botSilent}
+        onCheckedChange={(botSilent) => dispatch({ type: "SET_DEMO", patch: { botSilent } })}
+        className="py-2"
+      />
+      <Divider />
+      <Switch
+        label="My payment fails"
+        description="Your demo payment is declined when you accept"
+        checked={state.demo.myPaymentFails}
+        onCheckedChange={(myPaymentFails) => dispatch({ type: "SET_DEMO", patch: { myPaymentFails } })}
         className="py-2"
       />
       <Divider />
@@ -151,6 +176,20 @@ export function DemoControlsPanel({ className }: { className?: string }) {
           }}
         >
           Expire this party in 5s
+        </Button>
+        <Button
+          variant="secondary"
+          size="sm"
+          block
+          icon={<Timer />}
+          disabled={party?.status !== "deal_achieved"}
+          onClick={() => {
+            if (!party || party.status !== "deal_achieved") return;
+            dispatch({ type: "SET_ACCEPT_DEADLINE", requestId: party.id, deadline: Date.now() + 5_000 });
+            toast("Accept window ends in 5 seconds");
+          }}
+        >
+          End the accept window in 5s
         </Button>
       </div>
       <Divider />

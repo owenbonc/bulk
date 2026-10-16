@@ -20,27 +20,31 @@ npm test        # Vitest: request state machine, cost split, bot behaviour
 npm run lint
 ```
 
-## Rules (Phase 1)
+## Rules
 
 | | |
 |---|---|
-| Order request ("party") | Created via **Create order request**: pick a restaurant, build your basket, choose the pickup point and open duration (15/30/60 min). The creator is host, and their basket goes straight into the queue. |
-| Home | Lists every active party (restaurant, time left, pickup point, progress to the deal). Tap one to join. |
-| Deal achieved | The request's combined **finalised** baskets reach the restaurant's £ threshold. Anyone still choosing food at that moment is dropped. |
-| Time runs out first | Request **expires**. Nobody is charged. |
-| Accept & pay | Everyone has 60s. If anyone hasn't paid, the **whole order is cancelled** and nobody is charged. |
-| Cost split | Discount in proportion to each person's items. Delivery fee split equally. Exact to the penny. |
-| Delivery | Simulated timeline, ending at the pickup point with a 4-digit PIN. |
+| Party | One open party per restaurant. Whoever creates it is the **host**: they pick the restaurant, collection point and how long it stays open. That's their only role. |
+| Leaving | Anyone, **the host included**, can leave while the party is filling. Their basket is removed, everyone else's estimates are recalculated, and **the party stays open** with the same collection point. Nobody is promoted. An empty party stays joinable until its timer runs out. |
+| Deal | The party's combined **finalised** baskets reach the restaurant's £ threshold. Anyone still choosing food at that moment is dropped. |
+| Pricing | The deal's discount applies **only once the threshold is met**, split in proportion to each person's food. Delivery is split equally between the orders in the party (the "÷ n" shown). Exact to the penny. Before the deal, the basket shows the offer as *not yet eligible* with how much more is needed and the rough saving, and the estimate is what you'd pay if the party stopped there. |
+| Accept & pay | Everyone accepts the exact price within 60s (demo payment). Each answer names its round, so double taps or old answers can't count twice or carry over to a new price. |
+| One second round | If anyone declines, doesn't answer, or their demo payment fails, they're taken out with their basket kept. If the rest still meet the threshold they get **one** repriced round 2 (everyone accepts again). Otherwise, or if round 2 fails (including as soon as anyone declines it), the attempt ends. |
+| Keep queueing or cancel | When an attempt ends (timer ran out, or the order fell through) everyone's basket is kept and each person chooses: **Keep queueing** (pick 15/30/60 min; a fresh party just for them, same basket and collection point) or **Cancel** (no charge). Nothing happens automatically, and nobody else is moved. Refused if the restaurant already has an open party. |
+| Collection | Each person gets their **own 6-digit code** for their own labelled bag. A demo driver handover on the status page finds the bag by code, rejects unknown or repeated codes, and the order is complete once every bag is collected. |
+| Saved state | `localStorage` key `bulk-demo-v3` with a version number; older saved data is replaced with a fresh demo instead of crashing. |
+
+Payment, delivery and the handover are all simulated.
 
 ## Demo script
 
-Use the **Demo** button (bottom right) to steer the bots:
+Open the demo controls (press **d**, or from the account sheet). Tick **Pause bots** for a controlled run; **Reset demo** between runs.
 
-1. **Create path:** Create order request → pick a restaurant → add food, pick the pickup point and 15 min → Create. Bots join and the deal is achieved. Accept & pay, then watch delivery.
-2. **Join path:** tap a bot-hosted party on Home → choose food → Finalise → finish the flow.
-3. **Cancellation:** tick *A bot won't accept* before the deal. After 60s the order cancels.
-4. **Expiry:** tick *Pause bots joining*, join and finalise, then *Expire this request in 5s*.
-5. **Reset demo** restores the seeded restaurants and requests. State persists across refreshes in `localStorage`.
+1. **Happy path:** create a party (e.g. Kumo Ramen), add food and open the basket: the deal shows *not yet eligible*. Create → **Fill this party now** → accept and pay → watch delivery → type your code in the driver handover → **Find bag** → **Hand over** → **Simulate the others** → Order complete.
+2. **Second round:** tick **A bot won't accept**, fill the party, accept: one bot declines and you get a repriced **Second round**. Accept again and the order is placed. Add **…and declines again** to see round 2 fail.
+3. **Timeout / payment:** **A bot never answers** + **End the accept window in 5s**, or **My payment fails** before accepting.
+4. **Keep queueing:** with bots paused, create a party → **Expire this party in 5s** → **Keep queueing or cancel** → pick a window → Keep queueing (attempt 2).
+5. **Host leaves:** as host of a filling party, ⓘ → Leave party: the party stays on Home for others.
 
 ## Code map
 
@@ -49,5 +53,6 @@ Use the **Demo** button (bottom right) to steer the bots:
 - `lib/simulation.ts`: bot participants (pure, tested)
 - `lib/store.tsx`: React provider, 1s heartbeat, persistence
 - `lib/data.ts`: seed restaurants, menus, deals, pickup points
-- `app/`: screens (`/` parties, `/create` restaurants, `/create/[restaurantId]` basket, `/req/[reqId]/order` joiner's basket, `/req/[reqId]` party status)
+- `app/`: screens (`/` home, `/create` restaurants, `/create/[restaurantId]` menu and basket, `/party/[id]` menu and basket for joiners, `/party/[id]/status` party status)
+- `components/status/RetryChoice.tsx`, `DriverHandover.tsx`: keep-queueing-or-cancel choice and the demo handover
 - `docs/superpowers/specs/`: design spec for this phase
