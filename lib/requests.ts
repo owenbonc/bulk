@@ -106,6 +106,7 @@ export type Action =
   | { type: "DRAFT_CLEAR" }
   | { type: "CREATE_FROM_DRAFT"; id: string; user: UserRef; now: number }
   | { type: "ADD_FRIEND"; userId: string }
+  | { type: "INVITE_FRIEND"; requestId: string; userId: string; friendId: string; now: number }
   | { type: "MARK_ALERT_SEEN"; key: string }
   | { type: "MARK_NOTIFICATIONS_READ" }
   | { type: "SET_LOCATION"; pickupPointId: string }
@@ -334,6 +335,21 @@ export function shapeBotBasket(r: OrderRequest, restaurant: Restaurant, basket: 
   return shaped;
 }
 
+/** Display name for a friend id ("bot-priya" → "Priya"). */
+export function friendName(userId: string): string {
+  return BOT_NAMES.find((n) => botId(n) === userId) ?? userId.replace(/^bot-/, "").replace(/^./, (c) => c.toUpperCase());
+}
+
+/** Whether a friend has an invite to this party that they haven't acted on yet. */
+export function isInvited(r: OrderRequest, userId: string): boolean {
+  return !!r.invites?.some((i) => i.userId === userId && i.status === "pending");
+}
+
+/** Invites still on their way while the party is filling (shown as "invited…" in the member list). */
+export function pendingInvites(r: OrderRequest) {
+  return r.status === "open" ? (r.invites ?? []).filter((i) => i.status === "pending" && !r.participants.some((p) => p.userId === i.userId)) : [];
+}
+
 /** A bot name not yet used in this party. */
 export function freeBotName(r: OrderRequest): string | undefined {
   return BOT_NAMES.find((n) => !r.participants.some((p) => p.name === n || p.userId === botId(n)));
@@ -379,9 +395,12 @@ function reduceRequest(r: OrderRequest, action: PartyAction | Extract<Action, { 
   const member = "userId" in action ? r.participants.find((p) => p.userId === action.userId) : undefined;
 
   switch (action.type) {
-    case "JOIN":
+    case "JOIN": {
       if (r.status !== "open" || r.participants.some((p) => p.userId === action.user.userId)) return r;
-      return { ...r, participants: [...r.participants, newParticipant(action.user)] };
+      // Joining settles your invite, if you had one.
+      const invites = r.invites?.map((i) => (i.userId === action.user.userId ? { ...i, status: "joined" as const } : i));
+      return { ...r, participants: [...r.participants, newParticipant(action.user)], ...(invites && { invites }) };
+    }
 
     case "LEAVE":
       // Anyone, the host included, can leave while the lobby is open. The lobby stays open for the
@@ -596,6 +615,17 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
 
     case "ADD_FRIEND":
       return state.friends.includes(action.userId) ? state : { ...state, friends: [...state.friends, action.userId] };
+
+    case "INVITE_FRIEND": {
+      // Only your friends, only while the party is filling, only if you're in it, and once per friend.
+      const r = state.requests.find((x) => x.id === action.requestId);
+      if (!r || r.status !== "open" || !state.friends.includes(action.friendId)) return state;
+      if (!r.participants.some((p) => p.userId === action.userId)) return state;
+      if (r.participants.some((p) => p.userId === action.friendId) || isInvited(r, action.friendId)) return state;
+      const invite = { userId: action.friendId, name: friendName(action.friendId), invitedBy: action.userId, at: action.now, status: "pending" as const };
+      const next = { ...r, invites: [...(r.invites ?? []), invite] };
+      return { ...state, requests: state.requests.map((x) => (x === r ? next : x)) };
+    }
 
     case "MARK_ALERT_SEEN":
       return state.seenAlerts.includes(action.key) ? state : { ...state, seenAlerts: [...state.seenAlerts, action.key] };

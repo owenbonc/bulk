@@ -4,6 +4,7 @@ import { Check, UserPlus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { Avatar, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
+import { pendingInvites } from "@/lib/requests";
 import { basketCount } from "@/lib/split";
 import { useApp } from "@/lib/store";
 import type { OrderRequest, Participant } from "@/lib/types";
@@ -61,6 +62,26 @@ export function MemberList({ request, mode }: { request: OrderRequest; mode: Mem
             </motion.li>
           );
         })}
+        {/* Friends you've invited who haven't joined yet. */}
+        {mode === "filling" &&
+          pendingInvites(request).map((invite, i) => (
+            <motion.li
+              key={`invite-${invite.userId}`}
+              layout="position"
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={SPRING}
+              className="relative"
+            >
+              {members.length + i > 0 && <div aria-hidden className="absolute top-0 right-0 left-11 h-px bg-line" />}
+              <div className="flex min-h-14 items-center gap-3 py-2 opacity-60">
+                <Avatar name={invite.name} />
+                <Marquee className="min-w-0 flex-1 text-body text-ink">{invite.name}</Marquee>
+                <span className="shrink-0 text-meta text-ink-3">invited…</span>
+              </div>
+            </motion.li>
+          ))}
       </AnimatePresence>
     </ul>
   );

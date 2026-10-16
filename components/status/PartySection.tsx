@@ -4,11 +4,12 @@ import { AnimatePresence, motion } from "motion/react";
 import type { ReactNode } from "react";
 import { EXIT, SPRING, SectionHeader } from "@/components/ui";
 import { ME } from "@/lib/data";
+import { pendingInvites } from "@/lib/requests";
 import type { OrderRequest } from "@/lib/types";
 
-/** The Party section is hidden while you're the host and nobody else has joined. */
+/** The Party section is hidden while you're the host and nobody else has joined or been invited. */
 export function showPartySection(request: OrderRequest): boolean {
-  return !(request.hostId === ME.userId && request.participants.length <= 1);
+  return !(request.hostId === ME.userId && request.participants.length <= 1 && pendingInvites(request).length === 0);
 }
 
 /** "Party · n" section that animates in when the first person joins your party. */

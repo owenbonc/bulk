@@ -32,6 +32,7 @@ npm run lint
 | One second round | If anyone declines, doesn't answer, or their demo payment fails, they're taken out with their basket kept. If the rest still meet the threshold they get **one** repriced round 2 (everyone accepts again). Otherwise, or if round 2 fails (including as soon as anyone declines it), the attempt ends. |
 | Keep queueing or cancel | When an attempt ends (timer ran out, or the order fell through) everyone's basket is kept and each person chooses: **Keep queueing** (pick 15/30/60 min; a fresh party just for them, same basket and collection point) or **Cancel** (no charge). Nothing happens automatically, and nobody else is moved. Refused if the restaurant already has an open party. |
 | Collection | Each person gets their **own 4-digit pickup PIN** (different for everyone in the order) for their own labelled bag. A demo driver handover on the status page finds the bag by PIN, rejects unknown or repeated PINs, and the order is complete once every bag is collected. |
+| Invite friends | While a party is filling, **Invite friends** on the party page lists your friends (added with the + next to someone in a party; the demo starts you with three). Invite each once; they show as *invited…* in the party list. In the demo, invited friends are simulated: they accept about 4 seconds later and join with their own basket, even with bots paused. **Copy invite link** shares the party.
 | Saved state | `localStorage` key `bulk-demo-v3` with a version number; older saved data is replaced with a fresh demo instead of crashing. |
 
 Payment, delivery and the handover are all simulated.
@@ -44,7 +45,8 @@ Open the demo controls (press **d**, or from the account sheet). Tick **Pause bo
 2. **Second round:** tick **A bot won't accept**, fill the party, accept: one bot declines and you get a repriced **Second round**. Accept again and the order is placed. Add **…and declines again** to see round 2 fail.
 3. **Timeout / payment:** **A bot never answers** + **End the accept window in 5s**, or **My payment fails** before accepting.
 4. **Keep queueing:** with bots paused, create a party → **Expire this party in 5s** → **Keep queueing or cancel** → pick a window → Keep queueing (attempt 2).
-5. **Host leaves:** as host of a filling party, ⓘ → Leave party: the party stays on Home for others.
+5. **Invite friends:** with bots paused, create a party → **Invite friends** → invite Chloe and Ravi → they join a few seconds later and the party fills up.
+6. **Host leaves:** as host of a filling party, ⓘ → Leave party: the party stays on Home for others.
 
 ## Code map
 

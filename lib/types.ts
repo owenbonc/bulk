@@ -104,6 +104,16 @@ export interface ReleasedEntry {
   retriedAs?: string;
 }
 
+/** A friend you invited to a party. In the demo they're simulated: they accept a few seconds later and join with a basket. */
+export interface Invite {
+  userId: string;
+  name: string;
+  /** Who sent it. */
+  invitedBy: string;
+  at: number;
+  status: "pending" | "joined";
+}
+
 export type RequestStatus =
   | "open"
   | "deal_achieved"
@@ -147,6 +157,8 @@ export interface OrderRequest {
   retryOf?: string;
   /** People whose attempt ended here, with their baskets kept for keep-queueing or cancel. */
   released: ReleasedEntry[];
+  /** Friends invited while the party was filling. */
+  invites?: Invite[];
 }
 
 /** The host's party-in-progress before it is created (create flow). */
