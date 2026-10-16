@@ -4,8 +4,6 @@ Lead designer's brief for the front-end redesign. Every agent builds to this fil
 
 Wireframes: `design/wireframes/p01.png` … `p14.png` (hand-drawn, numbered as below). Read the ones for your screens before writing code. Red handwriting = behaviour notes; green = sizing notes; yellow = sorting notes.
 
-Reference skills (read the parts relevant to your work): `design/skills/apple-design.md`, `design/skills/emil-design-eng.md`, `design/skills/animate.md`, `design/skills/mobile-native.md`, `design/skills/impeccable/SKILL.md` and `design/skills/impeccable/craft-floor.md`.
-
 This repo runs **Next.js 16** (App Router), React 19, Tailwind v4. APIs differ from older Next versions: read the relevant guide in `node_modules/next/dist/docs/` before using a Next API you are unsure of.
 
 ## 1. Product in one line
@@ -64,7 +62,7 @@ Dark mode: not required for the demo. Do not add it.
 - Shadows only on floating layers (bottom bar, sheets, popups, floating bubbles): soft, offset downward, e.g. `0 8px 24px -8px rgba(27,29,20,0.18), 0 2px 6px -2px rgba(27,29,20,0.08)`. Cards on the page use a 1px `--line` border, no shadow.
 - **Glass controls.** Every round icon button (account, create +, bell, location, back, search, info), the Home search bar, and the big action buttons (Join party, Create party, Accept and pay) are **clear glass**: `background: rgba(255,255,255,0.5); backdrop-filter: blur(20px) saturate(180%)`, a 1px `rgba(255,255,255,0.75)` border with a brighter top edge (inset highlight `inset 0 1px 0 rgba(255,255,255,0.9)`), and the floating shadow. Icons and labels are `--ink`. The one exception is the **Home create `+` button: lime-tinted glass** (`IconButton variant="glass-accent"`): the same recipe (blur 20px + saturate, bright top-edge inset highlight, white edge, floating shadow) over a translucent `--accent` tint at ~50% (`--glass-accent`; 60% hover, 72% pressed) with an `--on-accent` ink `+`, so the primary action reads as lime without being an opaque disc; solid `--accent` under `prefers-reduced-transparency`, `prefers-contrast: more` or without backdrop-filter. Big glass action buttons stay prominent through size (56px tall), bold 17px label and a lime price chip on the right ("£7.29" on `--accent`). Solid fallback under `prefers-reduced-transparency`. The menu's "View basket" bubble and the your-party card are **not** glass.
 - **Deal pills** are solid `--offer` red with white bold text everywhere (cards, menu, create page).
-- Floating chrome (top bars, bottom bar, sticky info bubble) is **translucent material**: `background: rgba(247,245,236,0.78); backdrop-filter: blur(20px) saturate(160%)` with content scrolling underneath, per apple-design §12. Provide a solid fallback under `prefers-reduced-transparency: reduce`.
+- Floating chrome (top bars, bottom bar, sticky info bubble) is **translucent material**: `background: rgba(247,245,236,0.78); backdrop-filter: blur(20px) saturate(160%)` with content scrolling underneath. Provide a solid fallback under `prefers-reduced-transparency: reduce`.
 - Hairline dividers between menu rows, not boxes around every row (avoid cards inside cards).
 
 ### Icons
@@ -79,7 +77,7 @@ Every restaurant has a hero `image` and most menu items have an `image` under `p
 
 A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape opening to the right, with a single tooth notch or tongue curve so it reads as a mouth, not the letter C), filled `--accent` with an `--ink` outline or vice versa, beside a heavy rounded **BULK** wordmark in Bricolage Grotesque ExtraBold with tight tracking. Build it as an inline SVG React component `components/brand/Logo.tsx` with props `size` and `variant: "full" | "mark"`. Also produce `app/icon.svg` (the mark) so it becomes the favicon, and remove `app/favicon.ico`.
 
-## 4. Motion (from animate.md / apple-design.md)
+## 4. Motion
 
 - Library: `motion` (import from `motion/react`) for springs, layout animation, exits. Bottom sheets: `vaul` (`Drawer`). Both are installed.
 - Default spring: `{ type: "spring", bounce: 0, duration: 0.4 }`. Sheets/drawers: `{ type: "spring", bounce: 0.15, duration: 0.35 }` only when dragged.
@@ -87,7 +85,7 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - Enter = ease-out; never `ease-in` on entrances; never animate from `scale(0)` (start at 0.95 + opacity 0).
 - **The authored moments** (spend the delight budget here, nowhere else): (1) the "Party filled!" popup, (2) the progress bar/pie filling as people join, (3) the item `+` morphing into the `− n +` stepper, (4) the info bubble docking into the top bar on scroll, (5) the courier moving on the live map. Everything else is quiet.
 - Respect `prefers-reduced-motion: reduce`: replace movement with short opacity cross-fades.
-- Mobile-native fixes (mobile-native.md): `-webkit-tap-highlight-color: transparent`, `touch-action: manipulation` on buttons, `user-select: none` on buttons, `100dvh`, `overscroll-behavior-y: none` on body, safe-area insets on bottom bars (`padding-bottom: max(12px, env(safe-area-inset-bottom))`), `viewport-fit=cover`, `theme-color` `#f7f5ec`.
+- Mobile-native fixes: `-webkit-tap-highlight-color: transparent`, `touch-action: manipulation` on buttons, `user-select: none` on buttons, `100dvh`, `overscroll-behavior-y: none` on body, safe-area insets on bottom bars (`padding-bottom: max(12px, env(safe-area-inset-bottom))`), `viewport-fit=cover`, `theme-color` `#f7f5ec`.
 - Theme browser surfaces: `::selection` in `--accent-soft`, focus ring `2px solid var(--accent-ink)` offset 2px via `:focus-visible`, caret `--accent-ink`.
 
 ## 5. App shell

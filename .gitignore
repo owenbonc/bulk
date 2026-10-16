@@ -42,3 +42,6 @@ next-env.d.ts
 
 # OneDrive
 desktop.ini
+
+# agent instructions that `next dev` writes; not part of the product
+AGENTS.md
