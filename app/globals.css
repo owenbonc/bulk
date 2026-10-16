@@ -1,19 +1,761 @@
 @import "tailwindcss";
 
+/* Hover styles apply only where a precise pointer can hover; touch gets :active feedback instead. */
+@custom-variant hover {
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      @slot;
+    }
+  }
+}
+
+/*
+ * Laptop demo: a wide window with a precise pointer renders the app inside the iPhone 16 Pro frame. Keep in
+ * sync with FRAME_QUERY in components/ui/frame.tsx.
+ */
+@custom-variant frame {
+  @media (min-width: 500px) and (pointer: fine) {
+    @slot;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Tokens                                                              */
+/* ------------------------------------------------------------------ */
+
 :root {
-  --background: #f5f5f4;
-  --foreground: #1c1917;
+  /* Lime-tinted off-white, derived from --accent. */
+  --bg: #f4f5ee;
+  /* Deep olive desk around the phone (frame) or the phone column (wide touch screens). */
+  --bg-desk: #1f2318;
+  /* Soft highlight behind the phone on the desk. */
+  --bg-desk-glow: #2c3222;
+  /* Hairlines on the desk (the phone column's sides). */
+  --desk-line: rgb(255 255 255 / 0.08);
+  --surface: #ffffff;
+  /* Hover wash on white surfaces. */
+  --surface-hover: #fafbf6;
+  --surface-2: #eaeddf;
+  /* Hover wash on --surface-2. */
+  --surface-2-hover: #e3e7d6;
+  --ink: #1b1d14;
+  --ink-2: #5c5f52;
+  /* Tertiary text; clears 4.5:1 on --bg and --surface-2. */
+  --ink-3: #686b5d;
+  --line: #dfe3d2;
+  --line-strong: #cfd4bf;
+  /* Off track of the Switch. */
+  --track: #d8dccb;
+
+  --accent: #b7cd32;
+  /* Hover on accent fills. */
+  --accent-hover: #acc22b;
+  --accent-strong: #9db51f;
+  --accent-soft: #eef3cf;
+  --accent-ink: #4a5706;
+  --on-accent: #1b1d14;
+
+  /* Tomato: deal pills (solid, white text 5.1:1), sale prices, urgent timers on --surface or --bg. */
+  --offer: #c93a22;
+  /* Pressed state of --offer fills. */
+  --offer-strong: #b0321c;
+  --on-offer: #ffffff;
+  --offer-soft: #fbe4dd;
+  /* Offer-coloured text on tinted surfaces (--surface-2, --accent-soft 6.3:1, --offer-soft 6:1, --surface 7.2:1). */
+  --offer-ink: #a32a15;
+  /* Offer-coloured icons on the ink toast. */
+  --offer-on-ink: #ff8a73;
+
+  /* Your contribution: the pulsing yellow slice or segment of your basket's share of the deal progress. */
+  --mine: #f2b632;
+
+  --success: #2f7d4f;
+  --success-soft: #edf5ef;
+
+  --scrim: rgb(27 29 20 / 0.38);
+
+  /* Glyphs drawn over photos (the status bar while a hero image is under it). */
+  --on-photo: #ffffff;
+
+  /* Translucent chrome material. */
+  --material: color-mix(in srgb, var(--bg) 78%, transparent);
+  --material-fallback: color-mix(in srgb, var(--bg) 96%, transparent);
+  --material-solid: var(--bg);
+
+  /* Clear glass for round icon buttons, the Home search bar and big action buttons. */
+  --glass: rgb(255 255 255 / 0.5);
+  --glass-hover: rgb(255 255 255 / 0.62);
+  --glass-pressed: rgb(255 255 255 / 0.72);
+  --glass-fallback: rgb(255 255 255 / 0.9);
+  --glass-edge: rgb(255 255 255 / 0.75);
+  --glass-highlight: rgb(255 255 255 / 0.9);
+
+  /* Avatar tints: background and text pairs, text clears 4.5:1 on its tint. */
+  --tint-1-bg: #eef3cf;
+  --tint-1-fg: #4a5706;
+  --tint-2-bg: #fbe4dd;
+  --tint-2-fg: #9c3019;
+  --tint-3-bg: #e3edf3;
+  --tint-3-fg: #2b5470;
+  --tint-4-bg: #f1e7cf;
+  --tint-4-fg: #6b5020;
+  --tint-5-bg: #ebe5f3;
+  --tint-5-fg: #54407a;
+  --tint-6-bg: #e1efe6;
+  --tint-6-fg: #2c6a45;
+
+  /* iPhone 16 Pro hardware drawn around the frame: black glass bezel, titanium rim, Dynamic Island. */
+  --device: #0d0e0a;
+  --device-rim: #5b5d53;
+  --device-rim-highlight: #8a8c80;
+  --island: #000000;
+
+  --column: 430px;
+
+  /*
+   * Safe areas and the app's viewport height. On a phone they come from the browser; inside the laptop
+   * frame `.device-screen` sets them to the iPhone 16 Pro values (62px status bar, 34px home indicator, 874px).
+   */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-height: 100dvh;
+
+  /* iPhone 16 Pro viewport and hardware, in CSS px. Keep in sync with FRAME in components/ui/frame.tsx. */
+  --frame-w: 402px;
+  --frame-h: 874px;
+  --frame-radius: 55px;
+  --frame-bezel: 11px;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-bg: var(--bg);
+  --color-bg-desk: var(--bg-desk);
+  --color-surface: var(--surface);
+  --color-surface-hover: var(--surface-hover);
+  --color-surface-2: var(--surface-2);
+  --color-surface-2-hover: var(--surface-2-hover);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-track: var(--track);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-strong: var(--accent-strong);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-offer: var(--offer);
+  --color-offer-strong: var(--offer-strong);
+  --color-on-offer: var(--on-offer);
+  --color-offer-soft: var(--offer-soft);
+  --color-offer-ink: var(--offer-ink);
+  --color-mine: var(--mine);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-scrim: var(--scrim);
+  --color-on-photo: var(--on-photo);
+  --color-island: var(--island);
+
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  /* PIN and timer tiles only; other numbers use the body face with `tnum`. */
+  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  /* The iOS system face, for the fake status bar only (SF Pro on a Mac). */
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+
+  --container-column: var(--column);
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+@theme {
+  /* Wider than the phone column: the page turns olive and the column gets side hairlines. */
+  --breakpoint-desk: 26.9375rem;
+
+  /*
+   * Compact, Deliveroo-like type scale: 11 caption, 12 meta, 14 body, 15 emphasis, 19 section, 24 title,
+   * 28 hero numbers. Display sizes carry their tracking; emphasise with weight before size.
+   */
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1.3;
+  --text-caption--letter-spacing: 0.01em;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.35;
+  --text-body: 0.875rem;
+  --text-body--line-height: 1.45;
+  --text-emphasis: 0.9375rem;
+  --text-emphasis--line-height: 1.35;
+  --text-section: 1.1875rem;
+  --text-section--line-height: 1.2;
+  --text-section--letter-spacing: -0.01em;
+  --text-title: 1.5rem;
+  --text-title--line-height: 1.1;
+  --text-title--letter-spacing: -0.02em;
+  --text-hero: 1.75rem;
+  --text-hero--line-height: 1.05;
+  --text-hero--letter-spacing: -0.02em;
+
+  /* Spacing roles (4px grid): screen gutter 16, card padding 12, groups inside a section 12, sections 24. */
+  --spacing-gutter: 1rem;
+  --spacing-card: 0.75rem;
+  --spacing-group: 0.75rem;
+  --spacing-section: 1.5rem;
+
+  --radius-chip: 12px;
+  --radius-card: 18px;
+  --radius-sheet: 24px;
+  --radius-popup: 28px;
+
+  /* Shadows belong to floating layers only. Cards on the page use a 1px --line border. */
+  --shadow-float: 0 8px 24px -8px rgb(27 29 20 / 0.18), 0 2px 6px -2px rgb(27 29 20 / 0.08);
+  --shadow-sheet: 0 -12px 40px -16px rgb(27 29 20 / 0.24), 0 -1px 3px -1px rgb(27 29 20 / 0.06);
+  --shadow-popup: 0 28px 64px -20px rgb(27 29 20 / 0.36), 0 6px 16px -6px rgb(27 29 20 / 0.12);
+  --shadow-thumb: 0 2px 5px -1px rgb(27 29 20 / 0.22), 0 0 0 0.5px rgb(27 29 20 / 0.08);
+  /* 1px --desk-line hairline on each side of the phone column. */
+  --shadow-column: -1px 0 0 var(--desk-line), 1px 0 0 var(--desk-line);
+  /* The phone resting on the olive desk. */
+  --shadow-device: 0 40px 80px -24px rgb(0 0 0 / 0.55), 0 16px 32px -16px rgb(0 0 0 / 0.4);
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* The bell in the "Party filled!" popup rings once after the card lands. */
+  --animate-ring: ring 600ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 180ms both;
+  /* Your contribution breathes gently (static 0.8 under reduced motion). */
+  --animate-mine: mine-pulse 1.6s ease-in-out infinite;
+
+  @keyframes ring {
+    0%,
+    100% {
+      transform: rotate(0deg);
+    }
+    15% {
+      transform: rotate(14deg);
+    }
+    30% {
+      transform: rotate(-12deg);
+    }
+    45% {
+      transform: rotate(9deg);
+    }
+    60% {
+      transform: rotate(-6deg);
+    }
+    75% {
+      transform: rotate(3deg);
+    }
+  }
+
+  @keyframes mine-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+}
+
+/* Marquee edge fades: widths come from data-edge (set per scroll phase); registered so they transition. */
+@property --marquee-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --marquee-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+/* ------------------------------------------------------------------ */
+/* Base                                                                */
+/* ------------------------------------------------------------------ */
+
+@layer base {
+  html {
+    color-scheme: light;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-tap-highlight-color: transparent;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    overscroll-behavior-y: none;
+    scrollbar-color: rgb(27 29 20 / 0.22) transparent;
+  }
+
+  /* Around the phone column (wide touch screens) and around the phone frame, the desk is deep olive. */
+  @variant desk {
+    html {
+      background: var(--bg-desk);
+    }
+  }
+
+  @variant frame {
+    html {
+      background: radial-gradient(ellipse 60% 70% at 50% 45%, var(--bg-desk-glow), transparent 70%) var(--bg-desk);
+    }
+  }
+
+  body {
+    min-height: 100dvh;
+    font-family: var(--font-sans);
+    font-size: var(--text-body);
+    line-height: 1.45;
+    overscroll-behavior-y: none;
+    caret-color: var(--accent-ink);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis-weight: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+    text-wrap: balance;
+  }
+
+  p {
+    text-wrap: pretty;
+  }
+
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--accent-ink);
+    outline-offset: 2px;
+  }
+
+  button,
+  a,
+  summary,
+  label,
+  [role="button"],
+  [role="switch"],
+  [role="radio"],
+  [role="tab"] {
+    touch-action: manipulation;
+  }
+
+  button,
+  [role="button"],
+  [role="switch"],
+  [role="radio"],
+  [role="tab"] {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+
+  /* 16px minimum stops iOS Safari zooming into focused fields. */
+  input,
+  textarea,
+  select {
+    font-size: max(16px, 1rem);
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--ink-3);
+    opacity: 1;
+  }
+
+  input[type="search"]::-webkit-search-cancel-button,
+  input[type="search"]::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  a {
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+
+  img {
+    -webkit-user-drag: none;
+    -webkit-touch-callout: none;
+  }
+
+  kbd {
+    font-family: var(--font-mono);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Device: phone column on phones, iPhone 16 Pro frame on the laptop   */
+/* ------------------------------------------------------------------ */
+
+/*
+ * On a phone the app is the page: the document scrolls and fixed layers sit on the viewport. Wider touch
+ * screens centre a phone-width column on the olive desk. In frame mode the stage fills the window, the phone is
+ * scaled to fit, `.device-screen` is the containing block for every fixed layer (so bars, sheets, popups
+ * and toasts stay inside the phone) and `.device-scroll` is the app's scroll container.
+ */
+.device-screen {
+  position: relative;
+  width: 100%;
+  max-width: var(--column);
+  min-height: 100dvh;
+  margin-inline: auto;
+  background: var(--bg);
+}
+
+@variant desk {
+  .device-screen {
+    box-shadow: var(--shadow-column);
+  }
+}
+
+@variant frame {
+  .device-stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: radial-gradient(ellipse 60% 70% at 50% 45%, var(--bg-desk-glow), transparent 70%) var(--bg-desk);
+  }
+
+  /* Centred by its own box, so it stays centred while its unscaled layout box is taller than the window. */
+  .device-phone {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--frame-w);
+    height: var(--frame-h);
+    border-radius: var(--frame-radius);
+    /* Fit the whole device (screen and bezel) with 24px margins; the script refines this on resize. */
+    --frame-scale: min(
+      1,
+      tan(atan2(calc(100dvh - 48px), calc(var(--frame-h) + 2 * var(--frame-bezel)))),
+      tan(atan2(calc(100vw - 48px), calc(var(--frame-w) + 2 * var(--frame-bezel))))
+    );
+    transform: translate(-50%, -50%) scale(var(--frame-scale));
+    box-shadow:
+      0 0 0 var(--frame-bezel) var(--device),
+      0 0 0 calc(var(--frame-bezel) + 1.5px) var(--device-rim),
+      0 0 0 calc(var(--frame-bezel) + 2px) var(--device-rim-highlight),
+      var(--shadow-device);
+  }
+
+  /* Side buttons on the titanium rim: action button and volume (left), side button and camera control (right). */
+  .device-phone::before,
+  .device-phone::after {
+    content: "";
+    position: absolute;
+    width: 3px;
+    pointer-events: none;
+  }
+
+  .device-phone::before {
+    top: 112px;
+    height: 182px;
+    left: calc(-1 * var(--frame-bezel) - 4.5px);
+    border-radius: 2px 0 0 2px;
+    background: linear-gradient(
+      to bottom,
+      var(--device-rim) 0 30px,
+      transparent 30px 62px,
+      var(--device-rim) 62px 120px,
+      transparent 120px 128px,
+      var(--device-rim) 128px 182px
+    );
+  }
+
+  .device-phone::after {
+    top: 196px;
+    height: 330px;
+    right: calc(-1 * var(--frame-bezel) - 4.5px);
+    border-radius: 0 2px 2px 0;
+    background: linear-gradient(
+      to bottom,
+      var(--device-rim) 0 92px,
+      transparent 92px 272px,
+      var(--device-rim-highlight) 272px 330px
+    );
+  }
+
+  .device-screen {
+    position: absolute;
+    inset: 0;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    contain: layout paint;
+    isolation: isolate;
+    box-shadow: none;
+    --safe-top: 62px;
+    --safe-bottom: 34px;
+    --app-height: var(--frame-h);
+  }
+
+  .device-scroll {
+    position: absolute;
+    inset: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .device-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Full-height screens fill the phone, not the laptop window. */
+  .device-screen .min-h-dvh {
+    min-height: var(--app-height);
+  }
+
+  .device-screen .h-dvh {
+    height: var(--app-height);
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Utilities                                                           */
+/* ------------------------------------------------------------------ */
+
+/* Translucent material for floating chrome: top bars, bottom bars, floating bubbles. */
+@utility material {
+  background-color: var(--material);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(160%);
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background-color: var(--material-fallback);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--material-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  @media (prefers-contrast: more) {
+    background-color: var(--material-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+/*
+ * Clear glass for round icon buttons, the Home search bar and big action buttons: half-white with a strong
+ * blur, a bright 1px edge (drawn as an inset shadow so it never changes the control's size), a brighter
+ * top highlight and the floating shadow. The shadow is composed with Tailwind's ring variables so `ring-*`
+ * utilities (focus rings) still add to it. Solid white under reduced transparency or increased contrast.
+ */
+@utility glass {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  --tw-inset-shadow: inset 0 1px 0 var(--glass-highlight), inset 0 0 0 1px var(--glass-edge);
+  --tw-shadow: var(--shadow-float);
+  box-shadow:
+    var(--tw-inset-shadow), var(--tw-inset-ring-shadow, 0 0 #0000), var(--tw-ring-offset-shadow, 0 0 #0000),
+    var(--tw-ring-shadow, 0 0 #0000), var(--tw-shadow);
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--glass-hover);
+    }
+  }
+
+  &:active:not(:disabled, [aria-disabled="true"]) {
+    background-color: var(--glass-pressed);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    background-color: var(--glass-fallback);
+  }
+
+  @media (prefers-reduced-transparency: reduce) {
+    background-color: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    --tw-inset-shadow: inset 0 0 0 1px var(--line);
+  }
+
+  @media (prefers-contrast: more) {
+    background-color: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    --tw-inset-shadow: inset 0 0 0 1px var(--line-strong);
+  }
+}
+
+/* Tabular lining numerals for prices, timers, PINs and counts. */
+@utility tnum {
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+/* Horizontal carousels scroll by touch and trackpad without a visible scrollbar. */
+@utility no-scrollbar {
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+/* Top padding that clears the status bar (62px in the laptop frame, the notch inset on a phone). */
+@utility pt-safe {
+  padding-top: var(--safe-top);
+}
+
+/* Bottom padding that clears the home indicator, for bars that sit on the bottom edge. */
+@utility pb-safe {
+  padding-bottom: max(12px, var(--safe-bottom));
+}
+
+/* Bottom padding for controls floating just above the home indicator. */
+@utility pb-safe-float {
+  padding-bottom: max(12px, calc(var(--safe-bottom) - 6px));
+}
+
+/* The app's viewport height: the phone's 874px in the laptop frame, 100dvh on a phone. */
+@utility min-h-app {
+  min-height: var(--app-height);
+}
+
+@utility h-app {
+  height: var(--app-height);
+}
+
+/*
+ * Soft edge fades on an overflowing Marquee. The fade widths come from data-edge, which the Marquee sets per
+ * scroll phase ("end" resting at the start, "both" while scrolling, "start" resting at the end), and
+ * transition briefly when it changes.
+ */
+@utility marquee-mask {
+  --marquee-fade-start: var(--marquee-fade);
+  --marquee-fade-end: var(--marquee-fade);
+  transition:
+    --marquee-fade-start 200ms linear,
+    --marquee-fade-end 200ms linear;
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--marquee-fade-start),
+    #000 calc(100% - var(--marquee-fade-end)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--marquee-fade-start),
+    #000 calc(100% - var(--marquee-fade-end)),
+    transparent
+  );
+
+  &:not([data-edge]),
+  &[data-edge="end"] {
+    --marquee-fade-start: 0px;
+  }
+
+  &[data-edge="start"] {
+    --marquee-fade-end: 0px;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Third-party surfaces                                                */
+/* ------------------------------------------------------------------ */
+
+/* Sonner toasts: ink capsule with lime icons, under the top bar; above sheets, below popups. */
+.bulk-toaster[data-sonner-toaster] {
+  z-index: 55;
+  font-family: var(--font-sans);
+  --width: 358px;
+  --border-radius: 16px;
+}
+
+.bulk-toaster [data-sonner-toast][data-styled="true"] {
+  gap: 10px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--ink);
+  color: var(--bg);
+  box-shadow: var(--shadow-float);
+  font-size: var(--text-body);
+  line-height: 1.35;
+}
+
+.bulk-toaster [data-sonner-toast][data-styled="true"] [data-title] {
+  font-weight: 550;
+}
+
+.bulk-toaster [data-sonner-toast][data-styled="true"] [data-description] {
+  color: color-mix(in srgb, var(--bg) 72%, transparent);
+  font-size: var(--text-meta);
+}
+
+.bulk-toaster [data-sonner-toast][data-styled="true"] [data-icon] {
+  color: var(--accent);
+}
+
+.bulk-toaster [data-sonner-toast][data-styled="true"][data-type="error"] [data-icon] {
+  color: var(--offer-on-ink);
+}
+
+.bulk-toaster [data-sonner-toast][data-styled="true"] [data-button] {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 600;
+  font-size: var(--text-meta);
+}
+
+/* ------------------------------------------------------------------ */
+/* Reduced motion                                                      */
+/* ------------------------------------------------------------------ */
+
+@keyframes bulk-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes bulk-fade-out {
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ring {
+    animation: none;
+  }
+
+  .animate-mine {
+    animation: none;
+    opacity: 0.8;
+  }
+
+  /* Sheets cross-fade instead of sliding. */
+  [data-vaul-drawer][data-state="open"] {
+    animation: bulk-fade-in 200ms ease-out both !important;
+  }
+
+  [data-vaul-drawer][data-state="closed"] {
+    animation: bulk-fade-out 150ms ease-out both !important;
+  }
 }
