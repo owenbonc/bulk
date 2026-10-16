@@ -2,8 +2,7 @@
 
 **Order together. Unlock bulk deals. Share one delivery.**
 
-
-Bulk lets students nearby pool their food orders from one restaurant into a **party**. Together they unlock the restaurant's group deal and split one delivery fee. Everyone still chooses and pays for their own food, and collects their own bag with their own PIN.
+Bulk is group food ordering for students who'd otherwise eat alone. Ordering by yourself is the most expensive way to get delivery: fees pile onto small orders, and restaurant deals like "30% off over £20" never apply to one person's dinner. Bulk puts you in a party with students nearby who want the same restaurant. Together you unlock the deal and split one delivery fee, while each person orders and pays only for their own food. Everyone collects their own labelled bag with a personal PIN
 
 <p align="center">
   <img src="docs/images/home.png" alt="Home: highlights and parties near the Student Centre, each with a timer and progress to its deal" width="200">
@@ -83,17 +82,7 @@ Everything runs in the browser. The other students are simulated, and so are pay
 
 ## Run it
 
-```bash
-npm install
-npm run build && npm start   # http://localhost:3000
-```
-
-`npm run dev` works too. If the repo lives in a OneDrive folder, OneDrive syncing `node_modules` makes the dev server's file watcher very slow. Use `build` + `start` for demos, or move the repo out of OneDrive.
-
-```bash
-npm test        # Vitest: request state machine, cost split, bot behaviour
-npm run lint
-```
+https://bulk-theta.vercel.app/
 
 ## Rules
 
