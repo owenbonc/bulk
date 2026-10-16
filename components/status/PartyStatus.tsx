@@ -6,7 +6,7 @@ import { useState } from "react";
 import { EASE_OUT, EXIT, IconButton, Marquee, TopBar, formatPrice, scrollRootTo, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { CANCEL_REASONS } from "@/lib/requests";
-import { pickupById, previewSplit, progressOf, restaurantById, useApp } from "@/lib/store";
+import { myReleased, pickupById, previewSplit, progressOf, restaurantById, useApp } from "@/lib/store";
 import type { OrderRequest } from "@/lib/types";
 import { AcceptView } from "./AcceptView";
 import { ClosedView } from "./ClosedView";
@@ -14,15 +14,14 @@ import { DeliveryView } from "./DeliveryView";
 import { FillingView } from "./FillingView";
 import { HelpSheet } from "./HelpSheet";
 import { PaySheet } from "./PaySheet";
+import { RetryChoice } from "./RetryChoice";
 
 type View = "filling" | "accept" | "delivery" | "closed" | "removed" | "missed";
 
 function viewFor(request: OrderRequest): View {
   const me = request.participants.find((p) => p.userId === ME.userId);
-  // A host who declines cancels the party, so they see why it was cancelled rather than being "out".
-  if (request.status === "cancelled" && request.hostId === ME.userId) return "closed";
-  if (me?.declined || (!me && request.removedUserIds.includes(ME.userId))) return "removed";
   if (request.status === "expired" || request.status === "cancelled") return "closed";
+  if (me?.declined || (!me && request.removedUserIds.includes(ME.userId))) return "removed";
   if (request.status === "open") return "filling";
   if (!me) return "missed";
   return request.status === "deal_achieved" ? "accept" : "delivery";
@@ -61,6 +60,8 @@ export function PartyStatus({ id }: { id: string }) {
 
   const me = request.participants.find((p) => p.userId === ME.userId);
   const myCost = me ? previewSplit(request, restaurant, ME.userId, me.basket) : undefined;
+  const released = myReleased(request);
+  const retry = released && <RetryChoice request={request} entry={released} restaurant={restaurant} pickup={pickup} />;
 
   let content;
   switch (view) {
@@ -80,12 +81,16 @@ export function PartyStatus({ id }: { id: string }) {
           tone="neutral"
           title="You're out of this order"
           reason={
-            declinedHere || me?.declined
-              ? "You declined this order."
-              : "You didn't accept within 60 seconds."
+            released?.reason === "payment_failed" || me?.declineReason === "payment_failed"
+              ? "Your demo payment didn't go through, so you were taken out of this order."
+              : declinedHere || me?.declined || released?.reason === "declined"
+                ? "You declined this order."
+                : "You didn't accept within 60 seconds."
           }
-          reassurance="Nothing was charged."
-        />
+          reassurance="Nothing was charged. The rest of the party carries on without you."
+        >
+          {retry}
+        </ClosedView>
       );
       break;
     case "missed":
@@ -115,6 +120,7 @@ export function PartyStatus({ id }: { id: string }) {
               The party reached {formatPrice(progress.total, { trim: true })} of {formatPrice(progress.target, { trim: true })}.
             </p>
           )}
+          {retry && <div className={expired ? "mt-5" : undefined}>{retry}</div>}
         </ClosedView>
       );
     }
@@ -172,12 +178,18 @@ export function PartyStatus({ id }: { id: string }) {
           const others = request.participants.filter((p) => p.userId !== ME.userId);
           const settles = others.every((p) => p.paid || p.declined);
           const someoneOut = others.some((p) => p.declined);
-          dispatch({ type: "ACCEPT_AND_PAY", requestId: request.id, userId: ME.userId, now: at });
+          const answer = { requestId: request.id, userId: ME.userId, round: request.round, now: at };
+          if (state.demo.myPaymentFails) {
+            dispatch({ type: "DECLINE", reason: "payment_failed", ...answer });
+            toast("Demo payment failed", { description: "Nothing was charged." });
+            return;
+          }
+          dispatch({ type: "ACCEPT_AND_PAY", ...answer });
           if (!(settles && someoneOut)) toast.success(`Paid ${formatPrice(myCost?.total ?? 0)}`);
         }}
         onDecline={() => {
           setDeclinedHere(true);
-          dispatch({ type: "DECLINE", requestId: request.id, userId: ME.userId, now: Date.now() });
+          dispatch({ type: "DECLINE", requestId: request.id, userId: ME.userId, round: request.round, now: Date.now() });
         }}
       />
     </>

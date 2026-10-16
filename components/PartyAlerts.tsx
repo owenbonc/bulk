@@ -118,9 +118,14 @@ export default function PartyAlerts() {
   }
 
   const expired = current.kind === "expired";
+  // Your basket is kept for an explicit keep-queueing-or-cancel choice: take you to it rather than home.
+  const decisionPending = request.released.some((e) => e.userId === ME.userId && e.choice === "pending");
   const close = (nextOpen: boolean) => {
     setOpen(nextOpen);
-    if (!nextOpen && onPartyPage) router.push("/");
+    if (nextOpen) return;
+    if (decisionPending) {
+      if (!onPartyPage) router.push(statusPath);
+    } else if (onPartyPage) router.push("/");
   };
 
   return (
@@ -137,11 +142,12 @@ export default function PartyAlerts() {
             {request.cancelReason ?? (expired ? CANCEL_REASONS.expired : CANCEL_REASONS.notEnoughAccepted)}
           </span>
           <span className="mt-1 block font-semibold text-ink">Nobody was charged.</span>
+          {decisionPending && <span className="mt-1 block">Your basket is saved.</span>}
         </>
       }
       action={
-        <Button size="lg" block variant="secondary" onClick={() => close(false)}>
-          Close
+        <Button size="lg" block variant={decisionPending ? "primary" : "secondary"} onClick={() => close(false)}>
+          {decisionPending ? "Keep queueing or cancel" : "Close"}
         </Button>
       }
     />
