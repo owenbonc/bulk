@@ -1,6 +1,6 @@
 # Bulk
 
-**Order together. Unlock the deal. Share one delivery.**
+**Order together. Unlock bulk deals. Share one delivery.**
 
 Group food ordering for students, built for the Claude hackathon.
 
