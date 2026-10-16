@@ -10,7 +10,7 @@ This repo runs **Next.js 16** (App Router), React 19, Tailwind v4. APIs differ f
 
 ## 1. Product in one line
 
-Students near each other join a **party** at a restaurant, build their own basket, and when the party's combined spend reaches the restaurant's deal threshold everyone confirms and pays (simulated). The order is delivered to the host's collection point.
+Students near each other join a **party** at a restaurant, build their own basket, and when the party's combined spend reaches the restaurant's deal threshold everyone confirms and pays (simulated). The order is delivered to the party's collection point, and each person collects their own bag with their own PIN.
 
 ## 2. Terminology (non-negotiable)
 
@@ -62,7 +62,7 @@ Dark mode: not required for the demo. Do not add it.
 - Radii: 12px (chips, steppers), 18px (cards), 24px (sheets, image tiles), 999px (pills, round buttons).
 - Spacing on a 4px grid. Screen side padding 16px. Sections separated by 28–32px; groups inside a section 12px.
 - Shadows only on floating layers (bottom bar, sheets, popups, floating bubbles): soft, offset downward, e.g. `0 8px 24px -8px rgba(27,29,20,0.18), 0 2px 6px -2px rgba(27,29,20,0.08)`. Cards on the page use a 1px `--line` border, no shadow.
-- **Glass controls.** Every round icon button (account, create +, bell, location, back, search, info), the Home search bar, and the big action buttons (Join party, Create party, Accept and pay) are **clear glass**: `background: rgba(255,255,255,0.5); backdrop-filter: blur(20px) saturate(180%)`, a 1px `rgba(255,255,255,0.75)` border with a brighter top edge (inset highlight `inset 0 1px 0 rgba(255,255,255,0.9)`), and the floating shadow. Icons and labels are `--ink`; the create button's `+` is `--accent-ink` so it still reads as primary. Big glass action buttons stay prominent through size (56px tall), bold 17px label and a lime price chip on the right ("£7.29" on `--accent`). Solid fallback under `prefers-reduced-transparency`. The menu's "View basket" bubble and the your-party card are **not** glass.
+- **Glass controls.** Every round icon button (account, create +, bell, location, back, search, info), the Home search bar, and the big action buttons (Join party, Create party, Accept and pay) are **clear glass**: `background: rgba(255,255,255,0.5); backdrop-filter: blur(20px) saturate(180%)`, a 1px `rgba(255,255,255,0.75)` border with a brighter top edge (inset highlight `inset 0 1px 0 rgba(255,255,255,0.9)`), and the floating shadow. Icons and labels are `--ink`. The one exception is the **Home create `+` button: lime-tinted glass** (`IconButton variant="glass-accent"`): the same recipe (blur 20px + saturate, bright top-edge inset highlight, white edge, floating shadow) over a translucent `--accent` tint at ~50% (`--glass-accent`; 60% hover, 72% pressed) with an `--on-accent` ink `+`, so the primary action reads as lime without being an opaque disc; solid `--accent` under `prefers-reduced-transparency`, `prefers-contrast: more` or without backdrop-filter. Big glass action buttons stay prominent through size (56px tall), bold 17px label and a lime price chip on the right ("£7.29" on `--accent`). Solid fallback under `prefers-reduced-transparency`. The menu's "View basket" bubble and the your-party card are **not** glass.
 - **Deal pills** are solid `--offer` red with white bold text everywhere (cards, menu, create page).
 - Floating chrome (top bars, bottom bar, sticky info bubble) is **translucent material**: `background: rgba(247,245,236,0.78); backdrop-filter: blur(20px) saturate(160%)` with content scrolling underneath, per apple-design §12. Provide a solid fallback under `prefers-reduced-transparency: reduce`.
 - Hairline dividers between menu rows, not boxes around every row (avoid cards inside cards).
@@ -96,7 +96,7 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - **Fake iOS status bar inside the frame** (frame mode only; on a real phone use `env(safe-area-inset-top)` instead): 62px top safe area; left: live 24h clock (e.g. "01:47", the viewer's real time) + location arrow; centre: Dynamic Island pill (~125×37px, black, 11px from top); right: signal bars, Wi-Fi, battery (65%). It overlays content at the top of the frame. Full-bleed heroes (menu restaurant image) extend under it; every top bar and screen content starts below the 62px safe area. Status bar glyph colour adapts: white over photos (screens report this, e.g. the menu while the hero is under it), `--ink` over cream. Sheets and popups render beneath the status bar.
 - No global header: each screen owns its top bar (the wireframes differ per screen).
 - `components/PartyAlerts.tsx` is mounted once in the layout and renders the global popups (wireframes 11 and 12) on any screen.
-- Demo controls move **off the main screens**: they live inside the account sheet (bottom-left button on Home) under a "Demo controls" section, and are also toggled by pressing the `d` key anywhere. Keep the existing controls (pause bots, a bot won't accept, expire this party in 5s, reset demo) and add "Fill this party now" (bots join until the deal is reached) for a fast happy-path demo.
+- Demo controls move **off the main screens**: they live inside the account sheet (bottom-left button on Home) under a "Demo controls" section, and are also toggled by pressing the `d` key anywhere. Controls: pause bots, a bot won't accept, …and declines again, a bot never answers, my payment fails, a location-aware **Party** picker, fill this party now (bots join until the deal is reached), expire this party in 5s, end the accept window in 5s, the **Driver handover** presenter tool (once the picked order is placed: one bag per person, enter a PIN → Find bag → Hand over, unknown and repeated PINs refused, "Simulate the others"), reset demo. The driver handover lives only here, never on the status page.
 - Every simulated thing is labelled once where it matters: the pay sheet says "Simulated payment, no real money"; the live map says "Simulated delivery"; the account sheet says "Demo: sample restaurants and offers".
 
 ## 6. Screens (wireframe number → route → spec)
@@ -106,9 +106,9 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - **Highlights · n** (horizontal snap carousel, `scroll-snap-type: x mandatory`, `touch-action: pan-x pan-y`): parties at ≥75% of their deal. Card ~72% screen width: food image (top, 4:3) with a deal pill overlapping the image's bottom-right edge ("25% off", solid `--offer` red, white text); below: restaurant name, "4.6 ★ (250)", est. delivery "25–35 min"; right side "£5 left" in bold with a small progress pie. Arrow button top-right of the section scrolls the carousel.
 - **Other parties · n** (vertical list): wide card, food image left (square, ~96px), right column: timer "12:04 left", "3 in party", then the red deal pill directly **under the party count** (no tab on the card's top edge, so cards stack with even gaps); below image: restaurant name, "5.0 ★ (500) · 20–30 min"; right: "£24 / £50" and the progress pie.
 - Parties you are already in stay in the lists with a small "You're in" pill and route to their status page.
-- **Your-party card** (not in the hand-drawn wireframes; lead designer's spec): floats directly above the bottom bar for anyone in a non-terminal party (host or joiner). Same anatomy as an "Other parties" card (image left, details, progress pie right) but compact (one 76px row) and **solid `--accent` lime with `--ink` text**, radius 22px, floating shadow. Eyebrow 11px uppercase "Your party · Host" (or "Your party"); restaurant name 15px semibold; status line 13px that changes with the party: open → "£8 left · 12:04 left"; deal reached → "Accept and pay · 0:47" (in `--offer`, bold); paid waiting → "Paid · waiting for 2 others"; preparing/on its way → "On its way · arrives in 0:18" (the same simulated countdown as the status page); delivered → "Ready to collect · PIN 4821". Right side: progress pie (open) or chevron. Tap → `/party/[id]/status`. Hidden while the Home search field is focused (keyboard open). Multiple parties: show the most urgent first (pay now > on its way > ready > filling) with page dots; swipe sideways (scroll-snap) for the others. Enters with a spring slide-up when you join/create; a single soft pulse when its status changes. List bottom padding accounts for it.
+- **Your-party card** (not in the hand-drawn wireframes; lead designer's spec): floats directly above the bottom bar for anyone in a non-terminal party (host or joiner). Same anatomy as an "Other parties" card (image left, details, progress pie right) but compact (one 76px row) and **solid `--accent` lime with `--ink` text**, radius 22px, floating shadow. Eyebrow 11px uppercase "Your party · Host" (or "Your party"); restaurant name 15px semibold; status line 13px that changes with the party: open → "£8 left · 12:04 left"; deal reached → "Accept and pay · 0:47" (in `--offer`, bold); paid waiting → "Paid · waiting for 2 others"; preparing/on its way → "On its way · arrives in 0:18" (the same simulated countdown as the status page); delivered → "Ready to collect · PIN 4821" (your own PIN); once your bag is handed over the card shows "Collected" for a beat and leaves. Right side: progress pie (open) or chevron. Tap → `/party/[id]/status`. Hidden while the Home search field is focused (keyboard open). Multiple parties: show the most urgent first (pay now > on its way > ready > filling) with page dots; swipe sideways (scroll-snap) for the others. Enters with a spring slide-up when you join/create; a single soft pulse when its status changes. List bottom padding accounts for it.
 - Top bars stay as translucent bars (title + buttons inside the bar); only bottom controls float.
-- Bottom controls: **no bar**. No background strip, border or blur band; the three controls float individually over the scrolling content as separate clear-glass objects (fixed, safe-area aware, stay while scrolling): account button (left, round), search field (centre, pill, filters the lists live by restaurant, cuisine or dish name; empty state "No parties match 'xyz'"), create button (right, round, clear glass with an `--accent-ink` `+` icon) → `/create`.
+- Bottom controls: **no bar**. No background strip, border or blur band; the three controls float individually over the scrolling content as separate clear-glass objects (fixed, safe-area aware, stay while scrolling): account button (left, round), search field (centre, pill, filters the lists live by restaurant, cuisine or dish name; empty state "No parties match 'xyz'"), create button (right, round, lime-tinted glass with an ink `+`, see §3) → `/create`.
 - Empty state for no parties: illustration-free, one line + "Create a party" button.
 
 ### W2–W3 Party menu (join) — `/party/[id]`
@@ -129,35 +129,37 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - "Your basket": rows `1×  Name ……… £9.00` with tap to edit quantity (same stepper), "+ Add items" button (back to menu).
 - "Add ons": horizontal tiles of sides/drinks with `+`.
 - "Add disposable cutlery" with a switch (stored per participant).
-- Price breakdown (small, above the CTA): Food, Group deal (25% off, "when the party fills"), Delivery share (£3.49 ÷ n), **Estimated total**. Note under it: "Final total is confirmed when the party fills."
+- Price breakdown (small, above the CTA): Food, Group deal, Delivery share (£3.49 ÷ n), **Estimated total**. The discount only applies once the party's finalised baskets meet the threshold, so the Group deal row (shared `DealRow`, also on W5) reads: label "Group deal (25% off)", hint "Unlocks at £50 · £11 to go" with the value "−£2.88 when it unlocks" in muted ink while not yet eligible; hint "Unlocked" with the value "−£2.88" in accent once eligible. Never "−£0.00". Note under the total: "This is your price if the party stopped now. You'll confirm the exact total before paying." (only "You'll confirm the exact total before paying." once eligible).
 - Bottom CTA (full-width, accent): join mode **"Join party · £7.29"**; host draft mode **"Create party · £7.29"** (creates the party with the draft's collection point and duration, finalises the host's basket, goes to status).
 - Empty basket → CTA disabled with "Add something to join".
 
 ### W5 Party status: filling — `/party/[id]/status`
-- Top bar: home button (left), restaurant name, **info button** (right, lucide `Info` icon, aria-label "More information"): sheet with party details (restaurant, deal terms, collection point + access note), "How it works" (party fills → 60s to accept and pay → one second round if someone drops out → otherwise cancelled, nobody charged), then actions: "Share party link" (copies URL, toast), "Report a problem" (simulated: "Thanks, we've logged this" toast), "Leave party" (only while open and not host).
+- Top bar: home button (left), restaurant name, **info button** (right, lucide `Info` icon, aria-label "More information"): sheet with party details (restaurant, deal terms, collection point + access note), "How it works" (party fills → 60s to accept and pay → one second round if someone drops out → otherwise cancelled, nobody charged), then actions: "Share party link" (copies URL, toast), "Report a problem" (simulated: "Thanks, we've logged this" toast), "Leave party" (while open; anyone can leave, the host included, even after finalising; the party stays open for the others and nobody is promoted).
 - Section "Filling the party" with "📍 Collection point name" on the right (pin icon, not emoji).
 - Timer card: big countdown (34px tabular) left, "75% filled" + progress pie right.
 - Caption: "We'll notify you when the deal is reached."
 - "Order": your items with prices; then Group deal (25% off) −£x, Delivery share £x, **Total** (projected; label "Estimated").
-- "Party" section (never "Group"): members with "Host" tag; you shown as "You"; members still choosing shown as "choosing…". **If you are the host and nobody else has joined, hide the whole Party section**; it appears (animated in) when the first person joins. Same rule on W9 and W10.
-- Bottom: "Back to home" button (secondary, with home icon).
+- "Party" section (never "Group"): members with "Host" tag; you shown as "You"; members still choosing shown as "choosing…". **If you're alone in the party (host or not), hide the whole Party section**; it appears (animated in) when someone else joins or is invited. Same rule on W9 and W10. The Host tag marks whoever created the party while they're still in it.
+- Under the timer: "Invite friends" (sheet of your friends with Invite / Invited / In the party, plus "Copy invite link"; invited friends show as "invited…" in the Party list).
+- Bottom: "Back to home" (glass, home icon); once your basket is in, "Home" plus **"Leave party"** (tomato label) which confirms first: "Leave the party?" · "Leave party" / "Stay in the party". Toast "You left the party".
 
 ### W9 Party status: deal reached, accept and pay — same route, status `deal_achieved`
 - Card at top: tag icon + "Deal reached!" and "Everyone must accept in 0:47" (live countdown). If this is the fallback round, the card instead says "Second round: Aisha didn't accept. Totals updated, accept again in 0:47."
 - "Order" breakdown with exact totals.
 - "Party": members with "Paid ✓" (`--success`) or "Pending"; pending members sort to the bottom.
-- Bottom: **"Accept and pay · £7.29"** opens the simulated pay sheet (vaul drawer): "Simulated payment, no real money", demo card •••• 4242, "Pay £7.29", and a quiet "Decline" text button (declining removes you; confirm first).
+- Bottom: **"Accept and pay · £7.29"** opens the simulated pay sheet (vaul drawer): "Simulated payment, no real money", demo card •••• 4242, "Pay £7.29", and a quiet "Decline" text button (declining removes you; confirm first with "Decline and leave": the host is treated like everyone else).
 - After you pay: CTA becomes "Paid, waiting for 2 others".
 
 ### W10 Party status: paid, on its way — statuses `confirmed`, `preparing`, `out_for_delivery`, `delivered`
 - Top bar: restaurant name, help button.
 - Status row: current status text ("Order placed" → "Preparing" → "On its way" → "Ready to collect") and the simulated arrival countdown "Arrives in 0:18" right ("Ready now" once delivered); thin segmented progress bar under it (4 segments).
 - **Live map** (only while `out_for_delivery`, slides open above "Collect from"): a stylised SVG map (cream streets on `--surface-2`, no real tiles), restaurant marker, collection-point marker, a dashed route, and a courier dot moving along the route driven by `deliveryProgress(request, now)`. Corner label "Simulated delivery".
-- "Collect from" + pin + collection point name + access note; right: **pickup PIN** as 4 digit tiles.
+- "Collect from" + pin + collection point name + access note; right: **your own pickup PIN** as 4 digit tiles (every PIN the user sees, here, on the ready popup, the your-party card and notifications, is their own `collectionCode`).
 - "Order": items × qty, price line ("You paid £7.29").
 - "Party": members with Host tag; `+` button on each non-friend member → becomes an "Added" pill (ADD_FRIEND). No button on yourself.
 - Bottom-right: "Home" button.
-- When `delivered`: title "Ready to collect" and a short line "Show your PIN at the collection point."
+- When `delivered`: title "Ready to collect" and a short line "Show your PIN at the collection point.", plus "I've collected my food" in the bottom bar.
+- **Handover (user flow)**: "Your food is ready!" popup (when you're on another screen) → "Collect my order" (or the notification) → HandoverSheet "Show this code to your courier" with your own PIN → "Code accepted · Enjoy your meal!" → your bag is handed over (`HANDOVER` with your code). The status page then shows the Collected view, and your-party card leaves Home. The order becomes `collected` once every bag is handed over.
 
 ### W6 Create a party: choose restaurant — `/create`
 - Top bar: close X (left), location name with chevron (centre-left, same location sheet as Home), search button (right) filtering the lists.
@@ -178,7 +180,7 @@ A "big mouth" mark: a bold, open C-shaped mouth (think a wide, round chomp shape
 - Also fire a browser Notification if permission was granted (existing behaviour).
 
 ### W12 Popup: order cancelled — global
-- Same popup frame. Large X-in-circle icon (`--offer`). Title "Order cancelled". One line with the reason from `request.cancelReason`. "Nobody was charged." Button "Close" (→ Home if you're on that party's page). Shown once per party for `cancelled` or `expired` (expired title: "Party closed": "The deal wasn't reached before the timer ran out.").
+- Same popup frame. Large X-in-circle icon (`--offer`). Title "Order cancelled". One line with the reason from `request.cancelReason`. "Nobody was charged." Button "Close" (→ Home if you're on that party's page); when your basket was saved, the line "Your basket is saved." and a primary **"Start a new party"** button that opens the status page's new-party card. Shown once per party for `cancelled` or `expired` (expired title: "Party closed": "The deal wasn't reached before the timer ran out.").
 
 ### W13 Popup: party already exists — in the create flow
 - Same popup frame. Large "!" in an `--accent-soft` circle. Title "There's already a party here". Sub "Join Slice House's party instead. It's £8 from the deal." Button "See party" → `/party/[id]`.
@@ -193,17 +195,21 @@ interface Deal { label: string; short: string; minTotal: number; discountPct: nu
 interface MenuItem { id; name; price; description: string; category: "main" | "side" | "drink"; image?: string; originalPrice?: number; topPick?: boolean }
 interface Restaurant { id; name; cuisine; emoji; deliveryFee; deal; menu; image: string; area: string /* "Bloomsbury" */; rating: number; ratingCount: number; ratingLabel: string /* "Good" */; lat: number; lng: number; prepMin: number /* kitchen time before the ride */; featured?: boolean }
 interface PickupPoint { id; name; access: string /* "Inside the main doors, by the post room" */; lat: number; lng: number }
-interface Participant { ...existing; cutlery: boolean; declined?: boolean }
+interface Participant { ...existing; cutlery: boolean; declined?: boolean; declineReason?: "declined" | "payment_failed"; collectionCode?: string /* own 4-digit PIN */; collectedAt?: number }
 type RequestStatus = existing union (unchanged)
-interface OrderRequest { ...existing; round: 1 | 2; removedUserIds: string[]; removedNames: string[]; cancelReason?: string }
+interface OrderRequest { ...existing; round: 1 | 2; removedUserIds: string[]; removedNames: string[]; cancelReason?: string; attempt: number; retryOf?: string; released: ReleasedEntry[] /* saved baskets */; invites?: Invite[]; completedAt?: number }
+type RequestStatus = ... | "delivered" | "collected" /* every bag handed over */ | ...
 interface Draft { restaurantId: string; pickupPointId: string; durationMin: number; basket: BasketLine[]; cutlery: boolean }
 interface AppState { requests; demo; draft?: Draft; friends: string[]; seenAlerts: string[]; location: string /* pickup point id used as "current location" */; readNotifications: string[] }
 ```
 
 Actions (new or changed):
-- `ADD_ITEM` / `REMOVE_ITEM` unchanged signature. **REMOVE_ITEM that empties an unfinalised non-host basket removes that participant.**
+- `ADD_ITEM` / `REMOVE_ITEM` unchanged signature. **REMOVE_ITEM that empties an unfinalised basket removes that participant (the host included).**
 - `SET_CUTLERY { requestId, userId, cutlery }`.
-- `DECLINE { requestId, userId, now }` during `deal_achieved`.
+- `ACCEPT_AND_PAY` / `DECLINE { requestId, userId, round, now, reason? }` during `deal_achieved`: an answer for another round is ignored; `reason: "payment_failed"` for a failed demo payment.
+- `RETRY_ENTRY { requestId, userId, newRequestId, durationMin (15/30/60), now }` / `CANCEL_ENTRY { requestId, userId }`: start a new party with your saved basket, or no thanks. Refused while the restaurant has an open party at that collection point.
+- `HANDOVER { requestId, code, now }`: hands over the bag with that PIN (your own from the handover sheet, or any from the demo driver tool); unknown and repeated PINs are ignored.
+- `INVITE_FRIEND { requestId, userId, friendId, now }`, `SET_ACCEPT_DEADLINE { requestId, deadline }` (demo).
 - `DRAFT_START { restaurantId }`, `DRAFT_ITEM { itemId, delta }`, `DRAFT_SET { pickupPointId?, durationMin?, cutlery? }`, `DRAFT_CLEAR`.
 - `CREATE_FROM_DRAFT { id, user, now }`: creates the party from the draft, host basket finalised, clears draft. **Refuses (no-op) if the restaurant already has an open party at the draft's collection point** (the draft is kept so the host can pick another point).
 - `FILL_PARTY { requestId, now }` (demo): bots join with baskets until the threshold is reached.
@@ -211,12 +217,12 @@ Actions (new or changed):
 
 Rules:
 - **One party per restaurant per collection point**: `openPartyFor(state, restaurantId, pickupPointId)` returns the open party there or undefined. `CREATE_REQUEST` and `CREATE_FROM_DRAFT` follow the same rule.
-- **Acceptance round (Google Doc spec §5)**: when the deal is reached everyone has `ACCEPT_WINDOW_MS` (60s) to accept and pay. The round resolves early once everyone has paid or declined. At resolution, if anyone declined or timed out: remove them (record ids/names). If this was round 1 **and** the remaining finalised spend still meets the threshold **and** someone remains, start **round 2**: reset everyone's `paid`, recompute totals (delivery share changes), new deadline. Otherwise status `cancelled` with `cancelReason` ("Not enough people accepted to keep the deal." / "The second round didn't complete."). If everyone pays → `confirmed` as today. Never more than one fallback round.
+- **Acceptance round (Google Doc spec §5)**: when the deal is reached everyone has `ACCEPT_WINDOW_MS` (60s) to accept and pay. The round resolves early once everyone has paid or declined. At resolution, if anyone declined or timed out: remove them (record ids/names). If this was round 1 **and** the remaining finalised spend still meets the threshold **and** someone remains, start **round 2**: reset everyone's `paid`, recompute totals (delivery share changes), new deadline. Otherwise status `cancelled` with `cancelReason`. Round 2 ends as soon as anyone declines it. If everyone pays → `confirmed`, with a distinct 4-digit `collectionCode` per person. Never more than one fallback round. The host is not special anywhere: leaving, declining or timing out works the same as for anyone (see §11).
 - `expired` keeps meaning "timer ran out before the deal was reached"; set `cancelReason` "The deal wasn't reached before the timer ran out."
 - Delivery stages after `confirmed`: preparing at 4s, out_for_delivery at 10s, delivered at 30s (gives the live map ~20s).
 - Selectors/helpers exported from `lib/`: `openPartyFor`, `progressOf(request, restaurant)` → `{ total, target, left, pct }`, `previewSplit(request, restaurant, userId, basket)` (cost as if your basket were finalised), `draftPreview(draft, restaurant)`, `deliveryProgress(request, now)` (0–1 within out_for_delivery), `notificationsFor(state)` → `{ key, requestId, title, body, at }[]`, `isHighlight(request, restaurant)` (pct ≥ 75 and open).
 - Location helpers in `lib/geo.ts`: `haversineMiles`, `restaurantMiles(restaurant, point)` (1 decimal), `deliveryEta(restaurant, point)` (prep + ride + hand-over, a 10 min window), `walkMinutes`, `NEARBY_WALK_MIN` (9), `placeOf(request, locationId)` → `{ point, here, walkMin, nearby }`, `partiesNear(requests, locationId, now)` (here first, then by walk), `byBestDealFrom(point)`.
-- Storage key: `bulk-demo-v3`.
+- Storage key: `bulk-demo-v4`, with `AppState.version`; saved data from another version resets the demo.
 
 ## 8. Seed data (backend agent)
 
@@ -241,3 +247,15 @@ Images: source real, freely licensed food photos (Wikimedia Commons public-domai
 - **One party per restaurant per location**: a restaurant can have a party at each collection point; the "There's already a party" popup only triggers for a party at the location you're in.
 - **Seed**: 2–4 open parties at every collection point (each with at least one highlight), so every location switch shows something new.
 - **Implementation notes**: "near you" is a walk of `NEARBY_WALK_MIN` (9 min, straight line × 1.3 at 3 mph) or less. The four points sit within ~0.5 mi of each other, so a 12 min radius would show every party everywhere; at 9 min the Student Centre and IOE see three points, the Main Library all four, Ramsay Hall itself and the Main Library. Cards show the collection point with "Here" or "5 min walk", and a party card's delivery estimate is to that party's collection point. Parties you're in always show. The location sheet lists "3 here · 9 parties nearby" under each point. Switching location scrolls to the top and fades the new set in (opacity only under reduced motion); on Create the rows glide to their new order. In the host settings sheet, points where the restaurant already has a party carry a "Party open" pill; "Create party" there shows W13.
+
+## 11. Party rules and collection (integrated, user decisions)
+
+Product rules come from the product lead (PR #4); the UI on top is the user's.
+
+- **Host**: creates the party and picks the restaurant, collection point and length. Nothing else. They can leave like anyone; the party stays open with the same collection point and nobody is promoted.
+- **Leaving**: anyone can leave while the party is filling, even after finalising ("Leave party", confirmed first). Not during the accept round or after the order is placed.
+- **Discount**: applies only once the finalised baskets meet the threshold (`priceGroup` / `discountEligible`). The UI shows it as the `DealRow` described in W4.
+- **Accept round**: answers carry their round; round 2 ends as soon as anyone declines; a failed demo payment is its own reason.
+- **Saved baskets**: when an attempt ends for you, your basket is kept (`released`). The status page shows one compact card, "Start a new party with your basket": the basket on one line ("1× Butter Chicken · £11.50 · collect from Ramsay Hall", Marquee if long), duration chips (the host settings sheet's `DurationChips`, offering 15/30/60), a primary "Start new party" and a quiet "No thanks". If the restaurant already has a party open at that collection point, the chips and button give way to "There's already a party at <restaurant> here" + "See party". Never "queue".
+- **Collection**: per-person PINs, the handover flow in W10, the order `collected` once every bag is handed over; the bag-by-bag driver tool is a presenter tool in the demo panel only.
+- **Invite friends**: while filling, invite friends (simulated: they join about 4s later with a basket, even with bots paused).

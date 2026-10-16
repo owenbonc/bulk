@@ -151,7 +151,8 @@ export function MenuScreen(props: MenuScreenProps) {
     else router.push(mode === "join" ? "/" : "/create");
   };
 
-  const canLeave = props.mode === "join" && !!me && !me.finalised && props.party.hostId !== ME.userId;
+  // The host can leave like anyone: the party stays open for everyone else.
+  const canLeave = props.mode === "join" && !!me && !me.finalised;
   const leave = () => {
     if (props.mode !== "join") return;
     dispatch({ type: "LEAVE", requestId: props.party.id, userId: ME.userId });

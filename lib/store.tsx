@@ -3,12 +3,13 @@
 import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { CATALOG, ME, seedState } from "./data";
-import { type Action, isTerminal, notificationsFor, pendingAlerts, reduce } from "./requests";
-import { botAcceptActions, botJoinActions, botTarget } from "./simulation";
+import { type Action, notificationsFor, parseSaved, pendingAlerts, reduce, releasedEntry } from "./requests";
+import { botAcceptActions, botJoinActions, botTarget, friendJoinActions } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
 export {
   arrivesAt,
+  checkHandover,
   deliveryProgress,
   deliveryStep,
   draftPreview,
@@ -17,17 +18,23 @@ export {
   hasCollected,
   isActiveFor,
   isHighlight,
+  isSubmitted,
   isTerminal,
   notificationsFor,
   openPartyFor,
   pendingAlerts,
   previewSplit,
   progressOf,
+  RETRY_DURATIONS,
+  soloCost,
+  targetDiscount,
   unreadCount,
 } from "./requests";
 export { NEARBY_WALK_MIN, byBestDealFrom, deliveryEta, partiesNear, placeOf, restaurantMiles } from "./geo";
 
-const STORAGE_KEY = "bulk-demo-v3";
+const STORAGE_KEY = "bulk-demo-v4";
+/** Keys written by earlier versions; removed on load. */
+const LEGACY_KEYS = ["bulk-demo-v1", "bulk-demo-v2", "bulk-demo-v3"];
 const HEARTBEAT_MS = 1_000;
 const FIRST_BOT_DELAY_MS = 6_000;
 const BOT_STEP_MS = [5_000, 9_000] as const;
@@ -41,14 +48,12 @@ interface AppContext {
 
 const Ctx = createContext<AppContext | null>(null);
 
-/** Saved state, or a fresh demo when nothing is saved or every party has ended (e.g. seeded timers ran out overnight). */
+/** Saved state (see `parseSaved`), or a fresh demo. */
 function loadState(): AppState {
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      const state = JSON.parse(saved) as AppState;
-      if (Array.isArray(state.requests) && state.requests.some((r) => !isTerminal(r.status))) return state;
-    }
+    for (const key of LEGACY_KEYS) window.localStorage.removeItem(key);
+    const saved = parseSaved(window.localStorage.getItem(STORAGE_KEY));
+    if (saved) return saved;
   } catch {
     // unreadable storage → fall back to a fresh demo
   }
@@ -117,6 +122,8 @@ function ClientProvider({ children }: { children: ReactNode }) {
         }
       }
       botAcceptActions(s, t, Math.random).forEach(rawDispatch);
+      friendJoinActions(s, t, Math.random).forEach(rawDispatch);
+      friendJoinActions(s, t, Math.random).forEach(rawDispatch);
     }, HEARTBEAT_MS);
     return () => window.clearInterval(id);
   }, []);
@@ -145,6 +152,11 @@ export function useRequest(id: string): OrderRequest | undefined {
 
 export function myEntry(r: OrderRequest | undefined) {
   return r?.participants.find((p) => p.userId === ME.userId);
+}
+
+/** Your released entry in a party whose attempt ended for you (basket kept so you can start a new party with it). */
+export function myReleased(r: OrderRequest | undefined) {
+  return releasedEntry(r, ME.userId);
 }
 
 export function restaurantById(id: string) {

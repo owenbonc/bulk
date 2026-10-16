@@ -23,19 +23,17 @@ export interface PaySheetProps {
   /** End of the acceptance round. */
   deadline: number;
   now: number;
-  /** You are the host. The order comes to you, so declining cancels the party for everyone. */
-  hosting: boolean;
   onPay: () => void;
   onDecline: () => void;
 }
 
 /**
  * Simulated payment sheet for the acceptance round: demo card •••• 4242, "Pay £x", and a quiet
- * "Decline" that asks for confirmation before removing you from the order. For the host, Decline
- * confirms cancelling the party. The body cross-fades between the two steps while the sheet's height
+ * "Decline" that asks for confirmation before removing you from the order (the host too: they are
+ * treated like everyone else). The body cross-fades between the two steps while the sheet's height
  * glides to the new content.
  */
-export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadline, now, hosting, onPay, onDecline }: PaySheetProps) {
+export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadline, now, onPay, onDecline }: PaySheetProps) {
   const finalRound = round === 2;
   const [step, setStep] = useState<"pay" | "decline">("pay");
   const [paying, setPaying] = useState(false);
@@ -101,7 +99,7 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadli
             onOpenChange(false);
           }}
         >
-          {hosting ? "Cancel party" : "Decline and leave"}
+          Decline and leave
         </Button>
       </div>
     );
@@ -113,7 +111,7 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadli
         if (!paying) onOpenChange(next);
       }}
       dismissible={!paying}
-      title={step === "pay" ? "Accept and pay" : hosting ? "Cancel this party?" : "Decline this order?"}
+      title={step === "pay" ? "Accept and pay" : "Decline this order?"}
       description={step === "pay" ? "Simulated payment, no real money" : "You won't be charged"}
       footer={footer}
     >
@@ -168,16 +166,10 @@ export function PaySheet({ open, onOpenChange, restaurant, amount, round, deadli
                 exit={{ opacity: 0, transition: EXIT }}
               >
                 <p className="text-body text-ink-2">
-                  {hosting ? (
-                    "You're the host and the order comes to you, so declining cancels the party for everyone. Nobody is charged."
-                  ) : (
-                    <>
-                      You&apos;ll be taken out of this order.
-                      {finalRound
-                        ? " This is the final round, so the order will be cancelled for everyone."
-                        : ` If the others still reach ${formatPrice(restaurant.deal.minTotal, { trim: true })} without you, they get a second round to accept.`}
-                    </>
-                  )}
+                  You&apos;ll be taken out of this order.
+                  {finalRound
+                    ? " This is the final round, so the order will be cancelled for everyone."
+                    : ` If the others still reach ${formatPrice(restaurant.deal.minTotal, { trim: true })} without you, they get a second round to accept.`}
                 </p>
               </motion.div>
             )}

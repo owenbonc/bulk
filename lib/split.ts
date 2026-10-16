@@ -10,6 +10,8 @@ export interface CostLine {
 export interface Split {
   group: CostLine;
   people: Record<string, CostLine>;
+  /** Whether the restaurant deal applies. The discount is zero when false. */
+  discountEligible: boolean;
 }
 
 export interface Progress {
@@ -81,12 +83,16 @@ function allocate(amount: number, weights: number[]): number[] {
   return parts;
 }
 
-/** Cost split: discount in proportion to items, delivery fee equally. Finalised entries only. */
-export function splitCosts(request: OrderRequest, restaurant: Restaurant): Split {
-  const members = request.participants.filter((p) => p.finalised);
+/**
+ * The one pricing function. Discount applies only once the priced baskets meet the deal's
+ * threshold, split in proportion to items; the delivery fee is split equally between exactly
+ * the orders priced.
+ */
+export function priceGroup(members: { userId: string; basket: BasketLine[] }[], restaurant: Restaurant): Split {
   const subtotals = members.map((p) => basketTotal(p.basket, restaurant));
   const subtotal = subtotals.reduce((a, b) => a + b, 0);
-  const discount = Math.round((subtotal * restaurant.deal.discountPct) / 100);
+  const discountEligible = members.length > 0 && subtotal >= restaurant.deal.minTotal;
+  const discount = discountEligible ? Math.round((subtotal * restaurant.deal.discountPct) / 100) : 0;
   const delivery = members.length ? restaurant.deliveryFee : 0;
 
   const discounts = allocate(discount, subtotals);
@@ -101,7 +107,25 @@ export function splitCosts(request: OrderRequest, restaurant: Restaurant): Split
       total: subtotals[i] - discounts[i] + deliveries[i],
     };
   });
-  return { group: { subtotal, discount, delivery, total: subtotal - discount + delivery }, people };
+  return { group: { subtotal, discount, delivery, total: subtotal - discount + delivery }, people, discountEligible };
+}
+
+/** Cost split across finalised entries only. */
+export function splitCosts(request: OrderRequest, restaurant: Restaurant): Split {
+  return priceGroup(
+    request.participants.filter((p) => p.finalised),
+    restaurant,
+  );
+}
+
+/** The same basket ordered alone, with the catalog's known fees: for honest savings comparisons. */
+export function soloCost(basket: BasketLine[], restaurant: Restaurant): CostLine {
+  return priceGroup([{ userId: "solo", basket }], restaurant).group;
+}
+
+/** Roughly what the deal would take off this food subtotal once the party reaches the threshold. Display estimate only. */
+export function targetDiscount(subtotal: number, restaurant: Restaurant): number {
+  return Math.round((subtotal * restaurant.deal.discountPct) / 100);
 }
 
 const NO_COST: CostLine = { subtotal: 0, discount: 0, delivery: 0, total: 0 };
@@ -113,6 +137,7 @@ function preview(request: OrderRequest, restaurant: Restaurant, userId: string):
     ...mine,
     group: split.group,
     people: split.people,
+    discountEligible: split.discountEligible,
     members: Object.keys(split.people).length,
     progress: progressOf(request, restaurant),
     share: mine.subtotal / restaurant.deal.minTotal,
@@ -149,6 +174,8 @@ export function draftPreview(draft: Draft, restaurant: Restaurant, userId = "me"
     round: 1,
     removedUserIds: [],
     removedNames: [],
+    attempt: 1,
+    released: [],
   };
   return preview(request, restaurant, userId);
 }

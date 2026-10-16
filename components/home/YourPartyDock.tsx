@@ -249,7 +249,7 @@ function StatusLine({ party }: { party: HomeParty }) {
     return (
       <Marquee as="p" className={base}>
         <span className="font-semibold text-ink">Ready to collect</span> · PIN{" "}
-        <span className="font-mono font-semibold text-ink">{request.pin}</span>
+        <span className="font-mono font-semibold text-ink">{me?.collectionCode}</span>
       </Marquee>
     );
   }

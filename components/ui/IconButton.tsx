@@ -4,7 +4,7 @@ import Link from "next/link";
 import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
 import { cn, positioned } from "./cn";
 
-export type IconButtonVariant = "plain" | "soft" | "outline" | "accent" | "glass";
+export type IconButtonVariant = "plain" | "soft" | "outline" | "accent" | "glass" | "glass-accent";
 export type IconButtonSize = "sm" | "md" | "lg";
 export type IconButtonIconColor = "ink" | "accent";
 
@@ -18,6 +18,8 @@ const base =
 const variants: Record<IconButtonVariant, { surface: string; text: string }> = {
   // Clear glass disc (the default): every round control on the page and over photos.
   glass: { surface: "glass", text: "text-ink" },
+  // Lime-tinted glass with an ink icon: the one primary round control (Home's create button).
+  "glass-accent": { surface: "glass-accent", text: "text-on-accent" },
   plain: { surface: "active:bg-ink/[0.07] hover:not-disabled:not-aria-disabled:bg-ink/[0.05]", text: "text-ink" },
   // Quiet filled disc for close buttons inside sheets and popups.
   soft: {

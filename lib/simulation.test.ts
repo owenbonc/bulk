@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { CATALOG, DEFAULT_LOCATION, ME, seedState } from "./data";
-import { type Action, queueTotal, reduce, stubbornBot } from "./requests";
-import { botAcceptActions, botJoinActions, botTarget } from "./simulation";
+import { CATALOG, DEFAULT_DEMO, DEFAULT_LOCATION, ME, seedState, STATE_VERSION } from "./data";
+import { CANCEL_REASONS, type Action, queueTotal, reduce, stubbornBot } from "./requests";
+import { INVITE_ACCEPT_MS, botAcceptActions, botJoinActions, botTarget, friendJoinActions } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
 const T0 = 1_000_000;
@@ -19,7 +19,8 @@ function party(s: AppState, id = "r1"): OrderRequest {
 function emptyState(demo: Partial<AppState["demo"]> = {}): AppState {
   return {
     requests: [],
-    demo: { botsPaused: false, botWontAccept: false, ...demo },
+    version: STATE_VERSION,
+    demo: { ...DEFAULT_DEMO, ...demo },
     friends: [],
     seenAlerts: [],
     location: DEFAULT_LOCATION,
@@ -102,7 +103,7 @@ describe("botAcceptActions", () => {
   });
 
   it("everyone paying confirms the order", () => {
-    const s = run(dealState(), [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, now: T0 + 500 }]);
+    const s = run(dealState(), [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, round: 1, now: T0 + 500 }]);
     expect(party(respond(s, 1)).status).toBe("confirmed");
   });
 
@@ -122,13 +123,13 @@ describe("botAcceptActions", () => {
     expect(party(s).participants.filter((p) => p.declined).map((p) => p.userId)).toEqual([stubborn.userId]);
 
     // You pay last: the round resolves early and the fallback round starts without the stubborn bot.
-    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, now: T0 + 5000 }]);
+    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, round: 1, now: T0 + 5000 }]);
     expect(party(s)).toMatchObject({ status: "deal_achieved", round: 2, removedNames: [stubborn.name] });
 
     // In round 2 every bot accepts, so your payment completes the order.
     s = respond(s, 2, T0 + 6000);
     expect(party(s).participants.filter((p) => p.isBot).every((p) => p.paid)).toBe(true);
-    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, now: T0 + 9000 }]);
+    s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: "r1", userId: ME.userId, round: 2, now: T0 + 9000 }]);
     expect(party(s).status).toBe("confirmed");
   });
 
@@ -160,7 +161,7 @@ function playOut(s: AppState, id: string, rand: () => number): AppState {
     const r = party(s, id);
     const mine = r.participants.find((p) => p.userId === ME.userId);
     if (r.status === "deal_achieved" && mine && !mine.paid && rand() < 0.3) {
-      s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: id, userId: ME.userId, now }]);
+      s = run(s, [{ type: "ACCEPT_AND_PAY", requestId: id, userId: ME.userId, round: r.round, now }]);
     }
     if (party(s, id).status === "delivered" || party(s, id).status === "cancelled" || party(s, id).status === "expired") break;
   }
@@ -180,7 +181,7 @@ function expectDemoOutcome(r: OrderRequest, botWontAccept: boolean, label: strin
   if (r.status === "cancelled") {
     const restaurant = CATALOG.restaurants.find((x) => x.id === r.restaurantId)!;
     const left = { ...r, participants: r.participants.filter((p) => !r.removedUserIds.includes(p.userId)) };
-    expect(r.cancelReason, label).toBe("Not enough people accepted to keep the deal.");
+    expect(r.cancelReason, label).toBe(CANCEL_REASONS.notEnoughAccepted);
     expect(queueTotal(left, restaurant), label).toBeLessThan(restaurant.deal.minTotal);
     return "cancelled";
   }
@@ -188,40 +189,80 @@ function expectDemoOutcome(r: OrderRequest, botWontAccept: boolean, label: strin
   return "round2";
 }
 
+/** Every bag handed over by its own PIN, yours first (the user flow), then the others (the driver tool). */
+function handOverAll(s: AppState, id: string): AppState {
+  const r = party(s, id);
+  const order = [...r.participants].sort((a, b) => Number(b.userId === ME.userId) - Number(a.userId === ME.userId));
+  return run(
+    s,
+    order.map((p, i): Action => ({ type: "HANDOVER", requestId: id, code: p.collectionCode!, now: T0 + 700_000 + i })),
+  );
+}
+
 describe("end-to-end demo runs", () => {
-  it("hosting a party ends delivered, via round 2 when a bot won't accept", () => {
+  it("hosting a party ends delivered (then collected bag by bag), via round 2 when a bot won't accept", () => {
     const outcomes: string[] = [];
     for (let seed = 0; seed < 120; seed++) {
       const rand = mulberry32(seed);
       const botWontAccept = seed % 2 === 1;
       const restaurant = ["kumo-ramen", "baan-thai"][seed % 4 < 2 ? 0 : 1];
       const menu = CATALOG.restaurants.find((r) => r.id === restaurant)!.menu;
-      let s: AppState = { ...seedState(T0), demo: { botsPaused: false, botWontAccept } };
+      let s: AppState = { ...seedState(T0), demo: { ...DEFAULT_DEMO, botWontAccept } };
       s = run(s, [
         { type: "DRAFT_START", restaurantId: restaurant },
         ...Array.from({ length: 1 + Math.floor(rand() * 3) }, (): Action => ({ type: "DRAFT_ITEM", itemId: menu[Math.floor(rand() * menu.length)].id, delta: 1 })),
         { type: "CREATE_FROM_DRAFT", id: "mine", user: ME, now: T0 },
       ]);
-      outcomes.push(expectDemoOutcome(party(playOut(s, "mine", rand), "mine"), botWontAccept, `seed ${seed}`));
+      s = playOut(s, "mine", rand);
+      const outcome = expectDemoOutcome(party(s, "mine"), botWontAccept, `seed ${seed}`);
+      outcomes.push(outcome);
+      if (outcome !== "cancelled") expect(party(handOverAll(s, "mine"), "mine").status, `seed ${seed}`).toBe("collected");
     }
     // Bots fill so the refusal leaves enough behind: round 2 is the norm, not the exception.
     expect(outcomes.filter((o) => o === "round2").length).toBeGreaterThanOrEqual(50);
   });
 
-  it("joining a seeded party ends delivered, via round 2 when a bot won't accept and the numbers allow", () => {
+  it("joining a seeded party ends delivered (then collected), via round 2 when a bot won't accept and the numbers allow", () => {
     const seeded = seedState(T0).requests.map((r) => r.id);
     for (let seed = 0; seed < 120; seed++) {
       const rand = mulberry32(1000 + seed);
       const botWontAccept = seed % 2 === 1;
       const id = seeded[seed % seeded.length];
-      let s: AppState = { ...seedState(T0), demo: { botsPaused: false, botWontAccept } };
+      let s: AppState = { ...seedState(T0), demo: { ...DEFAULT_DEMO, botWontAccept } };
       const menu = CATALOG.restaurants.find((r) => r.id === party(s, id).restaurantId)!.menu;
       s = run(s, [
         { type: "JOIN", requestId: id, user: ME },
         { type: "ADD_ITEM", requestId: id, userId: ME.userId, itemId: menu[Math.floor(rand() * menu.length)].id },
         { type: "FINALISE_ENTRY", requestId: id, userId: ME.userId, now: T0 },
       ]);
-      expectDemoOutcome(party(playOut(s, id, rand), id), botWontAccept, `seed ${seed}`);
+      s = playOut(s, id, rand);
+      if (expectDemoOutcome(party(s, id), botWontAccept, `seed ${seed}`) !== "cancelled") {
+        expect(party(handOverAll(s, id), id).status, `seed ${seed}`).toBe("collected");
+      }
     }
+  });
+});
+
+describe("friendJoinActions", () => {
+  function invited(demo: Partial<AppState["demo"]> = {}) {
+    const s = { ...withMyParty(true, demo), friends: ["bot-chloe"] };
+    return run(s, [{ type: "INVITE_FRIEND", requestId: "r1", userId: ME.userId, friendId: "bot-chloe", now: T0 }]);
+  }
+
+  it("an invited friend joins a few seconds later with a finalised basket, even with bots paused", () => {
+    const s = invited({ botsPaused: true });
+    expect(friendJoinActions(s, T0 + 1000, always)).toEqual([]);
+    const after = run(s, friendJoinActions(s, T0 + INVITE_ACCEPT_MS, always));
+    const chloe = party(after).participants.find((p) => p.userId === "bot-chloe")!;
+    expect(chloe).toMatchObject({ name: "Chloe", finalised: true });
+    expect(chloe.basket.length).toBeGreaterThan(0);
+    expect(party(after).invites?.[0].status).toBe("joined");
+    // Nothing more to do once they've joined.
+    expect(friendJoinActions(after, T0 + INVITE_ACCEPT_MS + 1000, always)).toEqual([]);
+  });
+
+  it("does nothing once the party has stopped filling", () => {
+    const s = run(invited(), [{ type: "TICK", now: T0 + 15 * 60_000 }]);
+    expect(friendJoinActions(s, T0 + 15 * 60_000, always)).toEqual([]);
   });
 });

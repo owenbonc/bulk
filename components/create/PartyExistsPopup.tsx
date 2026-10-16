@@ -41,7 +41,7 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
   const mine = Boolean(me);
   // Your basket's share of the progress, once it counts toward the deal.
   const contribution = me?.finalised ? Math.min(basketTotal(me.basket, restaurant), progress.total) : 0;
-  const hosting = party.hostId === ME.userId;
+  const hosting = mine && party.hostId === ME.userId;
   const host = party.participants.find((p) => p.userId === party.hostId)?.name;
   const people = party.participants.length;
   const isOpen = party.status === "open";

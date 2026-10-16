@@ -29,6 +29,7 @@ function notifyBrowser(title: string, body: string, tag: string, onClick: () => 
   }
 }
 
+/** "Collect from Ramsay Hall · PIN 4821", with your own pickup PIN. */
 function readyLine(pickupPointId: string, pin: string | undefined): string {
   const place = pickupById(pickupPointId)?.name ?? "your collection point";
   return pin ? `Collect from ${place} · PIN ${pin}` : `Collect from ${place}`;
@@ -91,7 +92,8 @@ export default function PartyAlerts() {
           );
         }
         if (nextKind === "ready" && party) {
-          notifyBrowser("Your food is ready!", readyLine(party.pickupPointId, party.pin), nextKey, () =>
+          const pin = party.participants.find((p) => p.userId === ME.userId)?.collectionCode;
+          notifyBrowser("Your food is ready!", readyLine(party.pickupPointId, pin), nextKey, () =>
             router.push(handoverPathOf(nextRequestId)),
           );
         }
@@ -140,6 +142,7 @@ export default function PartyAlerts() {
 
   if (current.kind === "ready") {
     const pickup = pickupById(request.pickupPointId);
+    const pin = request.participants.find((p) => p.userId === ME.userId)?.collectionCode;
     return (
       <Popup
         open={visible}
@@ -149,7 +152,7 @@ export default function PartyAlerts() {
         description={
           <>
             Collect from {pickup?.name ?? "your collection point"} · PIN{" "}
-            <span className="tnum font-mono font-semibold text-ink">{request.pin}</span>
+            <span className="tnum font-mono font-semibold text-ink">{pin}</span>
           </>
         }
         action={
@@ -169,9 +172,14 @@ export default function PartyAlerts() {
   }
 
   const expired = current.kind === "expired";
+  // Your basket is saved so you can start a new party with it: take you to that card rather than home.
+  const decisionPending = request.released.some((e) => e.userId === ME.userId && e.choice === "pending");
   const close = (nextOpen: boolean) => {
     setOpen(nextOpen);
-    if (!nextOpen && onPartyPage) router.push("/");
+    if (nextOpen) return;
+    if (decisionPending) {
+      if (!onPartyPage) router.push(statusPath);
+    } else if (onPartyPage) router.push("/");
   };
 
   return (
@@ -188,11 +196,12 @@ export default function PartyAlerts() {
             {request.cancelReason ?? (expired ? CANCEL_REASONS.expired : CANCEL_REASONS.notEnoughAccepted)}
           </span>
           <span className="mt-1 block font-semibold text-ink">Nobody was charged.</span>
+          {decisionPending && <span className="mt-1 block">Your basket is saved.</span>}
         </>
       }
       action={
-        <Button size="lg" block variant="secondary" onClick={() => close(false)}>
-          Close
+        <Button size="lg" block variant={decisionPending ? "primary" : "secondary"} onClick={() => close(false)}>
+          {decisionPending ? "Start a new party" : "Close"}
         </Button>
       }
     />

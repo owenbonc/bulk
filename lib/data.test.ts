@@ -101,9 +101,12 @@ describe("seedState", () => {
     expect(new Set(names).size).toBe(names.length);
   });
 
-  it("starts at the Student Centre with nothing seen, read or drafted", () => {
+  it("starts at the Student Centre with nothing seen, read or drafted, and three demo friends to invite", () => {
     const s = seedState(0);
-    expect(s).toMatchObject({ location: "student-centre", friends: [], seenAlerts: [], readNotifications: [] });
+    expect(s).toMatchObject({ location: "student-centre", seenAlerts: [], readNotifications: [] });
+    expect(s.friends).toEqual(["bot-chloe", "bot-maya", "bot-nina"]);
+    // The demo friends aren't already in a seeded party.
+    expect(s.requests.flatMap((r) => r.participants).some((p) => s.friends.includes(p.userId))).toBe(false);
     expect(s.draft).toBeUndefined();
   });
 });

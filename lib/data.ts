@@ -1,4 +1,4 @@
-import type { AppState, BasketLine, Catalog, OrderRequest, Participant } from "./types";
+import type { AppState, BasketLine, Catalog, DemoSettings, OrderRequest, Participant } from "./types";
 
 export const ME = { userId: "me", name: "You" };
 
@@ -370,8 +370,15 @@ function seedParty(
     round: 1,
     removedUserIds: [],
     removedNames: [],
+    attempt: 1,
+    released: [],
   };
 }
+
+/** Persisted-state version (see `AppState.version`). Bump when the saved shape changes. */
+export const STATE_VERSION = 4;
+
+export const DEFAULT_DEMO: DemoSettings = { botsPaused: false, botWontAccept: false, botDeclinesAgain: false, botSilent: false, myPaymentFails: false };
 
 /**
  * Initial demo state: three bot-hosted open parties at every collection point, one of them a highlight (75%+),
@@ -380,8 +387,10 @@ function seedParty(
  */
 export function seedState(now: number): AppState {
   return {
-    demo: { botsPaused: false, botWontAccept: false },
-    friends: [],
+    version: STATE_VERSION,
+    demo: DEFAULT_DEMO,
+    // Three demo friends (not in any seeded party) so "Invite friends" works from a fresh start.
+    friends: ["bot-chloe", "bot-maya", "bot-nina"],
     seenAlerts: [],
     readNotifications: [],
     location: DEFAULT_LOCATION,

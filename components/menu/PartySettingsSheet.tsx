@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button, Pill, Sheet, cn } from "@/components/ui";
-import { CATALOG, PARTY_DURATIONS } from "@/lib/data";
+import { CATALOG } from "@/lib/data";
+import { DurationChips, radioKeyIndex } from "@/components/shared/DurationChips";
 import type { SettingsFocus } from "./InfoBubble";
 
 export interface PartySettingsSheetProps {
@@ -17,26 +18,6 @@ export interface PartySettingsSheetProps {
   /** This restaurant already has an open party collecting at the point (one per restaurant per point). */
   hasPartyAt: (pickupPointId: string) => boolean;
   onApply: (settings: { durationMin: number; pickupPointId: string }) => void;
-}
-
-const DURATIONS: readonly number[] = PARTY_DURATIONS;
-
-/** The option a radio-group key moves to, wrapping at both ends; null for keys the group ignores. */
-function radioKeyIndex(key: string, index: number, count: number): number | null {
-  switch (key) {
-    case "ArrowLeft":
-    case "ArrowUp":
-      return (index - 1 + count) % count;
-    case "ArrowRight":
-    case "ArrowDown":
-      return (index + 1) % count;
-    case "Home":
-      return 0;
-    case "End":
-      return count - 1;
-    default:
-      return null;
-  }
 }
 
 /**
@@ -56,9 +37,7 @@ export function PartySettingsSheet({
   const [duration, setDuration] = useState(durationMin);
   const [pickup, setPickup] = useState(pickupPointId);
   const pickupRef = useRef<HTMLDivElement>(null);
-  const durationRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const pickupRefs = useRef<(HTMLButtonElement | null)[]>([]);
-  const durationIndex = Math.max(0, DURATIONS.indexOf(duration));
   const pickupIndex = Math.max(0, CATALOG.pickupPoints.findIndex((p) => p.id === pickup));
 
   // Start from the saved settings every time the sheet opens.
@@ -101,46 +80,7 @@ export function PartySettingsSheet({
           <h3 id="party-lasts" className="font-sans text-body font-semibold text-ink">
             Party lasts
           </h3>
-          {/* Arrow keys move the selection; only the checked option is a tab stop. */}
-          <div
-            role="radiogroup"
-            aria-labelledby="party-lasts"
-            className="grid grid-cols-4 gap-2"
-            onKeyDown={(e) => {
-              const next = radioKeyIndex(e.key, durationIndex, DURATIONS.length);
-              if (next === null) return;
-              e.preventDefault();
-              setDuration(DURATIONS[next]);
-              durationRefs.current[next]?.focus();
-            }}
-          >
-            {DURATIONS.map((min, i) => {
-              const selected = min === duration;
-              return (
-                <button
-                  key={min}
-                  ref={(el) => {
-                    durationRefs.current[i] = el;
-                  }}
-                  type="button"
-                  role="radio"
-                  aria-checked={selected}
-                  tabIndex={i === durationIndex ? 0 : -1}
-                  aria-label={`${min} minutes`}
-                  onClick={() => setDuration(min)}
-                  className={cn(
-                    "flex h-14 flex-col items-center justify-center rounded-chip transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.96]",
-                    selected
-                      ? "bg-accent text-on-accent"
-                      : "bg-surface text-ink ring-1 ring-line ring-inset hover:bg-surface-hover",
-                  )}
-                >
-                  <span className="tnum font-display text-section leading-none font-semibold">{min}</span>
-                  <span className={cn("mt-0.5 text-caption", selected ? "text-on-accent" : "text-ink-2")}>min</span>
-                </button>
-              );
-            })}
-          </div>
+          <DurationChips value={duration} onChange={setDuration} labelledBy="party-lasts" />
           <p className="text-meta text-ink-2">If the deal isn&apos;t reached in time, the party closes and nobody is charged.</p>
         </section>
 
