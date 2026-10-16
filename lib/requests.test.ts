@@ -367,13 +367,13 @@ describe("expiry", () => {
 });
 
 describe("acceptance round", () => {
-  it("confirms once everyone has paid and issues each person their own 6-digit collection code", () => {
+  it("confirms once everyone has paid and issues each person their own 4-digit pickup PIN", () => {
     const s = run(dealState(), pay("me", DEAL_AT + 1000), pay("bot-bob", DEAL_AT + 2000));
     const r = req(s);
     expect(r.status).toBe("confirmed");
     expect(r.confirmedAt).toBe(DEAL_AT + 2000);
     const codes = r.participants.map((p) => p.collectionCode);
-    codes.forEach((c) => expect(c).toMatch(/^\d{6}$/));
+    codes.forEach((c) => expect(c).toMatch(/^\d{4}$/));
     expect(new Set(codes).size).toBe(codes.length);
   });
 
@@ -824,6 +824,15 @@ describe("collection handover", () => {
     return s;
   }
 
+  it("PINs stay distinct even in a big party", () => {
+    const s = run(seedState(T0), { type: "FILL_PARTY", requestId: "seed-burger-yard", now: T0 });
+    const r = req(s, "seed-burger-yard");
+    const paid = run(s, ...r.participants.map((p): Action => ({ type: "ACCEPT_AND_PAY", requestId: r.id, userId: p.userId, round: 1, now: T0 + 1000 })));
+    const pins = req(paid, r.id).participants.map((p) => p.collectionCode);
+    expect(new Set(pins).size).toBe(pins.length);
+    pins.forEach((pin) => expect(pin).toMatch(/^\d{4}$/));
+  });
+
   it("rejects handover before the food arrives", () => {
     const s = run(dealState(), pay("me", DEAL_AT + 1000), pay("bot-bob", DEAL_AT + 1000));
     const code = req(s).participants[0].collectionCode!;
@@ -834,7 +843,7 @@ describe("collection handover", () => {
   it("finds the right bag, rejects unknown and repeated codes, and completes once every bag is collected", () => {
     let s = delivered();
     const [mine, bobs] = req(s).participants;
-    expect(checkHandover(req(s), "000000")).toEqual({ ok: false, error: "unknown_code" });
+    expect(checkHandover(req(s), "0000")).toEqual({ ok: false, error: "unknown_code" });
     expect(checkHandover(req(s), mine.collectionCode!)).toMatchObject({ ok: true, participant: { userId: "me" } });
 
     s = run(s, { type: "HANDOVER", requestId: "r1", code: mine.collectionCode!, now: T0 + 90_000 });

@@ -10,13 +10,13 @@ import type { OrderRequest } from "@/lib/types";
 
 const ERRORS: Record<Exclude<HandoverCheck, { ok: true }>["error"], string> = {
   not_arrived: "The food hasn't arrived at the collection point yet.",
-  unknown_code: "No bag in this order has that code. Ask the student to check their code.",
+  unknown_code: "No bag in this order has that PIN. Ask the student to check it.",
   already_collected: "That bag has already been handed over.",
 };
 
 /**
  * Demo-only stand-in for the person at the collection point: one labelled bag per participant,
- * released when that participant's own code is entered. Not a real courier or platform feature.
+ * released when that participant's own PIN is entered. Not a real courier or platform feature.
  */
 export function DriverHandover({ request }: { request: OrderRequest }) {
   const { dispatch } = useApp();
@@ -45,13 +45,13 @@ export function DriverHandover({ request }: { request: OrderRequest }) {
     for (const p of request.participants) {
       if (p.userId !== ME.userId && p.collectedAt === undefined) dispatch({ type: "HANDOVER", requestId: request.id, code: p.collectionCode!, now: Date.now() });
     }
-    setMessage("The other students showed their codes (simulated).");
+    setMessage("The other students showed their PINs (simulated).");
   }
 
   return (
     <Card className="border-dashed">
       <p className="text-caption font-semibold tracking-wide text-ink-3 uppercase">Demo · driver handover (simulated)</p>
-      <p className="mt-1 text-meta text-ink-2">Each person&apos;s food is in its own labelled bag, released when their code is entered.</p>
+      <p className="mt-1 text-meta text-ink-2">Each person&apos;s food is in its own labelled bag, released when their PIN is entered.</p>
 
       <ul className="mt-3 space-y-1.5">
         {request.participants.map((p, i) => (
@@ -77,12 +77,12 @@ export function DriverHandover({ request }: { request: OrderRequest }) {
             <input
               value={code}
               onChange={(e) => {
-                setCode(e.target.value.replace(/\D/g, "").slice(0, 6));
+                setCode(e.target.value.replace(/\D/g, "").slice(0, 4));
                 setResult(null);
               }}
               inputMode="numeric"
-              placeholder="Student's code"
-              aria-label="Collection code"
+              placeholder="Student's PIN"
+              aria-label="Pickup PIN"
               className="tnum h-11 min-w-0 flex-1 rounded-full bg-surface-2 px-4 font-mono text-body tracking-widest text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent"
             />
             <Button variant="secondary" disabled={code.length === 0} onClick={find}>
@@ -103,7 +103,7 @@ export function DriverHandover({ request }: { request: OrderRequest }) {
           {message && <p className="text-meta text-success">{message}</p>}
           {othersWaiting && (
             <Button variant="ghost" size="sm" onClick={simulateOthers}>
-              Simulate the others showing their codes
+              Simulate the others showing their PINs
             </Button>
           )}
         </div>

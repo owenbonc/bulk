@@ -83,7 +83,7 @@ export interface Participant {
   declined?: boolean;
   /** Why they're out of the round: said no, or their demo payment failed. */
   declineReason?: "declined" | "payment_failed";
-  /** Individual collection code for their own labelled bag, issued when the order is placed. */
+  /** Their own 4-digit pickup PIN for their labelled bag, issued when the order is placed. */
   collectionCode?: string;
   /** When their bag was handed over at the collection point. */
   collectedAt?: number;

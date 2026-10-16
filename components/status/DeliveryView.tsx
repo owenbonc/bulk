@@ -32,7 +32,7 @@ function subline(status: RequestStatus, pickupName: string): string {
     case "collected":
       return "Every bag has been handed over. Enjoy!";
     default:
-      return "Show your own code at the collection point to get your bag.";
+      return "Show your PIN at the collection point.";
   }
 }
 
@@ -122,15 +122,15 @@ export function DeliveryView({ request, restaurant, pickup }: ViewProps) {
                   <Marquee>{pickup.name}</Marquee>
                 </p>
               </div>
+              {me.collectedAt !== undefined ? (
+                <Pill tone="success" size="md" icon={<Check strokeWidth={2.5} />} className="mt-1 shrink-0">
+                  Collected
+                </Pill>
+              ) : (
+                me.collectionCode && <PinTiles pin={me.collectionCode} ready={delivered} reduce={!!reduce} />
+              )}
             </div>
             <p className="text-meta text-ink-2">{pickup.access}</p>
-            {me.collectedAt !== undefined ? (
-              <p className="flex items-center gap-1.5 text-body font-semibold text-success">
-                <Check aria-hidden className="size-4" strokeWidth={2.5} /> You&apos;ve collected your bag
-              </p>
-            ) : (
-              me.collectionCode && <CodeTiles code={me.collectionCode} ready={delivered} reduce={!!reduce} />
-            )}
           </div>
         </div>
 
@@ -187,17 +187,17 @@ function StepBar({ step }: { step: number }) {
 }
 
 /**
- * Your own collection code as digit tiles: it opens only your labelled bag. The tiles turn lime with a
- * single spring entrance once the order is ready to collect.
+ * Your own pickup PIN as four digit tiles: it releases only your labelled bag. They turn lime with a single
+ * spring entrance once the order is ready to collect.
  */
-function CodeTiles({ code: pin, ready, reduce }: { code: string; ready: boolean; reduce: boolean }) {
+function PinTiles({ pin, ready, reduce }: { pin: string; ready: boolean; reduce: boolean }) {
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-caption text-ink-2">Your collection code (only opens your bag)</span>
+    <div className="flex shrink-0 flex-col items-end gap-1">
+      <span className="text-caption text-ink-2">Pickup PIN</span>
       <motion.div
         key={ready ? "ready" : "waiting"}
         role="img"
-        aria-label={`Your collection code ${pin.split("").join(" ")}`}
+        aria-label={`Pickup PIN ${pin.split("").join(" ")}`}
         className="flex gap-1.5"
         initial={ready ? (reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }) : false}
         animate={{ opacity: 1, scale: 1 }}

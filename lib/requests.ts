@@ -124,13 +124,13 @@ function hash(s: string): number {
   return h;
 }
 
-/** Distinct 6-digit collection codes, one per participant, derived from the party so they are stable. */
+/** Distinct 4-digit pickup PINs, one per participant, derived from the party so they are stable. */
 export function assignCollectionCodes(r: OrderRequest): Participant[] {
   const used = new Set<string>();
   return r.participants.map((p) => {
     let salt = 0;
     let code: string;
-    do code = String(100000 + (hash(`${r.id}:${p.userId}:${salt++}`) % 900000));
+    do code = String(1000 + (hash(`${r.id}:${p.userId}:${salt++}`) % 9000));
     while (used.has(code));
     used.add(code);
     return { ...p, collectionCode: code };
@@ -141,7 +141,7 @@ export type HandoverCheck =
   | { ok: true; participant: Participant }
   | { ok: false; error: "not_arrived" | "unknown_code" | "already_collected"; participant?: Participant };
 
-/** What the demo driver sees after entering a code. The reducer applies the same rules. */
+/** What the demo driver sees after entering a PIN. The reducer applies the same rules. */
 export function checkHandover(r: OrderRequest, code: string): HandoverCheck {
   if (r.status !== "delivered") return { ok: false, error: "not_arrived" };
   const participant = r.participants.find((p) => p.collectionCode === code.trim());
@@ -715,7 +715,7 @@ export function notificationsFor(state: AppState, catalog: Catalog = CATALOG, us
           key: `${r.id}:ready`,
           kind: "ready",
           title: "Ready to collect",
-          body: `Collect your bag from ${pickup?.name ?? "your collection point"} with your code ${me.collectionCode}.`,
+          body: `Collect from ${pickup?.name ?? "your collection point"} with PIN ${me.collectionCode}.`,
           at: r.confirmedAt + stageAfter("delivered"),
         });
       }
