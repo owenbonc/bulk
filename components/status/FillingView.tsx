@@ -140,13 +140,7 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
         icon={<LogOut />}
         iconTone="offer"
         title="Leave the party?"
-        description={
-          <>
-            Your basket will be removed. The party stays open for everyone else
-            {request.hostId === ME.userId ? ", even though you created it" : ""}, and their prices are recalculated. Nothing is
-            charged.
-          </>
-        }
+        description={leaveCopy(request)}
         action={
           <div className="flex w-full flex-col gap-2">
             <Button size="lg" block variant="danger" icon={<LogOut />} className="ring-1 ring-offer/30 ring-inset" onClick={leave}>
@@ -160,6 +154,14 @@ export function FillingView({ request, restaurant, pickup }: ViewProps) {
       />
     </>
   );
+}
+
+/** What leaving does, for the "Leave the party?" confirmations (the leave popup and the info sheet). */
+export function leaveCopy(request: OrderRequest): string {
+  const othersIn = request.participants.some((p) => p.userId !== ME.userId);
+  if (!othersIn) return "Your basket will be removed. The party stays open for others to join until its timer runs out. Nothing is charged.";
+  const host = request.hostId === ME.userId ? ", even though you created it" : "";
+  return `Your basket will be removed. The party stays open for everyone else${host}, and their prices are recalculated. Nothing is charged.`;
 }
 
 export function CollectionPoint({ pickup }: { pickup: PickupPoint }) {

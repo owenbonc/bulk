@@ -3,7 +3,7 @@
 import { ChevronDown, RotateCcw, Timer, Zap } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useId, useState } from "react";
-import { Button, Divider, Switch, cn, toast } from "@/components/ui";
+import { Button, Divider, Marquee, Switch, cn, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { isSubmitted, isTerminal, partiesNear, pickupById, resetDemo, restaurantById, useApp } from "@/lib/store";
 import type { OrderRequest, RequestStatus } from "@/lib/types";
@@ -34,6 +34,14 @@ const IN_PARTY_RANK: Partial<Record<RequestStatus, number>> = {
 
 const isMine = (r: OrderRequest) => r.participants.some((p) => p.userId === ME.userId);
 
+/** What the picker shows for a party: the restaurant, then its collection point and where it has got to. */
+function partyLabel(r: OrderRequest) {
+  return {
+    name: `${isMine(r) ? "• " : ""}${restaurantById(r.restaurantId)?.name ?? r.id}`,
+    detail: `${pickupById(r.pickupPointId)?.name ?? r.pickupPointId} · ${STATUS_LABEL[r.status]}`,
+  };
+}
+
 /**
  * The party the controls act on when nobody has picked one: the party in the URL, else the most urgent
  * party you're in (an open one closing soonest, since fill and expire only act on open parties; then pay
@@ -54,11 +62,13 @@ function defaultParty(parties: OrderRequest[], urlId: string | undefined, locati
 /**
  * Presenter controls for the simulated participants. A picker chooses the party the controls act on (every
  * party that hasn't ended, plus collected orders), defaulting as `defaultParty` says, so the controls work
- * from Home's account sheet as well as on a party page: fill and expire while it's filling, end the accept
- * window while it's paying, and the driver handover once the order is placed. Used inside the account sheet
- * and the "d" hotkey panel.
+ * from Home's account sheet as well as on a party page: fill and expire while it's filling, and end the
+ * accept window while it's paying. The picker keeps the native select for its menu and accessibility under
+ * a two-line face whose lines scroll as Marquees, so nothing is cut off. Used inside the account sheet and
+ * the "d" hotkey panel; only the "d" panel passes `driverTool`, which adds the bag-by-bag driver handover
+ * once the picked order is placed.
  */
-export function DemoControlsPanel({ className }: { className?: string }) {
+export function DemoControlsPanel({ className, driverTool = false }: { className?: string; driverTool?: boolean }) {
   const { state, dispatch } = useApp();
   const router = useRouter();
   const pathname = usePathname();
@@ -73,6 +83,7 @@ export function DemoControlsPanel({ className }: { className?: string }) {
   const party = picked ?? defaultParty(parties, urlId, state.location);
   const restaurant = party ? restaurantById(party.restaurantId) : undefined;
   const canSteer = party?.status === "open";
+  const face = party ? partyLabel(party) : undefined;
 
   return (
     <div className={cn("flex flex-col", className)}>
@@ -122,28 +133,38 @@ export function DemoControlsPanel({ className }: { className?: string }) {
           Party
         </label>
         {parties.length > 0 ? (
-          <div className="relative">
+          <div className="relative min-h-14 rounded-chip bg-surface ring-1 ring-line-strong ring-inset transition-shadow duration-150 has-[select:focus-visible]:ring-2 has-[select:focus-visible]:ring-accent-ink">
+            <div aria-hidden className="flex min-h-14 flex-col justify-center py-2 pr-10 pl-3.5">
+              {face ? (
+                <>
+                  <Marquee className="text-body font-semibold text-ink">{face.name}</Marquee>
+                  <Marquee className="text-meta text-ink-2">{face.detail}</Marquee>
+                </>
+              ) : (
+                <span className="text-body text-ink-2">Pick a party</span>
+              )}
+            </div>
+            <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-ink-2" />
             <select
               id={selectId}
               value={party?.id ?? ""}
               onChange={(e) => setPick({ id: e.target.value, path: pathname })}
-              className={cn(
-                "h-11 w-full min-w-0 cursor-pointer appearance-none rounded-chip bg-surface pr-10 pl-3.5 text-body text-ink",
-                "ring-1 ring-line-strong ring-inset transition-shadow duration-150 outline-none",
-                "focus-visible:ring-2 focus-visible:ring-accent-ink",
-              )}
+              className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0 outline-none"
             >
+              {!party && (
+                <option value="" disabled>
+                  Pick a party
+                </option>
+              )}
               {parties.map((r) => {
-                const name = restaurantById(r.restaurantId)?.name ?? r.id;
+                const { name, detail } = partyLabel(r);
                 return (
                   <option key={r.id} value={r.id}>
-                    {isMine(r) ? "• " : ""}
-                    {name} · {pickupById(r.pickupPointId)?.name ?? r.pickupPointId} · {STATUS_LABEL[r.status]}
+                    {name} · {detail}
                   </option>
                 );
               })}
             </select>
-            <ChevronDown aria-hidden className="pointer-events-none absolute top-1/2 right-3.5 size-4 -translate-y-1/2 text-ink-2" />
           </div>
         ) : (
           <p className="text-meta text-ink-2">No parties are running. Create one, or reset the demo.</p>
@@ -198,7 +219,7 @@ export function DemoControlsPanel({ className }: { className?: string }) {
       </div>
       <Divider />
 
-      {party && isSubmitted(party.status) && (
+      {driverTool && party && isSubmitted(party.status) && (
         <>
           <DriverHandoverTool key={party.id} request={party} />
           <Divider />

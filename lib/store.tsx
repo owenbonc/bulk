@@ -123,7 +123,6 @@ function ClientProvider({ children }: { children: ReactNode }) {
       }
       botAcceptActions(s, t, Math.random).forEach(rawDispatch);
       friendJoinActions(s, t, Math.random).forEach(rawDispatch);
-      friendJoinActions(s, t, Math.random).forEach(rawDispatch);
     }, HEARTBEAT_MS);
     return () => window.clearInterval(id);
   }, []);

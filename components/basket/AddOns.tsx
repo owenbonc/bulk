@@ -22,8 +22,8 @@ export function AddOns({ restaurant, basket, locked, onAdd, onRemove }: AddOnsPr
       <SectionHeader id="addons-heading" title="Add ons" />
       <ul className="no-scrollbar -mx-gutter mt-2 flex snap-x snap-mandatory scroll-px-gutter gap-group overflow-x-auto overscroll-x-contain px-gutter pb-1 [touch-action:pan-x_pan-y]">
         {items.map((item) => (
-          <li key={item.id} className="w-30 shrink-0 snap-start">
-            <ImageFrame src={item.image} alt={item.name} ratio="1/1" emoji={restaurant.emoji} sizes="120px">
+          <li key={item.id} className="w-28 shrink-0 snap-start">
+            <ImageFrame src={item.image} alt={item.name} ratio="1/1" emoji={restaurant.emoji} sizes="112px">
               <Stepper
                 qty={qtyOf(item.id)}
                 label={item.name}

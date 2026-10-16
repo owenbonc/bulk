@@ -172,20 +172,26 @@ export default function PartyAlerts() {
   }
 
   const expired = current.kind === "expired";
-  // Your basket is saved so you can start a new party with it: take you to that card rather than home.
+  // Your basket is saved so you can start a new party with it.
   const decisionPending = request.released.some((e) => e.userId === ME.userId && e.choice === "pending");
-  const close = (nextOpen: boolean) => {
+  // Dismissing (X, Escape, backdrop) leaves you where you are while your basket is saved; the card is still
+  // on the party's status page. Without a saved basket, the ended party's own pages have nothing left to do.
+  const dismiss = (nextOpen: boolean) => {
     setOpen(nextOpen);
-    if (nextOpen) return;
+    if (!nextOpen && !decisionPending && onPartyPage) router.push("/");
+  };
+  // "Start a new party" takes you to the status page's new-party card (from the basket page too); "Close" goes home.
+  const act = () => {
+    setOpen(false);
     if (decisionPending) {
-      if (!onPartyPage) router.push(statusPath);
+      if (pathname !== statusPath) router.push(statusPath);
     } else if (onPartyPage) router.push("/");
   };
 
   return (
     <Popup
       open={visible}
-      onOpenChange={close}
+      onOpenChange={dismiss}
       icon={expired ? <TimerOff /> : <CircleX />}
       iconTone="offer"
       title={expired ? "Party closed" : "Order cancelled"}
@@ -200,7 +206,7 @@ export default function PartyAlerts() {
         </>
       }
       action={
-        <Button size="lg" block variant={decisionPending ? "primary" : "secondary"} onClick={() => close(false)}>
+        <Button size="lg" block variant={decisionPending ? "primary" : "secondary"} onClick={act}>
           {decisionPending ? "Start a new party" : "Close"}
         </Button>
       }

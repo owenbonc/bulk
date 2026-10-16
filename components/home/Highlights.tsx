@@ -57,7 +57,7 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
   const { now } = useApp();
   const nameId = useId();
   const descId = useId();
-  const { request, restaurant, progress, place, me } = party;
+  const { request, restaurant, progress, place, me, contribution } = party;
   const left = formatPrice(progress.left, { trim: true });
   const closesIn = Math.max(1, Math.ceil((request.expiresAt - now) / 60_000));
 
@@ -108,6 +108,7 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
           <ProgressPie
             value={progress.total}
             max={progress.target}
+            contribution={contribution || undefined}
             size={28}
             label={`${progress.pct}% of the way to ${restaurant.deal.short}`}
           />

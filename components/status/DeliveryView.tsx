@@ -2,7 +2,7 @@
 
 import { Check, House, MapPin, PackageCheck, PiggyBank } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { BottomBar, Button, Countdown, EASE_OUT, Marquee, Pill, SPRING, SectionHeader, cn, formatPrice } from "@/components/ui";
+import { BottomBar, Button, Countdown, EXIT, Marquee, Pill, SPRING, SectionHeader, cn, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { DELIVERY_STAGES, DELIVERY_STEPS } from "@/lib/requests";
 import { deliveryStep, previewSplit, useApp } from "@/lib/store";
@@ -32,6 +32,10 @@ function subline(status: RequestStatus, pickupName: string): string {
       return "Show your PIN at the collection point.";
   }
 }
+
+/** The live map opens on a soft drawer curve and collapses a little quicker on a symmetric one. */
+const MAP_OPEN = { duration: 0.35, ease: [0.32, 0.72, 0, 1] } as const;
+const MAP_CLOSE = { duration: 0.25, ease: [0.77, 0, 0.175, 1] } as const;
 
 /** Time from payment to "Ready to collect" in the simulated delivery. */
 const DELIVERED_AFTER_MS = DELIVERY_STAGES.find((s) => s.status === "delivered")?.afterMs ?? 0;
@@ -105,9 +109,8 @@ export function DeliveryView({ request, restaurant, pickup, onCollect }: Deliver
                 key="map"
                 className="overflow-hidden"
                 initial={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
-                animate={reduce ? { opacity: 1 } : { height: "auto", opacity: 1 }}
-                exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
-                transition={{ duration: 0.45, ease: EASE_OUT }}
+                animate={{ ...(reduce ? { opacity: 1 } : { height: "auto", opacity: 1 }), transition: MAP_OPEN }}
+                exit={{ ...(reduce ? { opacity: 0 } : { height: 0, opacity: 0 }), transition: MAP_CLOSE }}
               >
                 <div className="pb-group">
                   <LiveMap request={request} restaurant={restaurant} pickup={pickup} />
@@ -134,7 +137,7 @@ export function DeliveryView({ request, restaurant, pickup, onCollect }: Deliver
 
         <section aria-labelledby="order-title" className="flex flex-col gap-group">
           <SectionHeader id="order-title" title="Order" />
-          <OrderSummary restaurant={restaurant} basket={me.basket} cost={cost} members={cost.members} mode="paid" />
+          <OrderSummary restaurant={restaurant} basket={me.basket} cost={cost} members={cost.members} mode="paid" savedHint={!delivered} />
         </section>
 
         <PartySection request={request}>
@@ -143,11 +146,22 @@ export function DeliveryView({ request, restaurant, pickup, onCollect }: Deliver
       </div>
 
       <BottomBar material={false} className="flex justify-end gap-2">
-        {delivered && (
-          <Button variant="glass" icon={<PackageCheck />} className="min-w-0 flex-1" onClick={onCollect}>
-            I&apos;ve collected my food
-          </Button>
-        )}
+        {/* The one control you need next arrives a beat after the "Ready" change, rather than in the same frame. */}
+        <AnimatePresence initial={false}>
+          {delivered && (
+            <motion.div
+              key="collect"
+              className="min-w-0 flex-1"
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0, transition: { ...SPRING, delay: 0.12 } }}
+              exit={{ opacity: 0, transition: EXIT }}
+            >
+              <Button variant="glass" block icon={<PackageCheck />} onClick={onCollect}>
+                I&apos;ve collected my food
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
         <Button variant="glass" icon={<House />} href="/">
           Home
         </Button>
@@ -189,9 +203,22 @@ function StepBar({ step }: { step: number }) {
 
 /**
  * Your own pickup PIN as four digit tiles: it releases only your labelled bag. They turn lime with a single
- * spring entrance once the order is ready to collect. `size="lg"` is the handover sheet's larger set, without the label.
+ * spring entrance once the order is ready to collect (`animateIn={false}` shows them at once). `size="lg"` is the
+ * handover sheet's larger set, without the label.
  */
-export function PinTiles({ pin, ready, reduce, size = "md" }: { pin: string; ready: boolean; reduce: boolean; size?: "md" | "lg" }) {
+export function PinTiles({
+  pin,
+  ready,
+  reduce,
+  size = "md",
+  animateIn = true,
+}: {
+  pin: string;
+  ready: boolean;
+  reduce: boolean;
+  size?: "md" | "lg";
+  animateIn?: boolean;
+}) {
   const large = size === "lg";
   return (
     <div className={cn("flex shrink-0 flex-col gap-1", large ? "items-center" : "items-end")}>
@@ -201,7 +228,7 @@ export function PinTiles({ pin, ready, reduce, size = "md" }: { pin: string; rea
         role="img"
         aria-label={`Pickup PIN ${pin.split("").join(" ")}`}
         className={cn("flex", large ? "gap-2" : "gap-1.5")}
-        initial={ready ? (reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }) : false}
+        initial={ready && animateIn ? (reduce ? { opacity: 0 } : { opacity: 0, scale: 0.95 }) : false}
         animate={{ opacity: 1, scale: 1 }}
         transition={SPRING}
       >

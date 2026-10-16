@@ -2,7 +2,7 @@
 
 import { Check, UserPlus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Avatar, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, cn } from "@/components/ui";
+import { Avatar, EXIT, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { pendingInvites } from "@/lib/requests";
 import { basketCount } from "@/lib/split";
@@ -26,62 +26,63 @@ function ordered(request: OrderRequest, mode: MemberMode): Participant[] {
   return list.map((p, i) => ({ p, i })).sort((a, b) => acceptRank(a.p) - acceptRank(b.p) || a.i - b.i).map(({ p }) => p);
 }
 
+type Row = { id: string; name: string; member?: Participant };
+
 /**
  * The "Party" rows: everyone in the party with a Host tag and a per-state trailing detail
- * (choosing / item count, Paid / Pending, add friend), separated by hairlines that start at the name. Rows animate in as people join and
- * slide into place when the paid order changes.
+ * (choosing / item count, Paid / Pending, add friend), then friends you've invited who haven't joined yet
+ * ("invited…"), separated by hairlines that start at the name. Rows animate in as people join and slide into
+ * place when the paid order changes. A row is keyed by the person, so an invited friend's row turns into their
+ * member row in place when they join.
  */
 export function MemberList({ request, mode }: { request: OrderRequest; mode: MemberMode }) {
   const { state, dispatch } = useApp();
-  const members = ordered(request, mode);
+  const rows: Row[] = [
+    ...ordered(request, mode).map((p) => ({ id: p.userId, name: p.name, member: p })),
+    ...(mode === "filling" ? pendingInvites(request).map((invite) => ({ id: invite.userId, name: invite.name })) : []),
+  ];
 
   return (
     <ul className="flex flex-col">
       <AnimatePresence initial={false}>
-        {members.map((p, i) => {
-          const you = p.userId === ME.userId;
+        {rows.map(({ id, name, member: p }, i) => {
+          const you = id === ME.userId;
+          const invited = !p;
           return (
             <motion.li
-              key={p.userId}
+              key={id}
               layout="position"
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, transition: EXIT }}
               transition={SPRING}
               className="relative"
             >
               {i > 0 && <div aria-hidden className="absolute top-0 right-0 left-11 h-px bg-line" />}
               <div className="flex min-h-14 items-center gap-3 py-2">
-                <Avatar name={p.name} you={you} />
+                {/* Only the decorative avatar dims while the invite is pending; the text keeps its contrast. */}
+                <Avatar name={name} you={you} className={cn("transition-opacity duration-200 ease-out", invited && "opacity-60")} />
                 <div className="flex min-w-0 flex-1 items-center gap-2">
-                  <Marquee className={cn("text-body text-ink", you && "font-semibold")}>{you ? "You" : p.name}</Marquee>
-                  {p.userId === request.hostId && <Pill tone="outline" className="shrink-0">Host</Pill>}
+                  <Marquee className={cn("text-body transition-colors duration-200 ease-out", invited ? "text-ink-2" : "text-ink", you && "font-semibold")}>
+                    {you ? "You" : name}
+                  </Marquee>
+                  {id === request.hostId && <Pill tone="outline" className="shrink-0">Host</Pill>}
                 </div>
-                <Trailing participant={p} mode={mode} you={you} friend={state.friends.includes(p.userId)} onAddFriend={() => dispatch({ type: "ADD_FRIEND", userId: p.userId })} />
+                {p ? (
+                  <Trailing
+                    participant={p}
+                    mode={mode}
+                    you={you}
+                    friend={state.friends.includes(id)}
+                    onAddFriend={() => dispatch({ type: "ADD_FRIEND", userId: id })}
+                  />
+                ) : (
+                  <span className="shrink-0 text-meta text-ink-3">invited…</span>
+                )}
               </div>
             </motion.li>
           );
         })}
-        {/* Friends you've invited who haven't joined yet. */}
-        {mode === "filling" &&
-          pendingInvites(request).map((invite, i) => (
-            <motion.li
-              key={`invite-${invite.userId}`}
-              layout="position"
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={SPRING}
-              className="relative"
-            >
-              {members.length + i > 0 && <div aria-hidden className="absolute top-0 right-0 left-11 h-px bg-line" />}
-              <div className="flex min-h-14 items-center gap-3 py-2 opacity-60">
-                <Avatar name={invite.name} />
-                <Marquee className="min-w-0 flex-1 text-body text-ink">{invite.name}</Marquee>
-                <span className="shrink-0 text-meta text-ink-3">invited…</span>
-              </div>
-            </motion.li>
-          ))}
       </AnimatePresence>
     </ul>
   );

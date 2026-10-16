@@ -12,10 +12,12 @@ export interface OrderSummaryProps {
   members: number;
   /** estimate: projected while filling · exact: during the acceptance round · paid: after payment. */
   mode: "estimate" | "exact" | "paid";
+  /** Paid mode: say what the deal saved you under "You paid". Off where the screen already says it. */
+  savedHint?: boolean;
 }
 
 /** Your items and what you pay: the open "Order" rows on the status page, grouped by hairline dividers. */
-export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderSummaryProps) {
+export function OrderSummary({ restaurant, basket, cost, members, mode, savedHint = true }: OrderSummaryProps) {
   const lines = basket.flatMap((line) => {
     const item = restaurant.menu.find((m) => m.id === line.itemId);
     return item ? [{ ...line, item }] : [];
@@ -36,7 +38,7 @@ export function OrderSummary({ restaurant, basket, cost, members, mode }: OrderS
         <SummaryRow
           label="You paid"
           value={<Price pence={cost.total} />}
-          hint={cost.discount > 0 ? `You saved ${formatPrice(cost.discount)} with the deal` : undefined}
+          hint={savedHint && cost.discount > 0 ? `You saved ${formatPrice(cost.discount)} with the deal` : undefined}
           strong
         />
       </div>

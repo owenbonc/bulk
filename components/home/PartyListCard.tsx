@@ -35,7 +35,7 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
   const { now } = useApp();
   const nameId = useId();
   const descId = useId();
-  const { request, restaurant, progress, place, me } = party;
+  const { request, restaurant, progress, place, me, contribution } = party;
   const open = request.status === "open";
   const people = request.participants;
   const faces = [...people].sort((a, b) => Number(b.userId === ME.userId) - Number(a.userId === ME.userId)).slice(0, MAX_FACES);
@@ -118,6 +118,7 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
           <ProgressPie
             value={progress.total}
             max={progress.target}
+            contribution={contribution || undefined}
             size={32}
             label={`${progress.pct}% of the way to ${restaurant.deal.short}`}
           />

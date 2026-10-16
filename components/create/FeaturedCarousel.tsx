@@ -66,7 +66,7 @@ export function FeaturedCarousel({ restaurants, point, partyAt, onChoose }: Feat
             >
               <ArrowRight
                 aria-hidden
-                className={cn("transition-transform duration-300 ease-out", atEnd && "rotate-180")}
+                className={cn("transition-transform duration-200 ease-in-out motion-reduce:transition-none", atEnd && "rotate-180")}
               />
             </IconButton>
           ) : undefined

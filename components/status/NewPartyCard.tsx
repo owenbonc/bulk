@@ -9,6 +9,7 @@ import { DEFAULT_DURATION_MIN, ME } from "@/lib/data";
 import { RETRY_DURATIONS, basketTotal } from "@/lib/requests";
 import { newPartyId, openPartyFor, useApp } from "@/lib/store";
 import type { BasketLine, OrderRequest, PickupPoint, ReleasedEntry, Restaurant } from "@/lib/types";
+import { useFocusClosedTitle } from "./ClosedView";
 
 export interface NewPartyCardProps {
   request: OrderRequest;
@@ -39,6 +40,7 @@ export function NewPartyCard({ request, entry, restaurant, pickup }: NewPartyCar
   const { state, dispatch } = useApp();
   const router = useRouter();
   const reduce = useReducedMotion();
+  const focusTitle = useFocusClosedTitle();
   const [durationMin, setDurationMin] = useState(DEFAULT_DURATION_MIN);
   const [busy, setBusy] = useState(false);
   // A ref, not just state: a rapid second tap lands before the re-render that disables the button.
@@ -78,9 +80,11 @@ export function NewPartyCard({ request, entry, restaurant, pickup }: NewPartyCar
 
         {open ? (
           <div className="flex flex-col gap-3">
-            <p className="text-body text-ink-2">There&apos;s already a party at {restaurant.name} here.</p>
+            <p className="text-body text-ink-2">
+              {inOpen ? <>You&apos;re already in a party at {restaurant.name} here.</> : <>There&apos;s already a party at {restaurant.name} here.</>}
+            </p>
             <Button block href={inOpen ? `/party/${open.id}/status` : `/party/${open.id}`}>
-              See party
+              {inOpen ? "See your party" : "See party"}
             </Button>
           </div>
         ) : (
@@ -97,7 +101,11 @@ export function NewPartyCard({ request, entry, restaurant, pickup }: NewPartyCar
           size="sm"
           className="self-center"
           disabled={busy}
-          onClick={() => dispatch({ type: "CANCEL_ENTRY", requestId: request.id, userId: ME.userId })}
+          onClick={() => {
+            dispatch({ type: "CANCEL_ENTRY", requestId: request.id, userId: ME.userId });
+            // The card (and the focused button) goes away: keep focus on the page's heading instead of <body>.
+            requestAnimationFrame(focusTitle);
+          }}
         >
           No thanks
         </Button>
@@ -106,17 +114,20 @@ export function NewPartyCard({ request, entry, restaurant, pickup }: NewPartyCar
   }
 
   return (
-    <AnimatePresence initial={false}>
-      {card && (
-        <motion.div
-          key={entry.choice}
-          initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
-          exit={{ opacity: 0, transition: EXIT }}
-        >
-          {card}
-        </motion.div>
-      )}
-    </AnimatePresence>
+    // popLayout: the outgoing card leaves the flow (positioned against this wrapper) while it fades, so the two never stack.
+    <div className="relative">
+      <AnimatePresence initial={false} mode="popLayout">
+        {card && (
+          <motion.div
+            key={entry.choice}
+            initial={reduce ? { opacity: 0 } : { opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0, transition: { duration: 0.2, ease: EASE_OUT } }}
+            exit={{ opacity: 0, transition: EXIT }}
+          >
+            {card}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
