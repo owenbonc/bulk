@@ -45,14 +45,22 @@ Same food from the same restaurant, **23% less**. Prices come from the demo's sa
 
 Nothing open near you? **Create a party**: pick a restaurant, a collection point and how long it stays open.
 
-## Built for ordering with strangers
+## Built for ordering with strangers, and turning them into regulars
 
 Nobody holds anyone else's money or food, and drop-outs cost nothing.
 
-- You pay only for your own food, and only once the party reaches the deal.
-- You get your own 4-digit PIN and a labelled bag at a set pickup point: hall reception, the porters' lodge or a security desk.
-- Anyone can leave while the party is filling, the host too.
-- If someone drops out at payment, the rest get one repriced round, but only if they still reach the deal. Otherwise nobody is charged, and your basket is saved so you can start a new party in one tap.
+* You pay only for your own food, and only once the party reaches the deal.
+* You get your own 4-digit PIN and a labelled bag at a set pickup point: hall reception, the porters' lodge or a security desk.
+* Anyone can leave while the party is filling, the host too.
+* If someone drops out at payment, the rest get one repriced round, but only if they still reach the deal. Otherwise nobody is charged, and your basket is saved so you can start a new party in one tap.
+
+Every party is also a small introduction. The people in it live near you, eat at the same times and like the same food. Connect with them to organise scheduled bulk food orders/
+
+* After an order, add anyone from the party as a friend with one tap.
+* Next time you're hungry, invite them straight into your party instead of waiting for strangers to fill it.
+* Over time, a party of strangers becomes a regular group: the Thursday ramen crew, the late-night pizza order after the library closes.
+
+Bulk starts by saving you money on one meal, and ends up giving you people to eat with.
 
 ## Why it can fill
 
