@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, ShoppingBag } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
 import type { HandoverCheck } from "@/lib/requests";
@@ -18,18 +18,29 @@ const ERRORS: Record<Exclude<HandoverCheck, { ok: true }>["error"], string> = {
  * Presenter tool: the driver at the collection point. One labelled bag per person in the picked order,
  * released when that person's own PIN is entered (HANDOVER); unknown and repeated PINs are refused.
  * "Simulate the others" hands over every other bag, so the order reaches `collected` once yours is
- * handed over too. Shown in the demo panel for a placed order only.
+ * handed over too. Both actions remove the button that was pressed, so focus moves to the PIN field, or
+ * to the closing line once every bag is handed over. Shown only in the "d" demo panel, for a placed order.
  */
 export function DriverHandoverTool({ request }: { request: OrderRequest }) {
   const { dispatch } = useApp();
   const [code, setCode] = useState("");
   const [result, setResult] = useState<HandoverCheck | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const doneRef = useRef<HTMLParagraphElement>(null);
+  const refocus = useRef(false);
   const arrived = request.status === "delivered";
   const nameOf = (userId: string, name: string) => (userId === ME.userId ? "You" : name);
   const othersWaiting = request.participants.some((p) => p.userId !== ME.userId && p.collectedAt === undefined);
 
   const handOver = (pin: string) => dispatch({ type: "HANDOVER", requestId: request.id, code: pin, now: Date.now() });
+
+  // After a handover has re-rendered the tool: the closing line if that was the last bag, else the PIN field.
+  useEffect(() => {
+    if (!refocus.current) return;
+    refocus.current = false;
+    (doneRef.current ?? inputRef.current)?.focus();
+  });
 
   function find() {
     setMessage(null);
@@ -43,6 +54,7 @@ export function DriverHandoverTool({ request }: { request: OrderRequest }) {
     setMessage(`Handed over ${p.userId === ME.userId ? "your" : `${p.name}'s`} bag.`);
     setResult(null);
     setCode("");
+    refocus.current = true;
   }
 
   function simulateOthers() {
@@ -51,6 +63,7 @@ export function DriverHandoverTool({ request }: { request: OrderRequest }) {
     }
     setResult(null);
     setMessage("The others showed their PINs.");
+    refocus.current = true;
   }
 
   return (
@@ -77,7 +90,9 @@ export function DriverHandoverTool({ request }: { request: OrderRequest }) {
       </ul>
 
       {request.status === "collected" ? (
-        <p className="text-meta font-semibold text-success">Every bag has been handed over. Order collected.</p>
+        <p ref={doneRef} tabIndex={-1} className="rounded-sm text-meta font-semibold text-success">
+          Every bag has been handed over. Order collected.
+        </p>
       ) : !arrived ? (
         <p className="text-meta text-ink-3">Opens when the food reaches the collection point.</p>
       ) : (
@@ -90,6 +105,7 @@ export function DriverHandoverTool({ request }: { request: OrderRequest }) {
             }}
           >
             <input
+              ref={inputRef}
               value={code}
               onChange={(e) => {
                 setCode(e.target.value.replace(/\D/g, "").slice(0, 4));

@@ -115,7 +115,7 @@ export function PartySettingsSheet({
                   tabIndex={i === pickupIndex ? 0 : -1}
                   onClick={() => setPickup(point.id)}
                   className={cn(
-                    "flex items-start gap-3 rounded-card px-3 py-3 text-left transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.98]",
+                    "flex items-start gap-3 rounded-card px-3 py-3 text-left transition-[scale,background-color,box-shadow] duration-100 ease-out active:scale-[0.97]",
                     selected
                       ? "bg-accent-soft ring-2 ring-accent-ink ring-inset"
                       : "bg-surface ring-1 ring-line ring-inset hover:bg-surface-hover",

@@ -37,11 +37,12 @@ function useFocusPassThrough(panel: HTMLElement | null) {
 }
 
 /**
- * Press "d" anywhere (outside text fields) to toggle a floating demo-controls panel. Keyboard-driven and
- * used constantly while presenting, so it appears and disappears instantly. Portalled to <body>: on the
- * laptop that puts it outside the phone frame, in the bottom-right corner of the window, so it never covers
- * the phone; on a phone it floats above the bottom controls. Kept clickable while a vaul sheet or Radix
- * dialog is open (those set pointer-events: none on the body).
+ * Press "d" anywhere (outside text fields) to toggle a floating demo-controls panel, the one place the
+ * bag-by-bag driver handover tool appears. Keyboard-driven and used constantly while presenting, so it
+ * appears and disappears instantly. Portalled to <body>: on the laptop that puts it outside the phone frame,
+ * in the bottom-right corner of the window, so it never covers the phone; on a phone it floats above the
+ * bottom controls. Kept clickable while a vaul sheet or Radix dialog is open (those set pointer-events: none
+ * on the body).
  */
 export function DemoHotkey() {
   const [open, setOpen] = useState(false);
@@ -82,7 +83,7 @@ export function DemoHotkey() {
           </IconButton>
         </div>
       </div>
-      <DemoControlsPanel />
+      <DemoControlsPanel driverTool />
     </aside>,
     document.body,
   );

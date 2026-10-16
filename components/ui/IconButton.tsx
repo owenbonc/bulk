@@ -10,7 +10,7 @@ export type IconButtonIconColor = "ink" | "accent";
 
 const base =
   "inline-grid shrink-0 place-items-center rounded-full select-none " +
-  "transition-[scale,background-color,color,box-shadow,opacity] duration-100 ease-out active:scale-[0.94] " +
+  "transition-[scale,background-color,color,box-shadow,opacity] duration-100 ease-out active:scale-[0.97] " +
   "disabled:cursor-not-allowed disabled:opacity-40 disabled:active:scale-100 " +
   "aria-disabled:cursor-not-allowed aria-disabled:opacity-40 aria-disabled:active:scale-100";
 

@@ -3,7 +3,7 @@
 import { CATALOG, ME } from "@/lib/data";
 import { byNearest, placeOf, type PartyPlace } from "@/lib/geo";
 import { hasCollected, isActiveFor, isHighlight, progressOf, useApp } from "@/lib/store";
-import type { Progress } from "@/lib/requests";
+import { basketTotal, type Progress } from "@/lib/requests";
 import type { OrderRequest, Participant, Restaurant } from "@/lib/types";
 
 /** A party as the Home screen shows it. */
@@ -15,6 +15,8 @@ export interface HomeParty {
   place: PartyPlace;
   /** Your entry, when you're in this party. */
   me?: Participant;
+  /** Your finalised basket's share of `progress.total`, drawn as the pulsing --mine slice; 0 otherwise. */
+  contribution: number;
 }
 
 function normalise(text: string): string {
@@ -61,7 +63,9 @@ export function useHomeParties(query: string): HomeParties {
     const restaurant = CATALOG.restaurants.find((r) => r.id === request.restaurantId);
     if (!restaurant) continue;
     const me = request.participants.find((p) => p.userId === ME.userId && !p.declined);
-    all.push({ request, restaurant, progress: progressOf(request, restaurant), place: placeOf(request, state.location), me });
+    const progress = progressOf(request, restaurant);
+    const contribution = me?.finalised ? Math.min(basketTotal(me.basket, restaurant), progress.total) : 0;
+    all.push({ request, restaurant, progress, place: placeOf(request, state.location), me, contribution });
   }
 
   const isOpen = (p: HomeParty) => p.request.status === "open" && p.request.expiresAt > now;

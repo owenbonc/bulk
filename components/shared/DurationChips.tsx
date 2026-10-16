@@ -73,7 +73,7 @@ export function DurationChips({ options = PARTY_DURATIONS, value, onChange, labe
             aria-label={`${min} minutes`}
             onClick={() => onChange(min)}
             className={cn(
-              "flex h-14 flex-col items-center justify-center rounded-chip transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.96]",
+              "flex h-14 flex-col items-center justify-center rounded-chip transition-[scale,background-color,box-shadow] duration-100 ease-out active:scale-[0.97]",
               selected ? "bg-accent text-on-accent" : "bg-surface text-ink ring-1 ring-line ring-inset hover:bg-surface-hover",
             )}
           >

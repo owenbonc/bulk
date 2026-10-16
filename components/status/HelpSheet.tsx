@@ -2,12 +2,14 @@
 
 import { BadgePercent, ChevronRight, Flag, Link2, LogOut, MapPin, UtensilsCrossed } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useId, useRef, useState, type ReactNode, type Ref } from "react";
+import { flushSync } from "react-dom";
 import { Button, Divider, Sheet, cn, formatPrice, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { ACCEPT_WINDOW_MS } from "@/lib/requests";
 import { useApp } from "@/lib/store";
 import type { OrderRequest, PickupPoint, Restaurant } from "@/lib/types";
+import { leaveCopy } from "./FillingView";
 
 export interface HelpSheetProps {
   open: boolean;
@@ -25,6 +27,18 @@ export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: H
   const { dispatch } = useApp();
   const router = useRouter();
   const [confirmLeave, setConfirmLeave] = useState(false);
+  // The row and its confirmation swap in place, so focus follows the swap instead of falling to the sheet.
+  const leaveRowRef = useRef<HTMLButtonElement>(null);
+  const leaveRef = useRef<HTMLButtonElement>(null);
+  const confirmTitleId = useId();
+  const askLeave = () => {
+    flushSync(() => setConfirmLeave(true));
+    leaveRef.current?.focus();
+  };
+  const stay = () => {
+    flushSync(() => setConfirmLeave(false));
+    leaveRowRef.current?.focus();
+  };
   const me = request.participants.find((p) => p.userId === ME.userId);
   // Anyone can leave while the party is open, the host included; the party stays open for the rest.
   const canLeave = request.status === "open" && !!me;
@@ -103,22 +117,24 @@ export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: H
             <>
               <Divider className="ml-[68px]" />
               {confirmLeave ? (
-                <div className="flex flex-col gap-3 px-5 py-4">
-                  <p className="text-body text-ink-2">
-                    Leave the party? Your basket will be removed. The party stays open for everyone else
-                    {request.hostId === ME.userId ? ", even though you created it" : ""}. Nothing is charged.
-                  </p>
-                  <div className="flex gap-2">
-                    <Button variant="secondary" block onClick={() => setConfirmLeave(false)}>
-                      Stay
-                    </Button>
-                    <Button variant="danger" block icon={<LogOut />} onClick={leave} className="ring-1 ring-offer/30 ring-inset">
+                <div role="group" aria-labelledby={confirmTitleId} className="flex flex-col gap-3 px-5 py-4">
+                  <div>
+                    <p id={confirmTitleId} className="text-body font-semibold text-ink">
+                      Leave the party?
+                    </p>
+                    <p className="mt-1 text-body text-ink-2">{leaveCopy(request)}</p>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <Button ref={leaveRef} variant="danger" block icon={<LogOut />} onClick={leave} className="ring-1 ring-offer/30 ring-inset">
                       Leave party
+                    </Button>
+                    <Button variant="secondary" block onClick={stay}>
+                      Stay in the party
                     </Button>
                   </div>
                 </div>
               ) : (
-                <ActionRow icon={<LogOut />} tone="offer" onClick={() => setConfirmLeave(true)}>
+                <ActionRow ref={leaveRowRef} icon={<LogOut />} tone="offer" onClick={askLeave}>
                   Leave party
                 </ActionRow>
               )}
@@ -156,11 +172,13 @@ function Step({ n, children }: { n: number; children: ReactNode }) {
 }
 
 function ActionRow({
+  ref,
   icon,
   tone = "default",
   onClick,
   children,
 }: {
+  ref?: Ref<HTMLButtonElement>;
   icon: ReactNode;
   tone?: "default" | "offer";
   onClick: () => void;
@@ -168,6 +186,7 @@ function ActionRow({
 }) {
   return (
     <button
+      ref={ref}
       type="button"
       onClick={onClick}
       className={cn(

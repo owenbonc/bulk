@@ -1,19 +1,18 @@
 "use client";
 
 import { Check, ChevronDown, LocateFixed, MapPin } from "lucide-react";
-import { useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { Marquee, Sheet, cn, scrollRootTo } from "@/components/ui";
 import { CATALOG } from "@/lib/data";
 import { partiesNear, pickupById, useApp } from "@/lib/store";
 
 /**
- * After you switch location (not on mount): scrolls the screen back to the top, so the new set of parties or
- * restaurants starts from its first row, and calls `onSwitch` with the new collection point id.
+ * After you switch location (not on mount): jumps the screen back to the top, so the new set of parties or
+ * restaurants starts from its first row, and calls `onSwitch` with the new collection point id. The jump is
+ * instant (it happens under the closing sheet's scrim), so the screen's own fade or row glide is the only motion.
  */
 export function useLocationSwitch(onSwitch?: (pickupPointId: string) => void) {
   const { state } = useApp();
-  const reduceMotion = useReducedMotion();
   const seen = useRef(state.location);
   const callback = useRef(onSwitch);
   useEffect(() => {
@@ -22,9 +21,9 @@ export function useLocationSwitch(onSwitch?: (pickupPointId: string) => void) {
   useEffect(() => {
     if (seen.current === state.location) return;
     seen.current = state.location;
-    scrollRootTo({ top: 0, behavior: reduceMotion ? "auto" : "smooth" });
+    scrollRootTo({ top: 0, behavior: "auto" });
     callback.current?.(state.location);
-  }, [state.location, reduceMotion]);
+  }, [state.location]);
 }
 
 /** "3 here · 9 nearby": open parties collecting at a point and within a short walk of it. */
@@ -179,7 +178,9 @@ export function LocationButton({ variant = "stacked", className }: LocationButto
         aria-label={`Current location: ${point?.name ?? "not set"}. Change location`}
         onClick={() => setOpen(true)}
         className={cn(
-          "flex h-11 max-w-full min-w-0 items-center gap-1.5 rounded-full pr-2.5 pl-1.5 text-left",
+          "relative flex h-10 max-w-full min-w-0 items-center gap-1.5 rounded-full pr-2.5 pl-1.5 text-left",
+          // 40px pill, like the bell beside it, with a 44px hit area.
+          "before:absolute before:inset-x-0 before:-inset-y-0.5",
           "transition-[scale,background-color] duration-100 ease-out active:scale-[0.97] active:bg-ink/[0.06] hover:bg-ink/[0.04]",
           className,
         )}

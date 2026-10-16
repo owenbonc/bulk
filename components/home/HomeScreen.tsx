@@ -11,6 +11,7 @@ import { HomeBottomBar } from "./HomeBottomBar";
 import { NotificationsButton } from "./NotificationsSheet";
 import { PartyListCard } from "./PartyListCard";
 import { useHomeParties } from "./useHomeParties";
+import { useReturnKey } from "./useReturnKey";
 
 /** List cards at the top of "Other parties" whose images load eagerly. */
 const PRIORITY_CARDS = 2;
@@ -24,6 +25,8 @@ export function HomeScreen() {
   const reduceMotion = useReducedMotion();
   const [query, setQuery] = useState("");
   const { highlights, others, mine, collected, totalCount } = useHomeParties(query);
+  // A location switched on another screen shows its parties straight away when you come back.
+  const listsKey = useReturnKey(state.location);
   useLocationSwitch((id) => {
     const n = highlights.length + others.length;
     announce(`${n} ${n === 1 ? "party" : "parties"} near ${pickupById(id)?.name ?? "you"}`);
@@ -43,7 +46,7 @@ export function HomeScreen() {
 
       <main className="flex flex-col gap-section pt-3 pb-6">
         <h1 className="sr-only">Food parties near you</h1>
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence key={listsKey} mode="wait" initial={false}>
           <motion.div
             key={state.location}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}

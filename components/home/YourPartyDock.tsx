@@ -9,6 +9,7 @@ import { ME } from "@/lib/data";
 import { DELIVERY_STAGES } from "@/lib/requests";
 import { hasCollected, useApp } from "@/lib/store";
 import type { HomeParty } from "./useHomeParties";
+import { useReturnKey } from "./useReturnKey";
 
 /** Card row height (it grows only when reduced motion wraps a long line). */
 const CARD_HEIGHT = 76;
@@ -18,22 +19,29 @@ const ENTER_OFFSET = 32;
 const DELIVERED_AFTER_MS = DELIVERY_STAGES.find((s) => s.status === "delivered")?.afterMs ?? 0;
 
 /** How long a collected party's card stays on screen as "Collected" before it leaves. */
-const FAREWELL_DELAY_MS = 700;
+const FAREWELL_DELAY_MS = 1200;
 
-/** Parties whose card has already slid in this session, so coming back to Home doesn't replay the entrance. */
-const introduced = new Set<string>();
+/**
+ * The stage each party's card last showed on screen this session (request id → status key), so coming back
+ * to Home neither replays a card's entrance nor misses a stage it moved to meanwhile. A card records its
+ * stage just after the commit that shows it: the remount on return (see below) renders within that commit,
+ * so it still sees a party that arrived while Home was hidden as new and a stage that changed as changed.
+ */
+const shownStage = new Map<string, string>();
 /** Collected parties whose card has already left, so it only says goodbye once. */
 const farewelled = new Set<string>();
 
 /**
  * Your-party card(s): solid lime, one 76px row per party you're in, most urgent first, swiped sideways or
- * paged with the dot buttons when there are several. Rendered as the first item of Home's bottom stack, so it floats just
- * above the controls, over the list and under sheets. It slides up when a party first appears; tap opens
- * the party's status page. `hidden` (while the search field is focused) fades it out, and it fades back in.
- * A party you've collected since its card was last on screen shows as "Collected" for a moment once Home is
- * visible, then leaves with an exit (the whole dock exits when it was the only one). Home stays mounted but
- * hidden while you're on other pages (Next's Activity), and effects only run while it is visible, so the
- * card is held in `onScreen` until then and the exit plays where you can see it.
+ * stepped through with the page-dots button when there are several. Rendered as the first item of Home's
+ * bottom stack, so it floats just above the controls, over the list and under sheets. It slides up when a
+ * party first appears; tap opens the party's status page. `hidden` (while the search field is focused) fades
+ * it out, and it fades back in. A party you've collected since its card was last on screen shows as
+ * "Collected" for a moment once Home is visible, then leaves with an exit (the whole dock exits when it was
+ * the only one). Home stays mounted but hidden while you're on other pages (Next's Activity), and effects
+ * only run while it is visible, so the card is held in `onScreen` until then and the exit plays where you
+ * can see it. Any other card that left while Home was hidden is simply gone on return: the presences below
+ * remount when the cards changed while Home was hidden, because an exit begun then would stay frozen mid-way.
  */
 export function YourPartyDock({
   parties: active,
@@ -47,7 +55,7 @@ export function YourPartyDock({
   const activeIds = active.map((p) => p.request.id);
   // Card ids last shown while Home was visible (plus, on a fresh mount, collected cards seen earlier this session).
   const [onScreen, setOnScreen] = useState(() => [
-    ...collected.filter((p) => introduced.has(p.request.id) && !farewelled.has(p.request.id)).map((p) => p.request.id),
+    ...collected.filter((p) => shownStage.has(p.request.id) && !farewelled.has(p.request.id)).map((p) => p.request.id),
     ...activeIds,
   ]);
   const departing = collected.filter((p) => onScreen.includes(p.request.id) && !activeIds.includes(p.request.id));
@@ -55,14 +63,15 @@ export function YourPartyDock({
   const ids = parties.map((p) => p.request.id).join(" ");
   const activeKey = activeIds.join(" ");
   const departingKey = departing.map((p) => p.request.id).join(" ");
-  const fresh = parties.some((p) => !introduced.has(p.request.id));
+  const fresh = parties.some((p) => !shownStage.has(p.request.id));
   const [hiddenOnce, setHiddenOnce] = useState(hidden);
   if (hidden && !hiddenOnce) setHiddenOnce(true);
   const ulRef = useRef<HTMLUListElement>(null);
   const reduceMotion = useReducedMotion();
+  const dockKey = useReturnKey(ids);
   const lead = parties[0] ? `${parties[0].request.id}:${parties[0].request.status}:${parties[0].request.round}` : "";
 
-  /** Scrolls card `i` into place, for the page dots (a mouse can't swipe the row). */
+  /** Scrolls card `i` into place, for the page-dots button (a mouse can't swipe the row). */
   const show = (i: number) => {
     const ul = ulRef.current;
     const li = ul?.children[i] as HTMLElement | undefined;
@@ -71,10 +80,6 @@ export function YourPartyDock({
     const left = ul.scrollLeft + li.getBoundingClientRect().left - ul.getBoundingClientRect().left - 16;
     ul.scrollTo({ left, behavior: reduceMotion ? "auto" : "smooth" });
   };
-
-  useEffect(() => {
-    for (const id of ids.split(" ")) if (id) introduced.add(id);
-  }, [ids]);
 
   // Runs only while Home is visible: collected cards leave after a beat, everything else follows `active`.
   useEffect(() => {
@@ -97,7 +102,8 @@ export function YourPartyDock({
   }, [lead, reduceMotion]);
 
   return (
-    <AnimatePresence>
+    // Remounts on return when the cards changed while Home was hidden; a party that arrived meanwhile slides up.
+    <AnimatePresence key={dockKey} initial={fresh}>
       {parties.length > 0 && !hidden && (
         <motion.div
           key="dock"
@@ -113,9 +119,11 @@ export function YourPartyDock({
           >
             <AnimatePresence initial={false} mode="popLayout">
               {parties.map((p, i) => (
+                // Layout animates only as a collected card departs; the scroll back to card 1 handles reorders.
                 <motion.li
                   key={p.request.id}
                   layout="position"
+                  layoutDependency={departingKey}
                   className="relative w-full shrink-0 snap-center"
                   exit={{ opacity: 0, y: 16, transition: EXIT }}
                   transition={SPRING}
@@ -126,7 +134,7 @@ export function YourPartyDock({
                       index={i}
                       count={parties.length}
                       onSelect={show}
-                      className={p.request.status === "open" ? "right-[63px]" : "right-[47px]"}
+                      className={p.request.status === "open" ? "right-[57px]" : "right-[41px]"}
                     />
                   )}
                 </motion.li>
@@ -140,20 +148,25 @@ export function YourPartyDock({
 }
 
 function YourPartyCard({ party }: { party: HomeParty }) {
-  const { request, restaurant, progress, me } = party;
+  const { request, restaurant, progress, me, contribution } = party;
   const host = request.hostId === ME.userId;
-  const statusKey = `${request.status}:${request.round}:${me?.paid ? "paid" : "unpaid"}`;
+  // Your bag handed over is its own stage, though the order stays delivered until every bag is.
+  const statusKey = `${hasCollected(request) ? "collected" : request.status}:${request.round}:${me?.paid ? "paid" : "unpaid"}`;
 
-  // One soft pulse whenever the party moves to a new stage.
+  // One soft pulse when the party has moved to a new stage since its card was last on screen.
   const [scope, animate] = useAnimate<HTMLAnchorElement>();
   const reduceMotion = useReducedMotion();
-  const shown = useRef(statusKey);
   useEffect(() => {
-    if (shown.current === statusKey || !scope.current) return;
-    shown.current = statusKey;
-    if (reduceMotion) animate(scope.current, { opacity: [1, 0.7, 1] }, { duration: 0.4, ease: "easeOut" });
-    else animate(scope.current, { scale: [1, 1.03, 1] }, { duration: 0.45, ease: [0.23, 1, 0.32, 1] });
-  }, [statusKey, animate, scope, reduceMotion]);
+    const last = shownStage.get(request.id);
+    if (last === statusKey) return;
+    const recorded = window.setTimeout(() => shownStage.set(request.id, statusKey));
+    const card = scope.current;
+    if (last !== undefined && card) {
+      if (reduceMotion) animate(card, { opacity: [1, 0.7, 1] }, { duration: 0.4, ease: "easeOut" });
+      else animate(card, { scale: [1, 1.03, 1] }, { duration: 0.45, ease: [0.23, 1, 0.32, 1] });
+    }
+    return () => window.clearTimeout(recorded);
+  }, [request.id, statusKey, animate, scope, reduceMotion]);
 
   return (
     <Link
@@ -190,6 +203,7 @@ function YourPartyCard({ party }: { party: HomeParty }) {
           <ProgressPie
             value={progress.total}
             max={progress.target}
+            contribution={contribution || undefined}
             size={32}
             label={`${progress.pct}% of the way to ${restaurant.deal.short}`}
           />
@@ -271,8 +285,9 @@ function StatusLine({ party }: { party: HomeParty }) {
 }
 
 /**
- * Page dots as buttons, laid over the right end of the card's eyebrow line (outside the card's link). Each dot
- * has a 16x24 hit area; `className` sets the right offset, which clears the card's pie or chevron.
+ * Page dots for card `index`, laid over the right end of its eyebrow line (outside the card's link), as one
+ * 44px button that shows the next card. `className` sets the right offset, which clears the card's pie or
+ * chevron.
  */
 function PageDots({
   index,
@@ -285,25 +300,24 @@ function PageDots({
   onSelect: (i: number) => void;
   className?: string;
 }) {
+  const next = (index + 1) % count;
   return (
-    <div role="group" aria-label="Your parties" className={cn("absolute top-1.5 flex", className)}>
+    <button
+      type="button"
+      aria-label={`Show party ${next + 1} of ${count}`}
+      onClick={() => onSelect(next)}
+      className={cn(
+        "absolute -top-1 flex h-11 min-w-11 items-center justify-center gap-2.5 rounded-full px-2.5 transition-transform duration-100 ease-out active:scale-[0.97]",
+        className,
+      )}
+    >
       {Array.from({ length: count }, (_, i) => (
-        <button
+        <span
           key={i}
-          type="button"
-          aria-label={`Show party ${i + 1} of ${count}`}
-          aria-current={i === index ? "true" : undefined}
-          onClick={(e) => {
-            e.stopPropagation();
-            onSelect(i);
-          }}
-          className="grid h-6 w-4 place-items-center"
-        >
-          <span
-            className={cn("size-1.5 rounded-full transition-colors duration-150", i === index ? "bg-ink" : "bg-ink/25")}
-          />
-        </button>
+          aria-hidden
+          className={cn("size-1.5 rounded-full transition-colors duration-150", i === index ? "bg-ink" : "bg-ink/25")}
+        />
       ))}
-    </div>
+    </button>
   );
 }

@@ -227,7 +227,10 @@
 
   /* The bell in the "Party filled!" popup rings once after the card lands. */
   --animate-ring: ring 600ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 180ms both;
-  /* The bag in the "Your food is ready!" popup drops in and settles once after the card lands. */
+  /*
+   * The bag in the "Your food is ready!" popup drops in and settles once after the card lands, swinging from its
+   * handle: the drop eases out, the two settling swings ease in and out so each bounce turns without a snap.
+   */
   --animate-arrive: arrive 640ms cubic-bezier(0.23, 1, 0.32, 1) 160ms both;
   /* Your contribution breathes gently (static 0.8 under reduced motion). */
   --animate-mine: mine-pulse 1.6s ease-in-out infinite;
@@ -262,9 +265,11 @@
     55% {
       opacity: 1;
       transform: translateY(2px) rotate(3deg);
+      animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
     }
     80% {
       transform: translateY(-1px) rotate(-1deg);
+      animation-timing-function: cubic-bezier(0.45, 0, 0.55, 1);
     }
     100% {
       transform: none;
@@ -582,7 +587,8 @@
  * Clear glass for round icon buttons, the Home search bar and big action buttons: half-white with a strong
  * blur, a bright 1px edge (drawn as an inset shadow so it never changes the control's size), a brighter
  * top highlight and the floating shadow. The shadow is composed with Tailwind's ring variables so `ring-*`
- * utilities (focus rings) still add to it. Solid white under reduced transparency or increased contrast.
+ * utilities (focus rings) still add to it. Near-solid white without backdrop-filter and solid white under
+ * reduced transparency or increased contrast; each fallback pins its own solid hover and pressed washes.
  */
 @utility glass {
   background-color: var(--glass);
@@ -606,6 +612,16 @@
 
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background-color: var(--glass-fallback);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled, [aria-disabled="true"]) {
+        background-color: var(--surface-hover);
+      }
+    }
+
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--surface-2);
+    }
   }
 
   @media (prefers-reduced-transparency: reduce) {
@@ -613,6 +629,16 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     --tw-inset-shadow: inset 0 0 0 1px var(--line);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled, [aria-disabled="true"]) {
+        background-color: var(--surface-hover);
+      }
+    }
+
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--surface-2);
+    }
   }
 
   @media (prefers-contrast: more) {
@@ -620,13 +646,24 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     --tw-inset-shadow: inset 0 0 0 1px var(--line-strong);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled, [aria-disabled="true"]) {
+        background-color: var(--surface-hover);
+      }
+    }
+
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--surface-2);
+    }
   }
 }
 
 /*
  * Lime-tinted glass: the glass recipe (blur, saturate, bright top edge, floating shadow) over a translucent
  * --accent tint, for the one primary round control (Home's create button). Ink icon on top. Solid --accent
- * under reduced transparency, increased contrast or without backdrop-filter.
+ * under reduced transparency, increased contrast or without backdrop-filter, darkening to --accent-hover
+ * and --accent-strong on hover and press.
  */
 @utility glass-accent {
   background-color: var(--glass-accent);
@@ -650,6 +687,16 @@
 
   @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
     background-color: var(--accent);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled, [aria-disabled="true"]) {
+        background-color: var(--accent-hover);
+      }
+    }
+
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--accent-strong);
+    }
   }
 
   @media (prefers-reduced-transparency: reduce) {
@@ -657,6 +704,16 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     --tw-inset-shadow: inset 0 0 0 1px var(--accent-strong);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled, [aria-disabled="true"]) {
+        background-color: var(--accent-hover);
+      }
+    }
+
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--accent-strong);
+    }
   }
 
   @media (prefers-contrast: more) {
@@ -664,6 +721,16 @@
     -webkit-backdrop-filter: none;
     backdrop-filter: none;
     --tw-inset-shadow: inset 0 0 0 1px var(--accent-ink);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled, [aria-disabled="true"]) {
+        background-color: var(--accent-hover);
+      }
+    }
+
+    &:active:not(:disabled, [aria-disabled="true"]) {
+      background-color: var(--accent-strong);
+    }
   }
 }
 
@@ -741,6 +808,13 @@
   }
 }
 
+/* The ready bag swings from its handle; a call-site origin-* utility still wins. */
+@layer components {
+  .animate-arrive {
+    transform-origin: 50% 20%;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Third-party surfaces                                                */
 /* ------------------------------------------------------------------ */
@@ -809,9 +883,13 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-ring,
-  .animate-arrive {
+  .animate-ring {
     animation: none;
+  }
+
+  /* The ready bag only fades in. */
+  .animate-arrive {
+    animation: bulk-fade-in 200ms ease-out both;
   }
 
   .animate-mine {

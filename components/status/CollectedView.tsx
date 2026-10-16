@@ -43,7 +43,7 @@ export function CollectedView({ request, restaurant, pickup }: ViewProps) {
 
         <section aria-labelledby="order-title" className="flex flex-col gap-group">
           <SectionHeader id="order-title" title="Order" />
-          <OrderSummary restaurant={restaurant} basket={me.basket} cost={cost} members={cost.members} mode="paid" />
+          <OrderSummary restaurant={restaurant} basket={me.basket} cost={cost} members={cost.members} mode="paid" savedHint={false} />
         </section>
 
         <PartySection request={request}>

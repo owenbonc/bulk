@@ -3,7 +3,7 @@
 import { CircleSlash, CircleX, House, Info, SearchX, TimerOff, UserX } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { EASE_OUT, EXIT, IconButton, Marquee, TopBar, formatPrice, scrollRootTo, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { CANCEL_REASONS } from "@/lib/requests";
@@ -14,10 +14,13 @@ import { ClosedView } from "./ClosedView";
 import { CollectedView } from "./CollectedView";
 import { DeliveryView } from "./DeliveryView";
 import { FillingView } from "./FillingView";
-import { HANDOVER_MS, HandoverSheet, type HandoverPhase } from "./HandoverSheet";
+import { HANDOVER_MS, HandoverSheet, SHEET_RISE_MS, type HandoverPhase } from "./HandoverSheet";
 import { HelpSheet } from "./HelpSheet";
 import { PaySheet } from "./PaySheet";
 import { NewPartyCard } from "./NewPartyCard";
+
+/** Gap between one overlay finishing its exit and the next opening (matches PartyAlerts' gap between popups). */
+const OVERLAY_GAP_MS = 320;
 
 type View = "filling" | "accept" | "delivery" | "collected" | "closed" | "removed" | "missed";
 
@@ -39,8 +42,8 @@ function viewFor(request: OrderRequest): View {
  *
  * `?handover=1` (from the "ready" popup or notification) runs the simulated PIN handover as soon as the
  * order is ready to collect and you haven't collected it: the sheet shows your own pickup PIN, the courier
- * "accepts" it after HANDOVER_MS, HANDOVER is dispatched with that PIN (your bag is handed over) and the
- * param is dropped from the URL.
+ * "accepts" it HANDOVER_MS after the sheet has risen, HANDOVER is dispatched with that PIN (your bag is handed
+ * over) and the param is dropped from the URL.
  */
 export function PartyStatus({ id }: { id: string }) {
   const { state, now, dispatch } = useApp();
@@ -67,10 +70,16 @@ export function PartyStatus({ id }: { id: string }) {
     setLastWants(wantsHandover);
     if (wantsHandover) setArmed(true);
   }
-  if (armed && !handover.open) {
-    setArmed(false);
-    if (canCollect) setHandover({ open: true, phase: "showing" });
-  }
+  // The sheet opens one beat after the URL arms it, so the "ready" popup has finished closing (the same gap
+  // PartyAlerts leaves between popups). `armed` stays true until then, so the param isn't dropped early.
+  useEffect(() => {
+    if (!armed) return;
+    const timer = window.setTimeout(() => {
+      setArmed(false);
+      if (canCollect) setHandover({ open: true, phase: "showing" });
+    }, OVERLAY_GAP_MS);
+    return () => window.clearTimeout(timer);
+  }, [armed, canCollect]);
 
   const startHandover = () => setHandover({ open: true, phase: "showing" });
   const closeHandover = () => {
@@ -83,7 +92,7 @@ export function PartyStatus({ id }: { id: string }) {
     if (wantsHandover && !armed && !handover.open && !canCollect) router.replace(statusPath, { scroll: false });
   }, [wantsHandover, armed, handover.open, canCollect, router, statusPath]);
 
-  // The simulated courier checks the code, then you've collected.
+  // The simulated courier checks the code once the sheet has risen with your PIN on it, then you've collected.
   const checking = handover.open && handover.phase === "showing";
   useEffect(() => {
     if (!checking) return;
@@ -91,9 +100,19 @@ export function PartyStatus({ id }: { id: string }) {
       setHandover({ open: true, phase: "accepted" });
       if (myPin) dispatch({ type: "HANDOVER", requestId: id, code: myPin, now: Date.now() });
       if (new URLSearchParams(window.location.search).has("handover")) router.replace(statusPath, { scroll: false });
-    }, HANDOVER_MS);
+    }, SHEET_RISE_MS + HANDOVER_MS);
     return () => window.clearTimeout(timer);
   }, [checking, dispatch, id, myPin, router, statusPath]);
+
+  // With cacheComponents, Next keeps this route mounted but hidden (React <Activity>) while you're on another
+  // screen, and re-runs layout effects when it shows the route again. An exit that began while the route was
+  // hidden never finishes, so start over on the current view (every nested presence remounts with it).
+  const [shown, setShown] = useState(0);
+  const seen = useRef(false);
+  useLayoutEffect(() => {
+    if (seen.current) setShown((n) => n + 1);
+    seen.current = true;
+  }, []);
 
   const view: View | "missing" = request && restaurant && pickup ? viewFor(request) : "missing";
 
@@ -201,7 +220,7 @@ export function PartyStatus({ id }: { id: string }) {
       />
 
       {/* When the old state has faded out, jump to the top so the new state is read from the start. */}
-      <AnimatePresence mode="wait" initial={false} onExitComplete={() => scrollRootTo({ top: 0, behavior: "auto" })}>
+      <AnimatePresence key={shown} mode="wait" initial={false} onExitComplete={() => scrollRootTo({ top: 0, behavior: "auto" })}>
         {/* Opacity only: a transform or filter here would trap the fixed bottom bars inside this wrapper. */}
         <motion.main
           key={view}
