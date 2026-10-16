@@ -2,25 +2,48 @@
 
 import { createContext, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { CATALOG, ME, seedState } from "./data";
-import { type Action, reduce } from "./requests";
+import { type Action, isTerminal, notificationsFor, pendingAlerts, reduce } from "./requests";
 import { botAcceptActions, botJoinActions } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
-const STORAGE_KEY = "bulk-demo-v1";
+export {
+  arrivesAt,
+  deliveryProgress,
+  deliveryStep,
+  draftPreview,
+  formatGBP,
+  formatGBPShort,
+  isHighlight,
+  isTerminal,
+  notificationsFor,
+  openPartyFor,
+  pendingAlerts,
+  previewSplit,
+  progressOf,
+  unreadCount,
+} from "./requests";
+
+const STORAGE_KEY = "bulk-demo-v2";
+const HEARTBEAT_MS = 1_000;
 const BOT_STEP_MS = [2_000, 4_000] as const;
 
 interface AppContext {
   state: AppState;
+  /** Wall clock, updated every second by the heartbeat. */
   now: number;
   dispatch: (action: Action) => void;
 }
 
 const Ctx = createContext<AppContext | null>(null);
 
+/** Saved state, or a fresh demo when nothing is saved or every party has ended (e.g. seeded timers ran out overnight). */
 function loadState(): AppState {
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved) return JSON.parse(saved) as AppState;
+    if (saved) {
+      const state = JSON.parse(saved) as AppState;
+      if (Array.isArray(state.requests) && state.requests.some((r) => !isTerminal(r.status))) return state;
+    }
   } catch {
     // unreadable storage → fall back to a fresh demo
   }
@@ -46,7 +69,7 @@ function ClientProvider({ children }: { children: ReactNode }) {
     try {
       window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     } catch {
-      // storage unavailable (private mode) — demo still works in memory
+      // storage unavailable (private mode): the demo still works in memory
     }
   }, [state]);
 
@@ -65,7 +88,7 @@ function ClientProvider({ children }: { children: ReactNode }) {
         }
       }
       botAcceptActions(s, t, Math.random).forEach(dispatch);
-    }, 1000);
+    }, HEARTBEAT_MS);
     return () => window.clearInterval(id);
   }, []);
 
@@ -82,6 +105,11 @@ export function resetDemo(dispatch: AppContext["dispatch"]) {
   dispatch({ type: "RESET", state: seedState(Date.now()) });
 }
 
+/** A short random id for a new party (CREATE_FROM_DRAFT / CREATE_REQUEST). */
+export function newPartyId(): string {
+  return crypto.randomUUID().slice(0, 8);
+}
+
 export function useRequest(id: string): OrderRequest | undefined {
   return useApp().state.requests.find((r) => r.id === id);
 }
@@ -96,4 +124,38 @@ export function restaurantById(id: string) {
 
 export function pickupById(id: string) {
   return CATALOG.pickupPoints.find((p) => p.id === id);
+}
+
+/** Notifications for the bell sheet, newest first, plus how many are unread. */
+export function useNotifications() {
+  const { state } = useApp();
+  const items = notificationsFor(state);
+  return { items, unread: items.filter((n) => !state.readNotifications.includes(n.key)).length };
+}
+
+/** The next global popup to show (W11/W12), if any. Dispatch MARK_ALERT_SEEN with its key once shown. */
+export function useNextAlert() {
+  const { state } = useApp();
+  const alert = pendingAlerts(state)[0];
+  return alert && { ...alert, request: state.requests.find((r) => r.id === alert.requestId)! };
+}
+
+/**
+ * A clock that updates every animation frame while `active` (for smooth motion such as
+ * the courier on the live map); otherwise the heartbeat's once-a-second `now`.
+ */
+export function useFrameNow(active: boolean): number {
+  const { now } = useApp();
+  const [frameNow, setFrameNow] = useState(now);
+  useEffect(() => {
+    if (!active) return;
+    let raf = 0;
+    const loop = () => {
+      setFrameNow(Date.now());
+      raf = window.requestAnimationFrame(loop);
+    };
+    raf = window.requestAnimationFrame(loop);
+    return () => window.cancelAnimationFrame(raf);
+  }, [active]);
+  return active ? Math.max(frameNow, now) : now;
 }
