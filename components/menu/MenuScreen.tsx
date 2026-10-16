@@ -22,7 +22,7 @@ import { pickupById, useApp } from "@/lib/store";
 import type { Draft, OrderRequest, Restaurant } from "@/lib/types";
 import { BasketBubble } from "./BasketBubble";
 import { CreateInfoBubble, JoinInfoBubble, type SettingsFocus } from "./InfoBubble";
-import { MenuList, TopPicks, type ItemControls } from "./MenuSections";
+import { MenuList, TopPicks, matchesQuery, type ItemControls } from "./MenuSections";
 import { DealSheet, MoreSheet } from "./MenuSheets";
 import { PartySettingsSheet } from "./PartySettingsSheet";
 import { HERO_OVERLAP, MenuHero, RestaurantHeader } from "./RestaurantHeader";
@@ -100,7 +100,7 @@ export function MenuScreen(props: MenuScreenProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const bar = useHeaderMetrics(barRef);
   const docked = useScrolledPast(bubbleRef, bar.height);
-  // White status bar glyphs while the photo is under them; ink once the cream page reaches their middle.
+  // White status bar glyphs while the photo is under them; ink once the page background reaches their middle.
   const heroGone = useScrolledPast(heroRef, Math.round(bar.safeTop / 2) + HERO_OVERLAP);
   useStatusBarTone(heroGone ? "dark" : "light");
 
@@ -108,6 +108,12 @@ export function MenuScreen(props: MenuScreenProps) {
   const [searchOpen, setSearchOpen] = useState(false);
   const [query, setQuery] = useState("");
   const searching = searchOpen && query.trim().length > 0;
+  const matchCount = searching ? restaurant.menu.filter((m) => matchesQuery(m, query)).length : 0;
+  const searchAnnouncement = !searching
+    ? ""
+    : matchCount === 0
+      ? `No dishes match ${query.trim()}`
+      : `${matchCount} ${matchCount === 1 ? "dish" : "dishes"}`;
 
   const closeSearch = () => {
     setSearchOpen(false);
@@ -171,6 +177,9 @@ export function MenuScreen(props: MenuScreenProps) {
 
   return (
     <main className="relative pb-6">
+      <p className="sr-only" aria-live="polite" aria-atomic="true">
+        {searchAnnouncement}
+      </p>
       <div ref={barRef} className="contents">
         <TopBar
           position="fixed"
@@ -237,11 +246,11 @@ export function MenuScreen(props: MenuScreenProps) {
           ) : undefined}
         </TopBar>
       </div>
-      {/* Solid cream behind the status bar glyphs once the photo has scrolled away, fading out within the safe area; no strip below it. */}
+      {/* Once the photo has scrolled away, the page background sits behind the status bar glyphs and fades out softly just above the floating controls; no strip behind the controls. */}
       <div
         aria-hidden
         className={cn(
-          "pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto h-[var(--safe-top)] max-w-column bg-linear-to-b from-bg from-70% to-bg/0 transition-opacity duration-200 ease-out",
+          "pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto h-[calc(var(--safe-top)+4px)] max-w-column bg-linear-to-b from-bg from-50% via-bg/75 via-72% to-bg/0 transition-opacity duration-200 ease-out",
           heroGone ? "opacity-100" : "opacity-0",
         )}
       />
@@ -250,7 +259,13 @@ export function MenuScreen(props: MenuScreenProps) {
 
       {/* The page lifts over the photo like a sheet (by HERO_OVERLAP). */}
       <div className="relative -mt-6 flex flex-col gap-section rounded-t-sheet bg-bg px-gutter pt-5">
-        <div className="flex flex-col gap-group">
+        {/* Hidden but still laid out during a search, so the docking and menu alignment measure the same geometry. */}
+        <div
+          className={cn(
+            "flex flex-col gap-group transition-opacity duration-200 ease-out",
+            searching ? "invisible opacity-0" : "opacity-100",
+          )}
+        >
           <RestaurantHeader restaurant={restaurant} />
           <div ref={bubbleRef} className={cn("transition-opacity duration-200 ease-out", docked ? "opacity-0" : "opacity-100")}>
             {infoBubble(false)}

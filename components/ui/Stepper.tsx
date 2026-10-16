@@ -4,7 +4,8 @@ import { Minus, Plus, Trash } from "lucide-react";
 import { AnimatePresence, motion, type Variants } from "motion/react";
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import { cn, positioned } from "./cn";
-import { SPRING_SNAPPY } from "./motion";
+import { announce } from "./announcer";
+import { EASE_OUT, SPRING_SNAPPY } from "./motion";
 
 /*
  * Only one stepper is expanded at a time. The shared slot holds the open stepper's id; adding a first item
@@ -75,8 +76,8 @@ const tick: Variants = {
 
 const pop = {
   initial: { opacity: 0, scale: 0.95 },
-  animate: { opacity: 1, scale: 1 },
-  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.12 } },
+  animate: { opacity: 1, scale: 1, transition: SPRING_SNAPPY },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.12, ease: EASE_OUT } },
 };
 
 export interface StepperProps {
@@ -92,8 +93,9 @@ export interface StepperProps {
   variant?: StepperVariant;
   /**
    * Expanded ("− n +") state, controlled. Lets a screen open the stepper from a row tap. The stepper still
-   * asks to close (onOpenChange(false)) after 3s idle, when another stepper opens, on Escape, and when the
-   * last one is removed. Only takes effect while `qty` is above zero.
+   * asks to close (onOpenChange(false)) after 3s idle (never while keyboard focus is inside), when focus
+   * leaves it, when another stepper opens, on Escape, and when the last one is removed. Only takes effect
+   * while `qty` is above zero.
    */
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -105,9 +107,11 @@ export interface StepperProps {
 
 /**
  * Item quantity control. "+" adds the first one and fills with the count; tapping the count expands
- * into "− n +" (trash at 1). Collapses after 3s idle or when another stepper opens. Grows leftward from its
- * right edge without moving surrounding layout. The pill does not clip, so focus rings and the extended hit
- * areas reach past its edge; only the count clips its rolling digit.
+ * into "− n +" (trash at 1). Collapses after 3s idle (never while keyboard focus is inside), when focus
+ * leaves it, or when another stepper opens. Quantity changes are announced once through the shared
+ * `announce()` live region. Grows leftward from its right edge without moving surrounding layout. The pill
+ * does not clip, so focus rings and the extended hit areas reach past its edge; only the count clips its
+ * rolling digit.
  */
 export function Stepper({
   qty,
@@ -140,6 +144,11 @@ export function Stepper({
   });
   const d = dims[size];
 
+  const keyboardInside = () => {
+    const a = document.activeElement;
+    return !!a && !!wrapperRef.current?.contains(a) && a.matches(":focus-visible");
+  };
+
   const setOpen = (next: boolean) => {
     if (next) setExpanded(id);
     else if (getExpanded() === id) setExpanded(null);
@@ -164,10 +173,11 @@ export function Stepper({
     if (controlled && expanded && holder !== null && holder !== id) onOpenChangeRef.current?.(false);
   }, [controlled, expanded, current, id]);
 
-  // Collapse after a few seconds without interaction.
+  // Collapse after a few seconds without interaction, unless keyboard focus is inside when the timer fires.
   useEffect(() => {
     if (state !== "open") return;
     const timer = window.setTimeout(() => {
+      if (keyboardInside()) return;
       if (getExpanded() === id) setExpanded(null);
       onOpenChangeRef.current?.(false);
     }, IDLE_COLLAPSE_MS);
@@ -197,12 +207,14 @@ export function Stepper({
     setDir(1);
     setActivity((n) => n + 1);
     onAdd();
+    announce(`${qty + 1} ${label} in basket`);
   };
   const remove = () => {
     setDir(-1);
     setActivity((n) => n + 1);
     if (qty <= 1) setOpen(false);
     onRemove();
+    announce(qty <= 1 ? `${label} removed` : `${qty - 1} ${label} in basket`);
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -221,6 +233,9 @@ export function Stepper({
       role="group"
       aria-label={`${label} quantity`}
       onKeyDown={onKeyDown}
+      onBlur={(e) => {
+        if (state === "open" && !wrapperRef.current?.contains(e.relatedTarget as Node | null)) setOpen(false);
+      }}
       className={cn("shrink-0", positioned(className), d.box, className)}
     >
       <motion.div
@@ -267,7 +282,7 @@ export function Stepper({
                   initial={{ opacity: 0, scale: 0.95 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.15 }}
+                  transition={{ duration: 0.15, ease: EASE_OUT }}
                   className="grid place-items-center"
                 >
                   {qty === 1 ? <Trash /> : <Minus />}
@@ -331,9 +346,6 @@ export function Stepper({
           )}
         </AnimatePresence>
       </motion.div>
-      <span className="sr-only" aria-live="polite">
-        {qty > 0 ? `${qty} in basket` : ""}
-      </span>
     </div>
   );
 }

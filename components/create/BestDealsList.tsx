@@ -22,7 +22,7 @@ export interface BestDealsListProps {
 /**
  * W6 "Best deals near you": one row per restaurant (80px photo, name, rating and distance, delivery
  * estimate, offer line), hairlines between rows aligned with the text column. A restaurant with an open
- * party carries its pill at the row's right edge, level with the name.
+ * party carries its pill pinned to the row's right edge, top-aligned with the name.
  */
 export function BestDealsList({ restaurants, count, partyAt, onChoose }: BestDealsListProps) {
   return (
@@ -50,11 +50,11 @@ export function BestDealsList({ restaurants, count, partyAt, onChoose }: BestDea
                   className="size-20 shrink-0 transition-transform duration-100 ease-out group-active:scale-[0.97]"
                 />
                 <div className="flex min-w-0 flex-1 flex-col">
-                  <div className="flex min-w-0 items-center gap-2">
-                    <Marquee as="h3" className="flex-1 text-emphasis font-semibold text-ink">
+                  <div className="flex min-w-0 items-start gap-2">
+                    <Marquee as="h3" className="min-w-0 flex-1 basis-0 text-emphasis font-semibold text-ink">
                       {r.name}
                     </Marquee>
-                    {party && <PartyOpenPill mine={party.mine} className="shrink-0" />}
+                    {party && <PartyOpenPill mine={party.mine} className="mt-px ml-auto shrink-0 self-start" />}
                   </div>
                   <p className="mt-0.5 flex items-center gap-1 text-meta text-ink-2">
                     <Rating value={r.rating} />

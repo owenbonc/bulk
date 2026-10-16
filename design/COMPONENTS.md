@@ -13,16 +13,17 @@ Icons come from `lucide-react`. A `LucideProvider` in the root layout makes ever
 | Kind | Classes |
 | --- | --- |
 | Colour | `bg-bg` `bg-bg-desk` `bg-surface` `bg-surface-hover` `bg-surface-2` `bg-surface-2-hover` `text-ink` `text-ink-2` `text-ink-3` `border-line` `border-line-strong` `bg-track` `bg-accent` `bg-accent-hover` `bg-accent-strong` `bg-accent-soft` `text-accent-ink` `text-on-accent` `bg-offer` `bg-offer-strong` `text-on-offer` `text-offer` `bg-offer-soft` `text-offer-ink` `bg-mine` `text-success` `bg-success-soft` `bg-scrim` `text-on-photo` |
+| Palette | Lime-tinted neutrals derived from the accent: `--bg` #f4f5ee (app background) · `--surface` #ffffff (cards, sheets) · `--surface-2` #eaeddf (tiles, soft discs) · `--surface-hover` #fafbf6 · `--surface-2-hover` #e3e7d6 · `--line` #dfe3d2 · `--line-strong` #cfd4bf · `--track` #d8dccb (Switch off). `--accent` #b7cd32 lime with `--on-accent` ink (9.6:1), `--accent-ink` #4a5706 for lime-family text and icons. `--ink-3` #686b5d clears 4.5:1 on `--bg` (4.97:1) and `--surface-2` (4.59:1). The desk around the phone is deep olive `--bg-desk` #1f2318 with a faint `--bg-desk-glow` radial highlight behind the phone and `--desk-line` hairlines (`shadow-column`). |
 | Your contribution | `--mine` #f2b632: your basket's share of the deal progress (pie slice, bar segment, legend dot). Always drawn with `animate-mine`: opacity 0.55↔0.9, 1.6s ease-in-out, infinite; static 0.8 under reduced motion. Never red. `ProgressPie`/`ProgressBar` `contribution` and `LegendDot` do this for you. |
-| Offer reds | `--offer` #c93a22: deal pills (solid, `--on-offer` white text 5.1:1), sale prices, urgent timers on white/cream. `--offer-ink` #a32a15: offer-coloured **text on tinted surfaces** (6.3:1 on `--accent-soft`, 6:1 on `--offer-soft`, 7.2:1 on `--surface`); `--offer` only reaches 4.46:1 on `--accent-soft`. `--offer-strong`: pressed deal pill. |
-| Type | Compact, Deliveroo-like: `text-caption` 11 · `text-meta` 12 · `text-body` 14 (page default) · `text-emphasis` 15 · `text-section` 18 · `text-title` 24 · `text-hero` 28 (timers, PIN). Each carries its line-height (caption 1.3, meta 1.35, body 1.45, emphasis 1.35, section 1.2, title 1.1, hero 1.05) and tracking (caption +0.01em, section −0.01em, title/hero −0.02em). Typical: restaurant title `text-title`, item and restaurant names `text-body`/`text-emphasis` semibold, meta lines `text-meta`. Emphasise with weight before size. Inputs stay 16px (iOS zoom). `font-display` = Bricolage Grotesque, `font-sans` = Geist (default), `font-mono` = Geist Mono. `h1`–`h4` default to the display face. |
+| Offer reds | `--offer` #c93a22: deal pills (solid, `--on-offer` white text 5.1:1), sale prices, urgent timers on `--surface` or `--bg`. `--offer-ink` #a32a15: offer-coloured **text on tinted surfaces** (6.1:1 on `--surface-2`, 6.3:1 on `--accent-soft`, 6:1 on `--offer-soft`, 7.2:1 on `--surface`); `--offer` only reaches 4.3:1 on `--surface-2` and 4.46:1 on `--accent-soft`. `--offer-strong`: pressed deal pill. |
+| Type | Compact, Deliveroo-like: `text-caption` 11 · `text-meta` 12 · `text-body` 14 (page default) · `text-emphasis` 15 · `text-section` 19 · `text-title` 24 · `text-hero` 28 (timers, PIN). Each carries its line-height (caption 1.3, meta 1.35, body 1.45, emphasis 1.35, section 1.2, title 1.1, hero 1.05) and tracking (caption +0.01em, section −0.01em, title/hero −0.02em). Typical: restaurant title `text-title`, item and restaurant names `text-body`/`text-emphasis` semibold, meta lines `text-meta`. Emphasise with weight before size. Inputs stay 16px (iOS zoom). `font-display` = Bricolage Grotesque, `font-sans` = Figtree (default; its digits are proportional, so every changing number needs `tnum`), `font-mono` = Geist Mono (PIN and timer tiles only). `h1`–`h4` default to the display face. |
 | Spacing | 4px grid. Role tokens: `px-gutter` 16 (screen sides) · `p-card` 12 (card padding, `Card` default) · `gap-group` 12 (groups inside a section) · `gap-section` / `mt-section` 24 (between sections). Round buttons 40px visible, 44px hit area. |
-| Numbers | `tnum` (tabular lining numerals) for prices, timers, PINs, counts. `Price`, `Countdown`, `Pill` already apply it. |
+| Numbers | `tnum` (tabular lining numerals) for prices, timers, PINs, counts. `Price`, `Countdown`, `Pill` and the `Stepper` count already apply it. Figtree's default digits are proportional, so a number that ticks without `tnum` jitters. |
 | Radius | `rounded-chip` 12 · `rounded-card` 18 · `rounded-sheet` 24 · `rounded-popup` 28 · `rounded-full` |
 | Depth | `shadow-float` (bottom bubble, floating buttons) · `shadow-sheet` · `shadow-popup`. Cards on the page get `border border-line`, never a shadow. |
-| Material | `material` = translucent cream + blur for floating chrome: top bars, bottom bar, sticky info bubble (solid under reduced transparency / more contrast). |
+| Material | `material` = translucent `--bg` (78%) + blur for floating chrome: top bars, bottom bar, sticky info bubble (solid under reduced transparency / more contrast). |
 | Glass | `glass` = clear glass for controls: 50% white, `blur(20px) saturate(180%)`, 1px white edge with a brighter top highlight, floating shadow; hover/pressed washes built in; solid white with a `--line` edge under reduced transparency / more contrast. The edge is an inset shadow (no border), so it never changes a control's size, and it composes with `ring-*` (focus rings still show). Used by `IconButton` (default), `Button variant="glass"`, `SearchField tone="glass"` and the empty `Stepper variant="glass"`. Don't add `shadow-*` to it; it carries its own. Not for the menu's "View basket" bubble or the your-party card. |
-| Layout | `max-w-column` (430px phone column) · `desk:` breakpoint (431px+: on wide touch screens the column sits on `--bg-desk` sand with side hairlines) · `frame:` variant (the laptop phone frame is showing: ≥500px wide with a precise pointer) · `pt-safe` (clears the status bar) · `pb-safe` (bars on the bottom edge, ≥12px) · `pb-safe-float` (controls floating just above the home indicator) · `min-h-app` / `h-app` (the app's viewport height: 874px in the frame, `100dvh` on a phone; `min-h-dvh` and `h-dvh` are mapped to it inside the frame) · `no-scrollbar` (carousels) |
+| Layout | `max-w-column` (430px phone column) · `desk:` breakpoint (431px+: on wide touch screens the column sits on the olive `--bg-desk` with `--desk-line` side hairlines) · `frame:` variant (the laptop phone frame is showing: ≥500px wide with a precise pointer) · `pt-safe` (clears the status bar) · `pb-safe` (bars on the bottom edge, ≥12px) · `pb-safe-float` (controls floating just above the home indicator) · `min-h-app` / `h-app` (the app's viewport height: 874px in the frame, `100dvh` on a phone; `min-h-dvh` and `h-dvh` are mapped to it inside the frame) · `no-scrollbar` (carousels) |
 | Safe areas | CSS variables `--safe-top` / `--safe-bottom` (62px / 34px in the frame, `env(safe-area-inset-*)` on a phone) and `--app-height`. TopBar, BottomBar, Sheet, Popup and toasts already use them; use them for anything else pinned to an edge. |
 | Motion | `ease-out` / `ease-in-out` are the strong curves; `ease-drawer`. `animate-ring` = the bell wobble for the "Party filled!" popup (off under reduced motion). `animate-mine` = the your-contribution pulse. JS springs: `SPRING`, `SPRING_SNAPPY`, `SPRING_FILL`, `EXIT` from `@/components/ui`. |
 
@@ -37,7 +38,7 @@ Helpers: `cn(...classes)`, `formatPrice(pence, { trim?, negative? })` → "£7.2
 `DeviceFrame` (`@/components/ui/DeviceFrame`, mounted once in the root layout) is the app shell:
 
 - **Phone** (narrower than 500px, or a touch screen): no frame. The app fills the screen, the document scrolls, fixed layers sit on the viewport, safe areas come from the device.
-- **Laptop** (`frame:`, ≥500px wide with a precise pointer): an **iPhone 16 Pro** (402×874 screen, 55px corners, thin black bezel, titanium rim with side buttons) centred on `--bg-desk` sand and scaled down uniformly to fit the window with 24px margins (recomputed on resize). The screen is the **containing block for every `position: fixed` layer** (TopBar `fixed`, BottomBar, sheets, popups, toasts all stay inside the phone) and the app scrolls inside it, not the window. A fake **iOS status bar** sits on top: live 24h clock (the viewer's time) with the location arrow, the Dynamic Island (125×37, 11px from the top), cellular, Wi-Fi and a 65% battery. A home indicator (134×5, 8px from the bottom) sits over everything. The "d" demo panel renders outside the phone, bottom-right of the window.
+- **Laptop** (`frame:`, ≥500px wide with a precise pointer): an **iPhone 16 Pro** (402×874 screen, 55px corners, thin black bezel, titanium rim with side buttons) centred on the deep olive `--bg-desk` (with a faint radial highlight) and scaled down uniformly to fit the window with 24px margins (recomputed on resize). The screen is the **containing block for every `position: fixed` layer** (TopBar `fixed`, BottomBar, sheets, popups, toasts all stay inside the phone) and the app scrolls inside it, not the window. A fake **iOS status bar** sits on top: live 24h clock (the viewer's time) with the location arrow, the Dynamic Island (125×37, 11px from the top), cellular, Wi-Fi and a 65% battery. A home indicator (134×5, 8px from the bottom) sits over everything. The "d" demo panel renders outside the phone, bottom-right of the window.
 
 Layers above the app inside the phone: sheets `z-50` · toasts `z-[55]` · popups `z-[60]` · status bar and home indicator `z-[65]`.
 
@@ -90,9 +91,9 @@ Pill button. Variants `primary` (lime) · `secondary` (white + hairline) · `gho
 | `block` | `boolean` | full width |
 | `icon` | `ReactNode` | before the label |
 | `trailing` | `ReactNode` | pinned right as plain text, e.g. the price on a lime CTA |
-| `chip` | `ReactNode` | lime price chip pinned right (36px, bold 15px on `--accent`, ink text); the label moves left. Sand while disabled. Made for `glass` |
+| `chip` | `ReactNode` | lime price chip pinned right (36px, bold 15px on `--accent`, ink text); the label moves left. `--surface-2` while disabled. Made for `glass` |
 | `loading` | `boolean` | spinner, keeps width, ignores presses |
-| `disabled` | `boolean` | quiet sand fill |
+| `disabled` | `boolean` | quiet `--surface-2` fill |
 | `href` | `string` | renders a Link |
 
 Glass action: 52px, bold 15px `--ink` label on the left, lime price chip on the right.
@@ -115,10 +116,10 @@ Round icon-only button, **40px visible with a 44px hit area** (an invisible `::b
 | Prop | Type | Notes |
 | --- | --- | --- |
 | `aria-label` | `string` | required |
-| `variant` | `"glass" \| "plain" \| "soft" \| "outline" \| "accent"` | default `glass`; `soft` = sand disc for close buttons inside sheets and popups; `outline` = white + hairline (add-friend); `plain` = no surface; `accent` = solid lime disc |
+| `variant` | `"glass" \| "plain" \| "soft" \| "outline" \| "accent"` | default `glass`; `soft` = `--surface-2` disc for close buttons inside sheets and popups; `outline` = white + hairline (add-friend); `plain` = no surface; `accent` = solid lime disc |
 | `iconColor` | `"ink" \| "accent"` | overrides the variant's icon colour; `accent` = `--accent-ink`, so the glass create button still reads as primary |
 | `size` | `"sm" \| "md" \| "lg"` | 32 · 40 (default) · 44; every size has a 44px hit area |
-| `badge` | `boolean` | accent dot (unread notifications) |
+| `badge` | `boolean` | lime dot with an `--accent-ink` edge (unread notifications) |
 | `href` | `string` | renders a Link |
 
 ```tsx
@@ -189,13 +190,15 @@ When the total passes `max`, the party's share keeps its true size and your cont
 
 `LegendDot` (8px) labels the segments: `tone` `mine` (pulsing yellow, default) · `accent` · `track`.
 
+Every `--mine` pulse (pie slice, bar segment, legend dot) is phase-locked to the document timeline, so all of them breathe together whenever they mount.
+
 ```tsx
 <span className="flex items-center gap-1.5 text-meta text-ink-2"><LegendDot />Your basket £9.00</span>
 ```
 
 ## Marquee
 
-Single-line text that never truncates with "…". If it fits it is static. If it overflows it rests 1.5s, scrolls at 30px/s (linear) to reveal the end, rests, scrolls back, and repeats, with soft edge fades only on the side that is cut off (only while overflowing). Under reduced motion it wraps onto more lines instead. The text is in the DOM once. Use it for any single line that matters: location and collection-point names, restaurant and item names on cards, titles. `TopBar` titles, `Button` labels and `LocationButton` already use it.
+Single-line text that never truncates with "…". If it fits it is static. If it overflows it rests 1.5s, scrolls at 30px/s (linear) to reveal the end, rests, scrolls back, and repeats, with soft edge fades only on the side that is cut off (only while overflowing). It pauses while off screen and while its card, row or button is hovered or focused, and resumes afterwards. Under reduced motion it wraps onto more lines instead. The text is in the DOM once. Use it for any single line that matters: location and collection-point names, restaurant and item names on cards, titles. `TopBar` titles, `Button` labels and `LocationButton` already use it.
 
 ```tsx
 <Marquee as="h3" className="text-emphasis font-semibold text-ink">{restaurant.name}</Marquee>
@@ -215,7 +218,7 @@ const { now } = useApp();
 <Countdown until={deadline} now={now} urgentTone="offer-ink" />  // on --accent-soft or another tint
 ```
 
-Props: `until`, `now`, `suffix?`, `urgentBelowMs?` (default 60000, 0 = never), `urgentTone?` (`offer` default, on white/cream · `offer-ink` on tinted surfaces), `mono?`, `className?`.
+Props: `until`, `now`, `suffix?`, `urgentBelowMs?` (default 60000, 0 = never), `urgentTone?` (`offer` default, on `--surface` or `--bg` · `offer-ink` on tinted surfaces), `mono?`, `className?`.
 
 ## Price
 
@@ -294,7 +297,7 @@ Bottom sheet (vaul): handle, scrim, title (18px), optional description and pinne
 
 ## Popup
 
-Centred dialog over a blurred, dimmed backdrop, inside the phone. Close X top-left, large icon on a 120px tinted disc (icon sized to 76px for you), title (24px), description, action. Focus trapped (lands on the action), Escape closes, card springs in from 0.95. Use for W11, W12 and W13.
+Centred dialog over a blurred, dimmed backdrop, inside the phone. Close X top-left, large icon on a 120px tinted disc (icon sized to 76px for you), title (24px), description, action. Focus moves to the first action on open (the close X when there is none), is trapped while open, and returns to the element that opened it on close. Escape closes, card springs in from 0.95. Use for W11, W12 and W13.
 
 | Prop | Type | Notes |
 | --- | --- | --- |
@@ -304,7 +307,7 @@ Centred dialog over a blurred, dimmed backdrop, inside the phone. Close X top-le
 | `title` | `string` | |
 | `description` | `ReactNode` | |
 | `children` | `ReactNode` | extra body |
-| `action` | `ReactNode` | buttons |
+| `action` | `ReactNode` | buttons; the first enabled button or link receives focus on open |
 | `dismissible` | `boolean` | default true |
 
 ```tsx
@@ -322,7 +325,7 @@ Centred dialog over a blurred, dimmed backdrop, inside the phone. Close X top-le
 
 ## Stepper
 
-Item quantity control (W3). `+` adds the first one and fills lime with the count; tapping the count expands to `− n +` (trash at 1). Collapses after 3s idle, when another Stepper opens or a first item is added elsewhere, on Escape, and when the last one is removed. Grows leftward from its right edge without pushing layout, so give it a right-aligned spot. Buttons enter and leave from scale 0.95 + opacity.
+Item quantity control (W3). `+` adds the first one and fills lime with the count; tapping the count expands to `− n +` (trash at 1). Collapses after 3s idle (never while keyboard focus is inside), when focus leaves it, when another Stepper opens or a first item is added elsewhere, on Escape, and when the last one is removed. Quantity changes are announced once through the shared `announce()` live region mounted in `DeviceFrame` (`Announcer` and `announce` are exported from `@/components/ui`), so a dish shown in two places announces once. Grows leftward from its right edge without pushing layout, so give it a right-aligned spot. Buttons enter and leave from scale 0.95 + opacity.
 
 Open state can be **controlled** so a row tap opens it: pass `open` + `onOpenChange` (the stepper still asks to close through `onOpenChange(false)` in every case above). `defaultOpen` opens an uncontrolled stepper on mount. Open only applies while `qty > 0`.
 
@@ -384,7 +387,7 @@ Sticky translucent bar: a 48px row of left / centre / right slots below the stat
 
 ## BottomBar
 
-Fixed to the bottom of the phone, safe-area aware (`--safe-bottom`). Reserves its own height in the flow so content always scrolls clear of it. `show` slides it up 12px and fades it in. Two modes:
+Fixed to the bottom of the phone, safe-area aware (`--safe-bottom`). Reserves its own height in the flow so content always scrolls clear of it. It renders in place on mount (no entrance on navigation or status view changes); turning `show` from false to true slides it up 12px and fades it in, and turning it false slides it back down. Two modes:
 
 - **Material bar** (default): translucent strip with a top hairline, content padded clear of the home indicator.
 - **Floating** (`material={false}`): no strip, border or blur band. Each child floats on its own just above the home indicator (clear-glass buttons, the Home search field, the basket bubble, a glass action button), and taps between them reach the page. Home's account / search / create row and every big glass action use this.
@@ -481,9 +484,9 @@ toast.success("Link copied");
 ## Brand, shared and demo
 
 - `@/components/brand/Logo`: `<Logo size={28} variant="full" | "mark" />` (mark height in px; the BULK wordmark scales with it). `<LogoMark size />` is the bare SVG. `app/icon.svg` is the favicon.
-- `@/components/shared/LocationSheet`: `<LocationButton variant="stacked" | "inline" />` (pin + "Current location" + place name (Marquee) + chevron; opens the sheet). `<LocationSheet open onOpenChange />` lists the collection points, current first, and dispatches `SET_LOCATION`.
+- `@/components/shared/LocationSheet`: `<LocationButton variant="stacked" | "inline" />` (pin + "Current location" + place name (Marquee) + chevron; opens the sheet). `<LocationSheet open onOpenChange />` lists the collection points, current first, as a radio group: arrow keys and Home/End move the selection (roving tabindex) and dispatch `SET_LOCATION`; tapping, Enter or Space picks a point and closes the sheet.
 - `@/components/demo`: `<DemoControlsPanel />` (pause bots, a bot won't accept, a **Party** picker, fill this party now, expire this party in 5s, reset demo). The picker lists every party that hasn't ended ("Slice House · filling · you're in") and defaults to the party in the current `/party/[id]` URL, else the most urgent party you're in (an open one closing soonest, then deal reached, on its way, preparing, placed), else the first open party; a pick holds until you open another page. Fill and expire act on the picked party while it is open, so both work from Home's account sheet. Embed it in the account sheet under a "Demo controls" heading. `<DemoHotkey />` is mounted in the layout: press `d` anywhere outside a text field. Its panel is portalled to `<body>`, so on the laptop it sits **outside the phone**, bottom-right of the window (on a phone it floats above the bottom controls); `pointer-events: auto`, `z-[70]`, and stays usable over an open Sheet or Popup: pressing inside it doesn't dismiss them, and their focus trap doesn't pull focus out of it (so the picker opens).
-- `AppProvider` (`@/lib/store`) renders a cream splash filling the screen (`min-h-app`) with the logo centred until the browser has mounted, then the app.
+- `AppProvider` (`@/lib/store`) renders a `--bg` splash filling the screen (`min-h-app`) with the logo centred until the browser has mounted, then the app.
 - `components/PartyAlerts.tsx`: mounted once in the root layout as the **default export**; currently a stub returning null.
 
 ## Layering

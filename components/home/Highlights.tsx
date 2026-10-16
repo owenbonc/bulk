@@ -3,8 +3,9 @@
 import { Check } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import Link from "next/link";
-import { useRef } from "react";
+import { useId, useRef } from "react";
 import { DealPill, ImageFrame, Marquee, Pill, ProgressPie, Rating, SectionHeader, formatPrice } from "@/components/ui";
+import { useApp } from "@/lib/store";
 import { Eta } from "./parts";
 import { partyHref } from "./PartyListCard";
 import type { HomeParty } from "./useHomeParties";
@@ -53,12 +54,18 @@ export function Highlights({ parties }: { parties: HomeParty[] }) {
 }
 
 function HighlightCard({ party, priority }: { party: HomeParty; priority: boolean }) {
+  const { now } = useApp();
+  const nameId = useId();
+  const descId = useId();
   const { request, restaurant, progress, me } = party;
   const left = formatPrice(progress.left, { trim: true });
+  const closesIn = Math.max(1, Math.ceil((request.expiresAt - now) / 60_000));
 
   return (
     <Link
       href={partyHref(party)}
+      aria-labelledby={nameId}
+      aria-describedby={descId}
       className="block rounded-card border border-line bg-surface transition-transform duration-100 ease-out active:scale-[0.97]"
     >
       <div className="relative">
@@ -85,7 +92,7 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
       <div className="flex items-end justify-between gap-3 px-3.5 pt-3 pb-3.5">
         <div className="min-w-0 flex-1">
           <Marquee as="h3" className="text-emphasis font-semibold tracking-[-0.01em] text-ink">
-            {restaurant.name}
+            <span id={nameId}>{restaurant.name}</span>
           </Marquee>
           <p className="mt-0.5 flex">
             <Rating value={restaurant.rating} count={restaurant.ratingCount} />
@@ -107,8 +114,8 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
           />
         </div>
       </div>
-      <span className="sr-only">
-        {request.participants.length} in party{me ? ", you're in" : ""}
+      <span id={descId} className="sr-only">
+        {`${restaurant.deal.short}, ${left} left, ${request.participants.length} in party${me ? ", you're in" : ""}, closes in ${closesIn} min`}
       </span>
     </Link>
   );

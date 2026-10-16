@@ -68,7 +68,8 @@ export function HelpSheet({ open, onOpenChange, request, restaurant, pickup }: H
           <Detail icon={<BadgePercent />} term="Deal">
             <span className="font-semibold text-ink">{restaurant.deal.short}</span>
             <span className="block text-meta text-ink-2">
-              On everyone&apos;s food once the party spends {threshold}. Delivery is shared equally.
+              On everyone&apos;s food once the party spends <span className="tnum">{threshold}</span>. Delivery (
+              <span className="tnum">{formatPrice(restaurant.deliveryFee)}</span>) is split between everyone.
             </span>
           </Detail>
           <Detail icon={<MapPin />} term="Collection point">

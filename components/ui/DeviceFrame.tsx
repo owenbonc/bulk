@@ -2,6 +2,7 @@
 
 import { Suspense, useLayoutEffect, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
+import { Announcer } from "./announcer";
 import { cn } from "./cn";
 import {
   PortalContainerProvider,
@@ -14,9 +15,10 @@ import {
 /**
  * The app shell. On a phone it is the page (full screen; a centred column on wide touch screens). On the
  * laptop it draws an iPhone 16 Pro: a 402×874 screen with 55px corners, a thin black bezel and titanium rim,
- * centred on sand and scaled down to fit the window. The screen is the containing block for every fixed
+ * centred on a deep olive desk and scaled down to fit the window. The screen is the containing block for every fixed
  * layer and holds the portal layer for sheets, popups and toasts, so nothing escapes the phone; a fake iOS
- * status bar and home indicator sit on top. Mounted once in the root layout.
+ * status bar and home indicator sit on top, and the shared live region (Announcer) sits beside them. Mounted
+ * once in the root layout.
  */
 export function DeviceFrame({ children }: { children: ReactNode }) {
   const { framed, scale } = useFrame();
@@ -40,6 +42,7 @@ export function DeviceFrame({ children }: { children: ReactNode }) {
           {/* Sheets and popups portal here: inside the phone, above the app, under the status bar. */}
           <div ref={setPortal} data-portal-root="" />
           <StatusBar />
+          <Announcer />
           <HomeIndicator />
         </div>
       </div>
@@ -95,7 +98,8 @@ function useClock(): string {
 /**
  * Fake iOS status bar (frame mode only): 62px tall; the clock and location arrow centred in the left ear,
  * the Dynamic Island (125×37, 11px from the top), and cellular, Wi-Fi and a 65% battery centred in the right
- * ear, all on the island's centre line. Glyphs are ink over cream and white over photos (useStatusBarTone).
+ * ear, all on the island's centre line. Glyphs are ink over the app background and white over photos
+ * (useStatusBarTone).
  */
 function StatusBar() {
   const tone = useStatusBarToneValue();

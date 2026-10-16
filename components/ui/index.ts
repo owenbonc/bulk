@@ -24,6 +24,7 @@ export { Avatar, type AvatarProps } from "./Avatar";
 export { Card, SummaryRow, type CardProps, type SummaryRowProps } from "./Card";
 export { SearchField, type SearchFieldProps } from "./SearchField";
 export { toast } from "./toast";
+export { Announcer, announce } from "./announcer";
 export { PASS_THROUGH_ATTR, isPassThrough } from "./layers";
 export {
   FRAME,

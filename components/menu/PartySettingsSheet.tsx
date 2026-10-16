@@ -15,11 +15,35 @@ export interface PartySettingsSheetProps {
   onApply: (settings: { durationMin: number; pickupPointId: string }) => void;
 }
 
+const DURATIONS: readonly number[] = PARTY_DURATIONS;
+
+/** The option a radio-group key moves to, wrapping at both ends; null for keys the group ignores. */
+function radioKeyIndex(key: string, index: number, count: number): number | null {
+  switch (key) {
+    case "ArrowLeft":
+    case "ArrowUp":
+      return (index - 1 + count) % count;
+    case "ArrowRight":
+    case "ArrowDown":
+      return (index + 1) % count;
+    case "Home":
+      return 0;
+    case "End":
+      return count - 1;
+    default:
+      return null;
+  }
+}
+
 /** W7: how long the party stays open and where the order is delivered. Nothing changes until Apply. */
 export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPointId, focus, onApply }: PartySettingsSheetProps) {
   const [duration, setDuration] = useState(durationMin);
   const [pickup, setPickup] = useState(pickupPointId);
   const pickupRef = useRef<HTMLDivElement>(null);
+  const durationRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const pickupRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const durationIndex = Math.max(0, DURATIONS.indexOf(duration));
+  const pickupIndex = Math.max(0, CATALOG.pickupPoints.findIndex((p) => p.id === pickup));
 
   // Start from the saved settings every time the sheet opens.
   const [wasOpen, setWasOpen] = useState(open);
@@ -61,15 +85,31 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
           <h3 id="party-lasts" className="font-sans text-body font-semibold text-ink">
             Party lasts
           </h3>
-          <div role="radiogroup" aria-labelledby="party-lasts" className="grid grid-cols-4 gap-2">
-            {PARTY_DURATIONS.map((min) => {
+          {/* Arrow keys move the selection; only the checked option is a tab stop. */}
+          <div
+            role="radiogroup"
+            aria-labelledby="party-lasts"
+            className="grid grid-cols-4 gap-2"
+            onKeyDown={(e) => {
+              const next = radioKeyIndex(e.key, durationIndex, DURATIONS.length);
+              if (next === null) return;
+              e.preventDefault();
+              setDuration(DURATIONS[next]);
+              durationRefs.current[next]?.focus();
+            }}
+          >
+            {DURATIONS.map((min, i) => {
               const selected = min === duration;
               return (
                 <button
                   key={min}
+                  ref={(el) => {
+                    durationRefs.current[i] = el;
+                  }}
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={i === durationIndex ? 0 : -1}
                   aria-label={`${min} minutes`}
                   onClick={() => setDuration(min)}
                   className={cn(
@@ -92,15 +132,30 @@ export function PartySettingsSheet({ open, onOpenChange, durationMin, pickupPoin
           <h3 id="collect-from" className="font-sans text-body font-semibold text-ink">
             Collection point
           </h3>
-          <div role="radiogroup" aria-labelledby="collect-from" className="flex flex-col gap-2">
-            {CATALOG.pickupPoints.map((point) => {
+          <div
+            role="radiogroup"
+            aria-labelledby="collect-from"
+            className="flex flex-col gap-2"
+            onKeyDown={(e) => {
+              const next = radioKeyIndex(e.key, pickupIndex, CATALOG.pickupPoints.length);
+              if (next === null) return;
+              e.preventDefault();
+              setPickup(CATALOG.pickupPoints[next].id);
+              pickupRefs.current[next]?.focus();
+            }}
+          >
+            {CATALOG.pickupPoints.map((point, i) => {
               const selected = point.id === pickup;
               return (
                 <button
                   key={point.id}
+                  ref={(el) => {
+                    pickupRefs.current[i] = el;
+                  }}
                   type="button"
                   role="radio"
                   aria-checked={selected}
+                  tabIndex={i === pickupIndex ? 0 : -1}
                   onClick={() => setPickup(point.id)}
                   className={cn(
                     "flex items-start gap-3 rounded-card px-3 py-3 text-left transition-[scale,background-color,box-shadow] duration-150 ease-out active:scale-[0.98]",

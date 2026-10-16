@@ -21,8 +21,9 @@ export interface MarqueeProps {
 /**
  * Single-line text that never truncates with "…". Text that fits renders static. Text that overflows rests
  * 1.5s, scrolls slowly (30px/s) to reveal its end, rests, scrolls back and repeats, with soft edge fades on
- * whichever side is cut off. Under reduced motion it wraps onto more lines instead. The text is in the DOM
- * once, so screen readers read it normally.
+ * whichever side is cut off. It pauses while off screen and while its card, row or button is hovered or
+ * focused, and resumes afterwards. Under reduced motion it wraps onto more lines instead. The text is in the
+ * DOM once, so screen readers read it normally.
  */
 export function Marquee({ children, as: Tag = "span", speed = 30, pause = 1500, fade = 12, className }: MarqueeProps) {
   const outerRef = useRef<HTMLElement | null>(null);
@@ -54,52 +55,78 @@ export function Marquee({ children, as: Tag = "span", speed = 30, pause = 1500, 
     if (!moving || !outer || !inner) return;
 
     const travel = (overflow / speed) * 1000;
-    const total = 2 * pause + 2 * travel;
-    // Phase boundaries as offsets: rest at the start, scroll out, rest at the end, scroll back.
-    const outStart = pause / total;
-    const outEnd = (pause + travel) / total;
-    const backStart = (2 * pause + travel) / total;
-    // The fades swap sides over the first and last fifth of each scroll.
-    const ramp = (0.2 * travel) / total;
-    const timing: KeyframeAnimationOptions = { duration: total, iterations: Infinity };
+    const rest = "translateX(0)";
     const shifted = `translateX(${-overflow}px)`;
+    // Rest, scroll out, rest, scroll back. data-edge puts the fade on whichever side is cut off.
+    const phases: { from: string; to: string; duration: number; edge: "end" | "both" | "start" }[] = [
+      { from: rest, to: rest, duration: pause, edge: "end" },
+      { from: rest, to: shifted, duration: travel, edge: "both" },
+      { from: shifted, to: shifted, duration: pause, edge: "start" },
+      { from: shifted, to: rest, duration: travel, edge: "both" },
+    ];
 
-    const scroll = inner.animate(
-      [
-        { transform: "translateX(0)", offset: 0 },
-        { transform: "translateX(0)", offset: outStart, easing: "linear" },
-        { transform: shifted, offset: outEnd },
-        { transform: shifted, offset: backStart, easing: "linear" },
-        { transform: "translateX(0)", offset: 1 },
-      ],
-      timing,
-    );
+    let cancelled = false;
+    let current: Animation | null = null;
+    const paused = new Set<"offscreen" | "hover" | "focus">();
+    const sync = () => {
+      if (!current) return;
+      if (paused.size > 0) current.pause();
+      else current.play();
+    };
 
-    const at = (start: number, end: number, offset: number): Keyframe => ({
-      "--marquee-fade-start": `${start}px`,
-      "--marquee-fade-end": `${end}px`,
-      offset,
+    const run = (index: number) => {
+      if (cancelled) return;
+      const phase = phases[index];
+      outer.dataset.edge = phase.edge;
+      const previous = current;
+      current = inner.animate([{ transform: phase.from }, { transform: phase.to }], {
+        duration: phase.duration,
+        fill: "forwards",
+        easing: "linear",
+      });
+      previous?.cancel();
+      sync();
+      current.onfinish = () => run((index + 1) % phases.length);
+    };
+
+    const toggle = (reason: "offscreen" | "hover" | "focus", on: boolean) => {
+      if (on) paused.add(reason);
+      else paused.delete(reason);
+      sync();
+    };
+
+    // The default root clips by the phone's scroll containers, so a Marquee scrolled out of view pauses.
+    const observer = new IntersectionObserver(([entry]) => toggle("offscreen", !entry.isIntersecting), {
+      threshold: 0,
     });
-    const edges = outer.animate(
-      [
-        at(0, fade, 0),
-        at(0, fade, outStart),
-        at(fade, fade, outStart + ramp),
-        at(fade, fade, outEnd - ramp),
-        at(fade, 0, outEnd),
-        at(fade, 0, backStart),
-        at(fade, fade, backStart + ramp),
-        at(fade, fade, 1 - ramp),
-        at(0, fade, 1),
-      ],
-      timing,
-    );
+    observer.observe(outer);
+
+    const host = outer.closest<HTMLElement>("a,button,li,[role=button]") ?? outer;
+    const onPointerEnter = () => toggle("hover", true);
+    const onPointerLeave = () => toggle("hover", false);
+    const onFocusIn = () => toggle("focus", true);
+    const onFocusOut = (e: FocusEvent) => {
+      if (!host.contains(e.relatedTarget as Node | null)) toggle("focus", false);
+    };
+    host.addEventListener("pointerenter", onPointerEnter);
+    host.addEventListener("pointerleave", onPointerLeave);
+    host.addEventListener("focusin", onFocusIn);
+    host.addEventListener("focusout", onFocusOut);
+
+    run(0);
 
     return () => {
-      scroll.cancel();
-      edges.cancel();
+      cancelled = true;
+      current?.cancel();
+      current = null;
+      delete outer.dataset.edge;
+      observer.disconnect();
+      host.removeEventListener("pointerenter", onPointerEnter);
+      host.removeEventListener("pointerleave", onPointerLeave);
+      host.removeEventListener("focusin", onFocusIn);
+      host.removeEventListener("focusout", onFocusOut);
     };
-  }, [moving, overflow, speed, pause, fade]);
+  }, [moving, overflow, speed, pause]);
 
   return (
     <Tag
@@ -110,7 +137,7 @@ export function Marquee({ children, as: Tag = "span", speed = 30, pause = 1500, 
         moving && "marquee-mask",
         className,
       )}
-      style={moving ? ({ "--marquee-fade-end": `${fade}px` } as CSSProperties) : undefined}
+      style={moving ? ({ "--marquee-fade": `${fade}px` } as CSSProperties) : undefined}
     >
       <span ref={innerRef} className={reduce ? undefined : "inline-block"}>
         {children}

@@ -57,8 +57,8 @@ export function AcceptView({ request, restaurant, pickup, onPay }: ViewProps & {
             </p>
             <div aria-hidden className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-accent-ink/15">
               <div
-                className="h-full origin-left rounded-full bg-accent-ink transition-transform duration-1000 ease-linear motion-reduce:transition-none"
-                style={{ transform: `scaleX(${remaining / ACCEPT_WINDOW_MS})` }}
+                className="h-full rounded-full bg-accent-ink transition-transform duration-1000 ease-linear motion-reduce:transition-none"
+                style={{ transform: `translateX(${(remaining / ACCEPT_WINDOW_MS) * 100 - 100}%)` }}
               />
             </div>
             <p className="tnum mt-2 text-meta text-ink-2">

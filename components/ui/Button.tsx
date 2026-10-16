@@ -67,7 +67,7 @@ interface OwnProps extends ButtonStyleOptions {
   trailing?: ReactNode;
   /**
    * Lime chip pinned to the trailing edge, e.g. `chip="£7.29"` on a glass action button (36px, bold 15px).
-   * The label moves to the leading edge. Quiet sand while disabled.
+   * The label moves to the leading edge. Quiet --surface-2 while disabled.
    */
   chip?: ReactNode;
 }

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Geist, Geist_Mono } from "next/font/google";
+import { Bricolage_Grotesque, Figtree, Geist_Mono } from "next/font/google";
 import { CircleAlert, CircleCheck, Info, LoaderCircle, LucideProvider, TriangleAlert } from "lucide-react";
 import { MotionConfig } from "motion/react";
 import { Toaster } from "sonner";
@@ -9,8 +9,8 @@ import { DeviceFrame } from "@/components/ui/DeviceFrame";
 import { AppProvider } from "@/lib/store";
 import "./globals.css";
 
-const geist = Geist({
-  variable: "--font-geist-sans",
+const figtree = Figtree({
+  variable: "--font-figtree",
   subsets: ["latin"],
 });
 
@@ -39,13 +39,13 @@ export const viewport: Viewport = {
   viewportFit: "cover",
   interactiveWidget: "resizes-content",
   // Must be a literal colour: --bg.
-  themeColor: "#f7f5ec",
+  themeColor: "#f4f5ee",
   colorScheme: "light",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en-GB" className={`${geist.variable} ${geistMono.variable} ${bricolage.variable}`}>
+    <html lang="en-GB" className={`${figtree.variable} ${geistMono.variable} ${bricolage.variable}`}>
       <body>
         <LucideProvider size={20} strokeWidth={1.75}>
           <MotionConfig reducedMotion="user">

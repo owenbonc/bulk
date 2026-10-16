@@ -2,6 +2,7 @@
 
 import { motion, useReducedMotion } from "motion/react";
 import { cn } from "./cn";
+import { lockMinePhase } from "./minePhase";
 import { SPRING_FILL } from "./motion";
 
 export interface ProgressPieProps {
@@ -58,7 +59,7 @@ export function ProgressPie({ value, max = 100, contribution = 0, size = 28, lab
         animate={{ pathLength: others, opacity: others > 0 ? 1 : 0 }}
         transition={transition}
       />
-      <g className="animate-mine">
+      <g ref={lockMinePhase} className="animate-mine">
         <motion.circle
           cx={C}
           cy={C}
@@ -86,6 +87,7 @@ export interface LegendDotProps {
 export function LegendDot({ tone = "mine", className }: LegendDotProps) {
   return (
     <span
+      ref={tone === "mine" ? lockMinePhase : undefined}
       aria-hidden
       className={cn(
         "inline-block size-2 shrink-0 rounded-full",

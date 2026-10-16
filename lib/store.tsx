@@ -56,7 +56,7 @@ const noopSubscribe = () => () => {};
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // The app lives in localStorage and a live clock, so it only renders in the browser. Until then (the
-  // server render and first paint) a cream splash with the logo fills the screen (the phone, in the frame).
+  // server render and first paint) a --bg splash with the logo fills the screen (the phone, in the frame).
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   return mounted ? <ClientProvider>{children}</ClientProvider> : <Splash />;
 }

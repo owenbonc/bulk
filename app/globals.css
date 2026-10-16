@@ -24,23 +24,28 @@
 /* ------------------------------------------------------------------ */
 
 :root {
-  --bg: #f7f5ec;
-  /* Page background around the phone (frame) or the phone column (wide touch screens). */
-  --bg-desk: #ece9dc;
+  /* Lime-tinted off-white, derived from --accent. */
+  --bg: #f4f5ee;
+  /* Deep olive desk around the phone (frame) or the phone column (wide touch screens). */
+  --bg-desk: #1f2318;
+  /* Soft highlight behind the phone on the desk. */
+  --bg-desk-glow: #2c3222;
+  /* Hairlines on the desk (the phone column's sides). */
+  --desk-line: rgb(255 255 255 / 0.08);
   --surface: #ffffff;
   /* Hover wash on white surfaces. */
-  --surface-hover: #fcfbf7;
-  --surface-2: #efece0;
+  --surface-hover: #fafbf6;
+  --surface-2: #eaeddf;
   /* Hover wash on --surface-2. */
-  --surface-2-hover: #e9e6d9;
+  --surface-2-hover: #e3e7d6;
   --ink: #1b1d14;
   --ink-2: #5c5f52;
   /* Tertiary text; clears 4.5:1 on --bg and --surface-2. */
   --ink-3: #686b5d;
-  --line: #e4e1d3;
-  --line-strong: #d6d2c1;
+  --line: #dfe3d2;
+  --line-strong: #cfd4bf;
   /* Off track of the Switch. */
-  --track: #dedac9;
+  --track: #d8dccb;
 
   --accent: #b7cd32;
   /* Hover on accent fills. */
@@ -50,13 +55,13 @@
   --accent-ink: #4a5706;
   --on-accent: #1b1d14;
 
-  /* Tomato: deal pills (solid, white text 5.1:1), sale prices, urgent timers on white or cream. */
+  /* Tomato: deal pills (solid, white text 5.1:1), sale prices, urgent timers on --surface or --bg. */
   --offer: #c93a22;
   /* Pressed state of --offer fills. */
   --offer-strong: #b0321c;
   --on-offer: #ffffff;
   --offer-soft: #fbe4dd;
-  /* Offer-coloured text on tinted surfaces (--accent-soft 6.3:1, --offer-soft 6:1, --surface 7.2:1). */
+  /* Offer-coloured text on tinted surfaces (--surface-2, --accent-soft 6.3:1, --offer-soft 6:1, --surface 7.2:1). */
   --offer-ink: #a32a15;
   /* Offer-coloured icons on the ink toast. */
   --offer-on-ink: #ff8a73;
@@ -73,9 +78,9 @@
   --on-photo: #ffffff;
 
   /* Translucent chrome material. */
-  --material: rgb(247 245 236 / 0.78);
-  --material-fallback: rgb(247 245 236 / 0.96);
-  --material-solid: #f7f5ec;
+  --material: color-mix(in srgb, var(--bg) 78%, transparent);
+  --material-fallback: color-mix(in srgb, var(--bg) 96%, transparent);
+  --material-solid: var(--bg);
 
   /* Clear glass for round icon buttons, the Home search bar and big action buttons. */
   --glass: rgb(255 255 255 / 0.5);
@@ -153,8 +158,9 @@
   --color-on-photo: var(--on-photo);
   --color-island: var(--island);
 
-  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-display: var(--font-bricolage), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-bricolage), var(--font-figtree), ui-sans-serif, system-ui, sans-serif;
+  /* PIN and timer tiles only; other numbers use the body face with `tnum`. */
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
   /* The iOS system face, for the fake status bar only (SF Pro on a Mac). */
   --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -163,11 +169,11 @@
 }
 
 @theme {
-  /* Wider than the phone column: the page turns sand and the column gets side hairlines. */
+  /* Wider than the phone column: the page turns olive and the column gets side hairlines. */
   --breakpoint-desk: 26.9375rem;
 
   /*
-   * Compact, Deliveroo-like type scale: 11 caption, 12 meta, 14 body, 15 emphasis, 18 section, 24 title,
+   * Compact, Deliveroo-like type scale: 11 caption, 12 meta, 14 body, 15 emphasis, 19 section, 24 title,
    * 28 hero numbers. Display sizes carry their tracking; emphasise with weight before size.
    */
   --text-caption: 0.6875rem;
@@ -179,7 +185,7 @@
   --text-body--line-height: 1.45;
   --text-emphasis: 0.9375rem;
   --text-emphasis--line-height: 1.35;
-  --text-section: 1.125rem;
+  --text-section: 1.1875rem;
   --text-section--line-height: 1.2;
   --text-section--letter-spacing: -0.01em;
   --text-title: 1.5rem;
@@ -205,10 +211,10 @@
   --shadow-sheet: 0 -12px 40px -16px rgb(27 29 20 / 0.24), 0 -1px 3px -1px rgb(27 29 20 / 0.06);
   --shadow-popup: 0 28px 64px -20px rgb(27 29 20 / 0.36), 0 6px 16px -6px rgb(27 29 20 / 0.12);
   --shadow-thumb: 0 2px 5px -1px rgb(27 29 20 / 0.22), 0 0 0 0.5px rgb(27 29 20 / 0.08);
-  /* 1px --line hairline on each side of the phone column. */
-  --shadow-column: -1px 0 0 var(--line), 1px 0 0 var(--line);
-  /* The phone resting on the desk. */
-  --shadow-device: 0 40px 80px -24px rgb(27 29 20 / 0.35), 0 16px 32px -16px rgb(27 29 20 / 0.25);
+  /* 1px --desk-line hairline on each side of the phone column. */
+  --shadow-column: -1px 0 0 var(--desk-line), 1px 0 0 var(--desk-line);
+  /* The phone resting on the olive desk. */
+  --shadow-device: 0 40px 80px -24px rgb(0 0 0 / 0.55), 0 16px 32px -16px rgb(0 0 0 / 0.4);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -252,7 +258,7 @@
   }
 }
 
-/* Marquee edge fades, animated in step with the scroll (registered so they interpolate). */
+/* Marquee edge fades: widths come from data-edge (set per scroll phase); registered so they transition. */
 @property --marquee-fade-start {
   syntax: "<length>";
   inherits: false;
@@ -281,7 +287,7 @@
     scrollbar-color: rgb(27 29 20 / 0.22) transparent;
   }
 
-  /* Around the phone column (wide touch screens) and around the phone frame, the desk is sand. */
+  /* Around the phone column (wide touch screens) and around the phone frame, the desk is deep olive. */
   @variant desk {
     html {
       background: var(--bg-desk);
@@ -290,7 +296,7 @@
 
   @variant frame {
     html {
-      background: var(--bg-desk);
+      background: radial-gradient(ellipse 60% 70% at 50% 45%, var(--bg-desk-glow), transparent 70%) var(--bg-desk);
     }
   }
 
@@ -396,7 +402,7 @@
 
 /*
  * On a phone the app is the page: the document scrolls and fixed layers sit on the viewport. Wider touch
- * screens centre a phone-width column on sand. In frame mode the stage fills the window, the phone is
+ * screens centre a phone-width column on the olive desk. In frame mode the stage fills the window, the phone is
  * scaled to fit, `.device-screen` is the containing block for every fixed layer (so bars, sheets, popups
  * and toasts stay inside the phone) and `.device-scroll` is the app's scroll container.
  */
@@ -420,7 +426,7 @@
     position: fixed;
     inset: 0;
     overflow: hidden;
-    background: var(--bg-desk);
+    background: radial-gradient(ellipse 60% 70% at 50% 45%, var(--bg-desk-glow), transparent 70%) var(--bg-desk);
   }
 
   /* Centred by its own box, so it stays centred while its unscaled layout box is taller than the window. */
@@ -631,8 +637,17 @@
   height: var(--app-height);
 }
 
-/* Soft edge fades on an overflowing Marquee; the fade widths animate with the scroll. */
+/*
+ * Soft edge fades on an overflowing Marquee. The fade widths come from data-edge, which the Marquee sets per
+ * scroll phase ("end" resting at the start, "both" while scrolling, "start" resting at the end), and
+ * transition briefly when it changes.
+ */
 @utility marquee-mask {
+  --marquee-fade-start: var(--marquee-fade);
+  --marquee-fade-end: var(--marquee-fade);
+  transition:
+    --marquee-fade-start 200ms linear,
+    --marquee-fade-end 200ms linear;
   -webkit-mask-image: linear-gradient(
     to right,
     transparent,
@@ -647,6 +662,15 @@
     #000 calc(100% - var(--marquee-fade-end)),
     transparent
   );
+
+  &:not([data-edge]),
+  &[data-edge="end"] {
+    --marquee-fade-start: 0px;
+  }
+
+  &[data-edge="start"] {
+    --marquee-fade-end: 0px;
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -678,7 +702,7 @@
 }
 
 .bulk-toaster [data-sonner-toast][data-styled="true"] [data-description] {
-  color: rgb(247 245 236 / 0.72);
+  color: color-mix(in srgb, var(--bg) 72%, transparent);
   font-size: var(--text-meta);
 }
 

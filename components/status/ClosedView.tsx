@@ -39,8 +39,8 @@ export function ClosedView({ icon, tone, title, reason, reassurance, children }:
         {children && <div className="mt-5 w-full">{children}</div>}
       </div>
 
-      <BottomBar>
-        <Button size="lg" block icon={<House />} href="/">
+      <BottomBar material={false}>
+        <Button variant="glass" block icon={<House />} href="/">
           Back to home
         </Button>
       </BottomBar>

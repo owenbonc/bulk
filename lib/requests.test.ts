@@ -385,6 +385,7 @@ describe("acceptance round", () => {
     const deadline = DEAL_AT + ACCEPT_WINDOW_MS;
     const r = req(run(threeWayDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), { type: "TICK", now: deadline }));
     expect(r).toMatchObject({ status: "deal_achieved", round: 2, acceptDeadline: deadline + ACCEPT_WINDOW_MS, removedNames: ["Bob"] });
+    expect(r.hostId).toBe("me");
   });
 
   it("the fallback round succeeds when everyone left pays", () => {
@@ -434,8 +435,9 @@ describe("acceptance round", () => {
     expect(req(s).participants.find((p) => p.userId === "bot-bob")).toMatchObject({ paid: false, declined: true });
   });
 
-  it("hands the host role to the first remaining member if the host drops out", () => {
-    const s = run(
+  /** Bob hosts (£10.50), then me (£10.50) and Carl (£42) join and finalise: deal at DEAL_AT. */
+  function bobHostedDeal(): AppState {
+    return run(
       emptyState(),
       { ...create, user: bob } as Action,
       ...margheritas("bot-bob", 1),
@@ -446,11 +448,36 @@ describe("acceptance round", () => {
       { type: "JOIN", requestId: "r1", user: carl },
       ...margheritas("bot-carl", 4),
       finalise("bot-carl", DEAL_AT),
-      decline("bot-bob", DEAL_AT + 1000),
-      pay("me", DEAL_AT + 1000),
-      pay("bot-carl", DEAL_AT + 1000),
     );
-    expect(req(s)).toMatchObject({ round: 2, hostId: "me" });
+  }
+
+  it("cancels the party when the host declines, even if the others still meet the threshold", () => {
+    const r = req(run(bobHostedDeal(), decline("bot-bob", DEAL_AT + 1000), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 1000)));
+    expect(r).toMatchObject({ status: "cancelled", round: 1, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
+    expect(r.participants.every((p) => !p.paid)).toBe(true);
+    expect(r.removedNames).toContain("Bob");
+  });
+
+  it("cancels the party when the host times out, without starting round 2", () => {
+    const r = req(
+      run(bobHostedDeal(), pay("me", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 1000), { type: "TICK", now: DEAL_AT + ACCEPT_WINDOW_MS }),
+    );
+    expect(r).toMatchObject({ status: "cancelled", round: 1, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
+    expect(r.participants.every((p) => !p.paid)).toBe(true);
+    expect(r.removedNames).toContain("Bob");
+  });
+
+  it("cancels the party when the host drops out of round 2", () => {
+    const at = DEAL_AT + 3000;
+    const round2 = run(bobHostedDeal(), pay("bot-bob", DEAL_AT + 1000), pay("bot-carl", DEAL_AT + 2000), decline("me", at));
+    expect(req(round2)).toMatchObject({ status: "deal_achieved", round: 2, hostId: "bot-bob" });
+
+    const declined = req(run(round2, pay("bot-carl", at + 1000), decline("bot-bob", at + 2000)));
+    expect(declined).toMatchObject({ status: "cancelled", round: 2, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
+    expect(declined.participants.every((p) => !p.paid)).toBe(true);
+
+    const timedOut = req(run(round2, pay("bot-carl", at + 1000), { type: "TICK", now: at + ACCEPT_WINDOW_MS }));
+    expect(timedOut).toMatchObject({ status: "cancelled", round: 2, hostId: "bot-bob", cancelReason: CANCEL_REASONS.hostDidNotAccept });
   });
 });
 
@@ -500,6 +527,18 @@ describe("FILL_PARTY", () => {
       const rest = { ...r, participants: r.participants.filter((p) => p !== stubborn) };
       expect(queueTotal(rest, restaurant)).toBeGreaterThanOrEqual(restaurant.deal.minTotal);
     }
+  });
+
+  it("with 'a bot won't accept' on, the stubborn bot is never a bot host", () => {
+    const s = run(
+      { ...seedState(T0), demo: { ...seedState(T0).demo, botWontAccept: true } },
+      { type: "JOIN", requestId: "seed-slice-house", user: me },
+      { type: "ADD_ITEM", requestId: "seed-slice-house", userId: "me", itemId: "sh-margherita" },
+      { type: "FILL_PARTY", requestId: "seed-slice-house", now: T0 },
+    );
+    const r = req(s, "seed-slice-house");
+    expect(r.participants.find((p) => p.userId === r.hostId)?.isBot).toBe(true);
+    expect(stubbornBot(r, pizza)?.userId).not.toBe(r.hostId);
   });
 
   it("does nothing once the party is no longer open", () => {
@@ -570,7 +609,7 @@ describe("notificationsFor", () => {
   });
 
   it("explains cancellations and expiry", () => {
-    const cancelled = run(dealState(), { type: "TICK", now: DEAL_AT + ACCEPT_WINDOW_MS });
+    const cancelled = run(dealState(), pay("me", DEAL_AT + 1000), { type: "TICK", now: DEAL_AT + ACCEPT_WINDOW_MS });
     expect(notificationsFor(cancelled)[0]).toMatchObject({
       kind: "cancelled",
       title: "Order cancelled at Slice House",

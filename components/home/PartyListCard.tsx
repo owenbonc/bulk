@@ -2,6 +2,7 @@
 
 import { Check, Timer } from "lucide-react";
 import Link from "next/link";
+import { useId } from "react";
 import { Avatar, Countdown, DealPill, ImageFrame, Marquee, Pill, ProgressPie, Rating, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { DELIVERY_STEPS } from "@/lib/requests";
@@ -31,14 +32,27 @@ const MAX_FACES = 3;
  */
 export function PartyListCard({ party, priority = false }: { party: HomeParty; priority?: boolean }) {
   const { now } = useApp();
+  const nameId = useId();
+  const descId = useId();
   const { request, restaurant, progress, me } = party;
   const open = request.status === "open";
   const people = request.participants;
   const faces = [...people].sort((a, b) => Number(b.userId === ME.userId) - Number(a.userId === ME.userId)).slice(0, MAX_FACES);
+  const summary = [
+    restaurant.deal.short,
+    open ? `${formatPrice(progress.left, { trim: true })} left` : stageLabel(party),
+    `${people.length} in party`,
+    me ? "you're in" : null,
+    open ? `closes in ${Math.max(1, Math.ceil((request.expiresAt - now) / 60_000))} min` : null,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   return (
     <Link
       href={partyHref(party)}
+      aria-labelledby={nameId}
+      aria-describedby={descId}
       className="block rounded-card border border-line bg-surface p-3 transition-transform duration-100 ease-out active:scale-[0.97]"
     >
       <div className="flex gap-3">
@@ -82,7 +96,7 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
       <div className="mt-2.5 flex items-end justify-between gap-2">
         <div className="min-w-0 flex-1">
           <Marquee as="h3" className="text-emphasis font-semibold tracking-[-0.01em] text-ink">
-            {restaurant.name}
+            <span id={nameId}>{restaurant.name}</span>
           </Marquee>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1">
             <Rating value={restaurant.rating} count={restaurant.ratingCount} />
@@ -106,6 +120,9 @@ export function PartyListCard({ party, priority = false }: { party: HomeParty; p
           />
         </div>
       </div>
+      <span id={descId} className="sr-only">
+        {summary}
+      </span>
     </Link>
   );
 }

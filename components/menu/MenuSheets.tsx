@@ -37,7 +37,9 @@ export function DealSheet({ open, onOpenChange, mode, restaurant, progress, mine
               {gbp(withMine)}
               <span className="text-section font-medium text-ink-2"> / {gbp(progress.target)}</span>
             </span>
-            <span className="tnum text-body font-semibold text-accent-ink">{left > 0 ? `${gbp(left)} to go` : "Unlocked"}</span>
+            <span className="tnum text-body font-semibold whitespace-nowrap text-accent-ink">
+              {left > 0 ? `${gbp(left)} to go` : "Your basket unlocks it"}
+            </span>
           </div>
           <ProgressBar
             value={withMine}
@@ -61,7 +63,6 @@ export function DealSheet({ open, onOpenChange, mode, restaurant, progress, mine
         </div>
 
         <p className="text-body text-ink">
-          {deal.short} when the party spends {gbp(deal.minTotal)}.{" "}
           {mode === "join" ? (
             <>
               {left > 0 ? (
@@ -88,7 +89,7 @@ export function DealSheet({ open, onOpenChange, mode, restaurant, progress, mine
             </li>
           )}
           <li>
-            Delivery (<span className="tnum">{formatPrice(restaurant.deliveryFee)}</span>) is split between everyone in the party.
+            Delivery (<span className="tnum">{formatPrice(restaurant.deliveryFee)}</span>) is split equally between everyone.
           </li>
           <li>If the timer runs out first, the party closes and nobody is charged.</li>
         </ul>
@@ -135,8 +136,8 @@ export function MoreSheet({ open, onOpenChange, restaurant, pickup, party, now, 
         <InfoRow icon={<Tag />} tone="offer" title="Deal">
           <p className="text-body text-ink">{deal.label}</p>
           <p className="mt-0.5 text-meta text-ink-2">
-            Applied to everyone&apos;s food once the party spends <span className="tnum">{gbp(deal.minTotal)}</span>. Delivery (
-            <span className="tnum">{formatPrice(restaurant.deliveryFee)}</span>) is split between everyone.
+            Applied to everyone&apos;s food. Delivery (<span className="tnum">{formatPrice(restaurant.deliveryFee)}</span>) is split
+            equally between everyone.
           </p>
         </InfoRow>
 

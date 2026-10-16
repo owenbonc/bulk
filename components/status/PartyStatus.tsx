@@ -1,8 +1,8 @@
 "use client";
 
 import { CircleSlash, CircleX, House, Info, SearchX, TimerOff, UserX } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { useState } from "react";
 import { EASE_OUT, EXIT, IconButton, Marquee, TopBar, formatPrice, scrollRootTo, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { CANCEL_REASONS } from "@/lib/requests";
@@ -19,6 +19,8 @@ type View = "filling" | "accept" | "delivery" | "closed" | "removed" | "missed";
 
 function viewFor(request: OrderRequest): View {
   const me = request.participants.find((p) => p.userId === ME.userId);
+  // A host who declines cancels the party, so they see why it was cancelled rather than being "out".
+  if (request.status === "cancelled" && request.hostId === ME.userId) return "closed";
   if (me?.declined || (!me && request.removedUserIds.includes(ME.userId))) return "removed";
   if (request.status === "expired" || request.status === "cancelled") return "closed";
   if (request.status === "open") return "filling";
@@ -33,7 +35,6 @@ function viewFor(request: OrderRequest): View {
  */
 export function PartyStatus({ id }: { id: string }) {
   const { state, now, dispatch } = useApp();
-  const reduce = useReducedMotion();
   const request = state.requests.find((r) => r.id === id);
   const restaurant = request && restaurantById(request.restaurantId);
   const pickup = request && pickupById(request.pickupPointId);
@@ -43,14 +44,6 @@ export function PartyStatus({ id }: { id: string }) {
   const [declinedHere, setDeclinedHere] = useState(false);
 
   const view: View | "missing" = request && restaurant && pickup ? viewFor(request) : "missing";
-
-  // A new state replaces the page's content, so start reading it from the top.
-  const lastView = useRef(view);
-  useEffect(() => {
-    if (lastView.current === view) return;
-    lastView.current = view;
-    scrollRootTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
-  }, [view, reduce]);
 
   if (!request || !restaurant || !pickup) {
     return (
@@ -132,7 +125,7 @@ export function PartyStatus({ id }: { id: string }) {
       <TopBar
         left={
           <div className="flex min-w-0 items-center gap-2">
-            <HomeButton />
+            {view !== "delivery" && <HomeButton />}
             <Marquee as="p" className="pr-2 font-display text-emphasis font-semibold tracking-[-0.01em] text-ink">
               {restaurant.name}
             </Marquee>
@@ -145,12 +138,13 @@ export function PartyStatus({ id }: { id: string }) {
         }
       />
 
-      <AnimatePresence mode="wait" initial={false}>
-        {/* Opacity only: a transform here would trap the fixed bottom bars inside this wrapper. */}
+      {/* When the old state has faded out, jump to the top so the new state is read from the start. */}
+      <AnimatePresence mode="wait" initial={false} onExitComplete={() => scrollRootTo({ top: 0, behavior: "auto" })}>
+        {/* Opacity only: a transform or filter here would trap the fixed bottom bars inside this wrapper. */}
         <motion.main
           key={view}
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1, transition: { duration: 0.3, ease: EASE_OUT } }}
+          animate={{ opacity: 1, transition: { duration: 0.2, ease: EASE_OUT } }}
           exit={{ opacity: 0, transition: EXIT }}
         >
           {content}
@@ -167,6 +161,7 @@ export function PartyStatus({ id }: { id: string }) {
         round={request.round}
         deadline={request.acceptDeadline ?? now}
         now={now}
+        hosting={request.hostId === ME.userId}
         onPay={() => {
           const at = Date.now();
           if (request.acceptDeadline !== undefined && at >= request.acceptDeadline) {
