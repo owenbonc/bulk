@@ -2,7 +2,7 @@
 
 import { Check, UserPlus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { Avatar, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, EXIT, cn } from "@/components/ui";
+import { Avatar, IconButton, Marquee, Pill, SPRING, SPRING_SNAPPY, cn } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { basketCount } from "@/lib/split";
 import { useApp } from "@/lib/store";
@@ -103,27 +103,26 @@ function Trailing({
 
   if (you) return null;
   return (
-    <div className="grid shrink-0 place-items-end">
-      <AnimatePresence initial={false} mode="popLayout">
-        {friend ? (
-          <motion.span
-            key="added"
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={SPRING_SNAPPY}
-          >
-            <Pill tone="ink" icon={<Check strokeWidth={2.5} />} role="status">
-              Added
-            </Pill>
-          </motion.span>
-        ) : (
-          <motion.span key="add" exit={{ opacity: 0, scale: 0.95, transition: EXIT }}>
-            <IconButton aria-label={`Add ${p.name} as a friend`} size="sm" variant="outline" onClick={onAddFriend}>
-              <UserPlus />
-            </IconButton>
-          </motion.span>
-        )}
-      </AnimatePresence>
+    <div className="grid shrink-0 place-items-center">
+      {friend ? (
+        <motion.span
+          key="added"
+          className="[grid-area:1/1]"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={SPRING_SNAPPY}
+        >
+          <Pill tone="ink" icon={<Check strokeWidth={2.5} />} role="status">
+            Added
+          </Pill>
+        </motion.span>
+      ) : (
+        <span key="add" className="[grid-area:1/1]">
+          <IconButton aria-label={`Add ${p.name} as a friend`} size="sm" variant="outline" onClick={onAddFriend}>
+            <UserPlus />
+          </IconButton>
+        </span>
+      )}
     </div>
   );
 }
