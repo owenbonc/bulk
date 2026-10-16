@@ -2,7 +2,6 @@
 
 **Order together. Unlock bulk deals. Share one delivery.**
 
-Group food ordering for students, built for the Claude hackathon.
 
 Bulk lets students nearby pool their food orders from one restaurant into a **party**. Together they unlock the restaurant's group deal and split one delivery fee. Everyone still chooses and pays for their own food, and collects their own bag with their own PIN.
 
