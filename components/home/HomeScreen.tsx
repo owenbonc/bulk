@@ -16,7 +16,7 @@ const PRIORITY_CARDS = 2;
 /** W1 Home: highlights, other parties, and the floating your-party card and search / create controls. */
 export function HomeScreen() {
   const [query, setQuery] = useState("");
-  const { highlights, others, mine, totalCount } = useHomeParties(query);
+  const { highlights, others, mine, collected, totalCount } = useHomeParties(query);
   const searching = query.trim().length > 0;
   const resultCount = highlights.length + others.length;
   const nothingMatches = resultCount === 0;
@@ -81,7 +81,7 @@ export function HomeScreen() {
         </p>
       </main>
 
-      <HomeBottomBar query={query} onQueryChange={setQuery} mine={mine} />
+      <HomeBottomBar query={query} onQueryChange={setQuery} mine={mine} collected={collected} />
     </>
   );
 }

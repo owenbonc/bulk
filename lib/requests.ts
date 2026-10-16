@@ -70,6 +70,7 @@ export type Action =
   | { type: "FINALISE_ENTRY"; requestId: string; userId: string; now: number }
   | { type: "ACCEPT_AND_PAY"; requestId: string; userId: string; now: number }
   | { type: "DECLINE"; requestId: string; userId: string; now: number }
+  | { type: "COLLECT"; requestId: string; userId: string }
   | { type: "SET_EXPIRY"; requestId: string; expiresAt: number }
   | { type: "FILL_PARTY"; requestId: string; now: number }
   | { type: "TICK"; now: number }
@@ -99,6 +100,27 @@ export function pinFor(id: string): string {
 
 export function isTerminal(status: RequestStatus): boolean {
   return status === "delivered" || status === "expired" || status === "cancelled";
+}
+
+/** How long a delivered order you haven't collected stays on Home as "Ready to collect". */
+export const READY_LINGER_MS = 60 * 60_000;
+
+/** You've handed over the PIN and collected your food from this party. */
+export function hasCollected(request: OrderRequest, userId = ME.userId): boolean {
+  return !!request.participants.find((p) => p.userId === userId)?.collected;
+}
+
+/**
+ * A party you're in that still needs you, as the your-party card and "You're in" treat it: open ones that
+ * haven't run out, paid orders on their way, and delivered ones you haven't collected (for READY_LINGER_MS).
+ */
+export function isActiveFor(request: OrderRequest, now: number, userId = ME.userId): boolean {
+  const me = request.participants.find((p) => p.userId === userId && !p.declined);
+  if (!me) return false;
+  const { status, confirmedAt } = request;
+  if (status === "delivered") return !me.collected && confirmedAt !== undefined && now - confirmedAt < READY_LINGER_MS;
+  if (status === "open") return request.expiresAt > now;
+  return !isTerminal(status);
 }
 
 /** The open party at a restaurant (there is at most one), if any. */
@@ -353,6 +375,10 @@ function reduceRequest(r: OrderRequest, action: PartyAction | Extract<Action, { 
       const next = updateParticipant(r, action.userId, (p) => ({ ...p, declined: true }));
       return resolveIfSettled(next, restaurant, action.now);
     }
+
+    case "COLLECT":
+      if (r.status !== "delivered" || !member || member.collected) return r;
+      return updateParticipant(r, action.userId, (p) => ({ ...p, collected: true }));
 
     case "SET_EXPIRY":
       return r.status === "open" ? { ...r, expiresAt: action.expiresAt } : r;
@@ -626,7 +652,7 @@ export function unreadCount(state: AppState, catalog: Catalog = CATALOG): number
   return notificationsFor(state, catalog).filter((n) => !state.readNotifications.includes(n.key)).length;
 }
 
-export type AlertKind = "filled" | "cancelled" | "expired";
+export type AlertKind = "filled" | "ready" | "cancelled" | "expired";
 
 export interface PartyAlert {
   /** Pass to MARK_ALERT_SEEN once shown. */
@@ -635,16 +661,31 @@ export interface PartyAlert {
   requestId: string;
 }
 
+function alertKindFor(r: OrderRequest, me: Participant): AlertKind | undefined {
+  switch (r.status) {
+    case "deal_achieved":
+      return "filled";
+    case "delivered":
+      return me.paid && !me.collected ? "ready" : undefined;
+    case "cancelled":
+    case "expired":
+      return r.status;
+    default:
+      return undefined;
+  }
+}
+
 /**
- * Global popups still to show, once per party: "Party filled!" while a party you're in
- * is in its acceptance round, and the cancelled / closed popup when one ends without an order.
+ * Global popups still to show, once per party: "Party filled!" while a party you're in is in its
+ * acceptance round, "Your food is ready!" once your paid order is delivered and you haven't collected it,
+ * and the cancelled / closed popup when one ends without an order.
  */
 export function pendingAlerts(state: AppState, userId = ME.userId): PartyAlert[] {
   const alerts: PartyAlert[] = [];
   for (const r of state.requests) {
-    if (!r.participants.some((p) => p.userId === userId)) continue;
-    const kind: AlertKind | undefined =
-      r.status === "deal_achieved" ? "filled" : r.status === "cancelled" ? "cancelled" : r.status === "expired" ? "expired" : undefined;
+    const me = r.participants.find((p) => p.userId === userId);
+    if (!me) continue;
+    const kind = alertKindFor(r, me);
     if (!kind) continue;
     const key = `${r.id}:${kind}`;
     if (!state.seenAlerts.includes(key)) alerts.push({ key, kind, requestId: r.id });

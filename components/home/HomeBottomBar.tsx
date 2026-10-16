@@ -12,6 +12,8 @@ export interface HomeBottomBarProps {
   onQueryChange: (query: string) => void;
   /** Parties you're in, most urgent first, shown as the your-party card above the controls. */
   mine: HomeParty[];
+  /** Delivered parties you've collected; a card you saw earlier this session leaves with an exit. */
+  collected: HomeParty[];
 }
 
 /**
@@ -20,14 +22,14 @@ export interface HomeBottomBarProps {
  * sits above the scrolling list (below sheets) and reserves its own height in the page, so the last card
  * always scrolls clear of it. The your-party card steps aside while the search field has focus.
  */
-export function HomeBottomBar({ query, onQueryChange, mine }: HomeBottomBarProps) {
+export function HomeBottomBar({ query, onQueryChange, mine, collected }: HomeBottomBarProps) {
   const [accountOpen, setAccountOpen] = useState(false);
   const [searchFocused, setSearchFocused] = useState(false);
 
   return (
     <>
       <BottomBar material={false} className="flex flex-col gap-2">
-        <YourPartyDock parties={mine} hidden={searchFocused} />
+        <YourPartyDock parties={mine} collected={collected} hidden={searchFocused} />
         <div className="flex items-center gap-2">
           <IconButton aria-label="Account and demo controls" aria-haspopup="dialog" onClick={() => setAccountOpen(true)}>
             <UserRound />

@@ -14,6 +14,8 @@ export {
   draftPreview,
   formatGBP,
   formatGBPShort,
+  hasCollected,
+  isActiveFor,
   isHighlight,
   isTerminal,
   notificationsFor,

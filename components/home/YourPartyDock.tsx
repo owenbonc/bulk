@@ -1,13 +1,13 @@
 "use client";
 
-import { ChevronRight } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import { AnimatePresence, motion, useAnimate, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Countdown, EXIT, ImageFrame, Marquee, ProgressPie, SPRING, cn, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { DELIVERY_STAGES } from "@/lib/requests";
-import { useApp } from "@/lib/store";
+import { hasCollected, useApp } from "@/lib/store";
 import type { HomeParty } from "./useHomeParties";
 
 /** Card row height (it grows only when reduced motion wraps a long line). */
@@ -17,17 +17,44 @@ const ENTER_OFFSET = 32;
 /** Time from payment to "Ready to collect" in the simulated delivery. */
 const DELIVERED_AFTER_MS = DELIVERY_STAGES.find((s) => s.status === "delivered")?.afterMs ?? 0;
 
+/** How long a collected party's card stays on screen as "Collected" before it leaves. */
+const FAREWELL_DELAY_MS = 700;
+
 /** Parties whose card has already slid in this session, so coming back to Home doesn't replay the entrance. */
 const introduced = new Set<string>();
+/** Collected parties whose card has already left, so it only says goodbye once. */
+const farewelled = new Set<string>();
 
 /**
  * Your-party card(s): solid lime, one 76px row per party you're in, most urgent first, swiped sideways or
  * paged with the dot buttons when there are several. Rendered as the first item of Home's bottom stack, so it floats just
  * above the controls, over the list and under sheets. It slides up when a party first appears; tap opens
  * the party's status page. `hidden` (while the search field is focused) fades it out, and it fades back in.
+ * A party you've collected since its card was last on screen shows as "Collected" for a moment once Home is
+ * visible, then leaves with an exit (the whole dock exits when it was the only one). Home stays mounted but
+ * hidden while you're on other pages (Next's Activity), and effects only run while it is visible, so the
+ * card is held in `onScreen` until then and the exit plays where you can see it.
  */
-export function YourPartyDock({ parties, hidden = false }: { parties: HomeParty[]; hidden?: boolean }) {
+export function YourPartyDock({
+  parties: active,
+  collected,
+  hidden = false,
+}: {
+  parties: HomeParty[];
+  collected: HomeParty[];
+  hidden?: boolean;
+}) {
+  const activeIds = active.map((p) => p.request.id);
+  // Card ids last shown while Home was visible (plus, on a fresh mount, collected cards seen earlier this session).
+  const [onScreen, setOnScreen] = useState(() => [
+    ...collected.filter((p) => introduced.has(p.request.id) && !farewelled.has(p.request.id)).map((p) => p.request.id),
+    ...activeIds,
+  ]);
+  const departing = collected.filter((p) => onScreen.includes(p.request.id) && !activeIds.includes(p.request.id));
+  const parties = [...departing, ...active];
   const ids = parties.map((p) => p.request.id).join(" ");
+  const activeKey = activeIds.join(" ");
+  const departingKey = departing.map((p) => p.request.id).join(" ");
   const fresh = parties.some((p) => !introduced.has(p.request.id));
   const [hiddenOnce, setHiddenOnce] = useState(hidden);
   if (hidden && !hiddenOnce) setHiddenOnce(true);
@@ -48,6 +75,17 @@ export function YourPartyDock({ parties, hidden = false }: { parties: HomeParty[
   useEffect(() => {
     for (const id of ids.split(" ")) if (id) introduced.add(id);
   }, [ids]);
+
+  // Runs only while Home is visible: collected cards leave after a beat, everything else follows `active`.
+  useEffect(() => {
+    const leaving = departingKey ? departingKey.split(" ") : [];
+    for (const id of leaving) farewelled.add(id);
+    const timer = window.setTimeout(
+      () => setOnScreen(activeKey ? activeKey.split(" ") : []),
+      leaving.length > 0 ? FAREWELL_DELAY_MS : 0,
+    );
+    return () => window.clearTimeout(timer);
+  }, [activeKey, departingKey]);
 
   // Jumps back to card 1 when a different party (or the same one at a new stage) becomes most urgent.
   // Card 1 always sits at scrollLeft 0 because of the px-4 / scroll-px-4 inset.
@@ -73,19 +111,27 @@ export function YourPartyDock({ parties, hidden = false }: { parties: HomeParty[
             aria-label="Your parties"
             className="no-scrollbar -mx-4 -mt-2 -mb-5 flex snap-x snap-mandatory scroll-px-4 gap-4 overflow-x-auto overscroll-x-contain px-4 pt-2 pb-5 [touch-action:pan-x_pan-y]"
           >
-            {parties.map((p, i) => (
-              <li key={p.request.id} className="relative w-full shrink-0 snap-center">
-                <YourPartyCard party={p} />
-                {parties.length > 1 && (
-                  <PageDots
-                    index={i}
-                    count={parties.length}
-                    onSelect={show}
-                    className={p.request.status === "open" ? "right-[63px]" : "right-[47px]"}
-                  />
-                )}
-              </li>
-            ))}
+            <AnimatePresence initial={false} mode="popLayout">
+              {parties.map((p, i) => (
+                <motion.li
+                  key={p.request.id}
+                  layout="position"
+                  className="relative w-full shrink-0 snap-center"
+                  exit={{ opacity: 0, y: 16, transition: EXIT }}
+                  transition={SPRING}
+                >
+                  <YourPartyCard party={p} />
+                  {parties.length > 1 && (
+                    <PageDots
+                      index={i}
+                      count={parties.length}
+                      onSelect={show}
+                      className={p.request.status === "open" ? "right-[63px]" : "right-[47px]"}
+                    />
+                  )}
+                </motion.li>
+              ))}
+            </AnimatePresence>
           </ul>
         </motion.div>
       )}
@@ -186,6 +232,15 @@ function StatusLine({ party }: { party: HomeParty }) {
     return (
       <Marquee as="p" className={base}>
         Paid · {waiting > 0 ? `waiting for ${waiting} ${waiting === 1 ? "other" : "others"}` : "placing your order"}
+      </Marquee>
+    );
+  }
+
+  if (hasCollected(request)) {
+    return (
+      <Marquee as="p" className={base}>
+        <Check aria-hidden className="mr-1 inline size-3.5 align-[-2px]" strokeWidth={2.5} />
+        <span className="font-semibold text-ink">Collected</span> · enjoy your meal
       </Marquee>
     );
   }
