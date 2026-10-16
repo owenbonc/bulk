@@ -3,7 +3,7 @@
 import { Bell, BellOff, Bike, CircleX, CreditCard, PackageCheck, ReceiptText, Tag, TimerOff, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
-import { IconButton, Sheet, cn } from "@/components/ui";
+import { IconButton, Marquee, Sheet, cn } from "@/components/ui";
 import type { NotificationKind } from "@/lib/requests";
 import { useApp, useNotifications } from "@/lib/store";
 import { timeAgo } from "./parts";
@@ -53,7 +53,7 @@ export function NotificationsButton() {
         <Bell />
       </IconButton>
 
-      <Sheet open={open} onOpenChange={onOpenChange} title="Notifications" className="pb-[max(12px,env(safe-area-inset-bottom))]">
+      <Sheet open={open} onOpenChange={onOpenChange} title="Notifications">
         {items.length === 0 ? (
           <div className="flex flex-col items-center gap-2 px-6 pt-6 pb-10 text-center">
             <span aria-hidden className="grid size-12 place-items-center rounded-full bg-surface-2 text-ink-2">
@@ -80,7 +80,7 @@ export function NotificationsButton() {
                     </span>
                     <span className="min-w-0 flex-1">
                       <span className="flex items-baseline justify-between gap-3">
-                        <span className={cn("truncate text-body text-ink", fresh ? "font-semibold" : "font-medium")}>{n.title}</span>
+                        <Marquee className={cn("text-body text-ink", fresh ? "font-semibold" : "font-medium")}>{n.title}</Marquee>
                         <span className="tnum shrink-0 text-caption text-ink-3">{timeAgo(n.at, now)}</span>
                       </span>
                       <span className="mt-0.5 block text-meta text-ink-2">{n.body}</span>

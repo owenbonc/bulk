@@ -40,7 +40,7 @@ function urgency(p: HomeParty): number {
 export interface HomeParties {
   /** Open parties at 75% or more of their deal, closest to the deal first. */
   highlights: HomeParty[];
-  /** Every other visible party: yours that have moved past filling, then those at your collection point, then closing soonest. */
+  /** Every other visible party: yours that have moved past filling (including recently delivered), then those at your collection point, then closing soonest. */
   others: HomeParty[];
   /** Parties you're in that still need you (including recently delivered ones), most urgent first. Not filtered by search. */
   mine: HomeParty[];
@@ -60,7 +60,15 @@ export function useHomeParties(query: string): HomeParties {
   }
 
   const isOpen = (p: HomeParty) => p.request.status === "open" && p.request.expiresAt > now;
-  const listed = all.filter((p) => isOpen(p) || (p.me && !isTerminal(p.request.status)));
+  /** A party you're in that Home still shows: live ones, plus recently delivered ones as "Ready to collect". */
+  const stillYours = (p: HomeParty) => {
+    if (!p.me) return false;
+    const { status, confirmedAt } = p.request;
+    if (status === "delivered") return confirmedAt !== undefined && now - confirmedAt < READY_LINGER_MS;
+    if (status === "open") return p.request.expiresAt > now;
+    return !isTerminal(status);
+  };
+  const listed = all.filter((p) => isOpen(p) || stillYours(p));
   const matching = listed.filter((p) => matchesQuery(p.restaurant, query));
 
   const highlights = matching
@@ -78,13 +86,7 @@ export function useHomeParties(query: string): HomeParties {
     );
 
   const mine = all
-    .filter((p) => {
-      if (!p.me) return false;
-      const { status, confirmedAt } = p.request;
-      if (status === "delivered") return confirmedAt !== undefined && now - confirmedAt < READY_LINGER_MS;
-      if (status === "open") return p.request.expiresAt > now;
-      return !isTerminal(status);
-    })
+    .filter(stillYours)
     .sort((a, b) => urgency(a) - urgency(b) || a.request.expiresAt - b.request.expiresAt);
 
   return { highlights, others, mine, totalCount: listed.length };

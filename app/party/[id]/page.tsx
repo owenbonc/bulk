@@ -24,9 +24,9 @@ export default function PartyMenuPage() {
 
   if (!party || !restaurant) {
     return (
-      <main className="flex min-h-dvh flex-col items-center justify-center gap-4 px-8 text-center">
-        <span aria-hidden className="grid size-16 place-items-center rounded-full bg-surface-2 text-ink-2">
-          <UtensilsCrossed className="size-7" />
+      <main className="flex min-h-dvh flex-col items-center justify-center gap-3 px-8 pt-safe pb-safe text-center">
+        <span aria-hidden className="grid size-14 place-items-center rounded-full bg-surface-2 text-ink-2">
+          <UtensilsCrossed className="size-6" />
         </span>
         <h1 className="text-section font-semibold text-ink">This party isn&apos;t around any more</h1>
         <p className="text-body text-ink-2">It may have filled or closed. There are plenty of others nearby.</p>

@@ -16,8 +16,8 @@ const tones: Record<PillTone, string> = {
 };
 
 const pillSizes: Record<PillSize, string> = {
-  sm: "h-6 gap-1 px-2 text-caption [&_svg]:size-3.5",
-  md: "h-7 gap-1.5 px-2.5 text-meta [&_svg]:size-4",
+  sm: "h-5 gap-1 px-2 text-caption [&_svg]:size-3",
+  md: "h-6 gap-1 px-2.5 text-meta [&_svg]:size-3.5",
 };
 
 export interface PillProps extends Omit<ComponentPropsWithRef<"span">, "children"> {
@@ -49,9 +49,9 @@ export function Pill({ tone = "neutral", size = "sm", icon, className, children,
 export type DealPillSize = "sm" | "md" | "lg";
 
 const dealSizes: Record<DealPillSize, string> = {
-  sm: "h-6 gap-1 px-2.5 text-caption [&_svg]:size-3.5",
-  md: "h-8 gap-1.5 px-3 text-meta [&_svg]:size-4",
-  lg: "h-11 gap-1.5 px-4 text-body [&_svg]:size-[18px]",
+  sm: "h-5 gap-0.5 px-2 text-caption [&_svg]:size-3",
+  md: "h-7 gap-1 px-2.5 text-meta [&_svg]:size-3.5",
+  lg: "h-9 gap-1 px-3 text-body [&_svg]:size-4",
 };
 
 interface DealPillOwnProps {
@@ -97,8 +97,10 @@ export function DealPill({ label, size = "md", withIcon = false, className, ...r
           positioned(className),
           "transition-[scale,background-color] duration-100 ease-out select-none active:scale-[0.96] active:bg-offer-strong",
           "hover:bg-offer-strong",
-          size === "sm" && "before:absolute before:-inset-2.5",
-          size === "md" && "before:absolute before:-inset-y-1.5 before:inset-x-0",
+          // Hit areas reach 44px tall.
+          size === "sm" && "before:absolute before:-inset-3",
+          size === "md" && "before:absolute before:-inset-y-2 before:inset-x-0",
+          size === "lg" && "before:absolute before:-inset-y-1 before:inset-x-0",
         )}
       >
         {content}

@@ -1,7 +1,7 @@
 "use client";
 
 import { CircleCheck, RefreshCw, Tag } from "lucide-react";
-import { BottomBar, Button, Countdown, SectionHeader, formatPrice } from "@/components/ui";
+import { BottomBar, Button, Countdown, Marquee, SectionHeader, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { ACCEPT_WINDOW_MS } from "@/lib/requests";
 import { previewSplit, useApp } from "@/lib/store";
@@ -29,21 +29,21 @@ export function AcceptView({ request, restaurant, pickup, onPay }: ViewProps & {
 
   return (
     <>
-      <div className="flex flex-col gap-8 px-4 pt-3 pb-8">
-        <section aria-labelledby="deal-title" className="flex flex-col gap-2">
-          <div className="flex min-h-8 justify-end">
-            <CollectionPoint pickup={pickup} />
-          </div>
-          <div className="rounded-card bg-accent-soft p-4">
-            <div className="flex items-center gap-3">
-              <span aria-hidden className="grid size-10 shrink-0 place-items-center rounded-full bg-accent text-on-accent">
-                {secondRound ? <RefreshCw /> : <Tag />}
-              </span>
-              <h1 id="deal-title" className="font-display text-section font-semibold text-ink">
-                {secondRound ? "Second round" : "Deal reached!"}
-              </h1>
+      <div className="flex flex-col gap-section px-gutter pt-2 pb-6">
+        <section aria-labelledby="deal-title">
+          <div className="rounded-card bg-accent-soft p-card">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex shrink-0 items-center gap-2.5">
+                <span aria-hidden className="grid size-9 shrink-0 place-items-center rounded-full bg-accent text-on-accent">
+                  {secondRound ? <RefreshCw /> : <Tag />}
+                </span>
+                <h1 id="deal-title" className="font-display text-section font-semibold text-ink">
+                  {secondRound ? "Second round" : "Deal reached!"}
+                </h1>
+              </div>
+              <CollectionPoint pickup={pickup} />
             </div>
-            <p className="mt-3 text-body text-ink">
+            <p className="mt-2 text-body text-ink">
               {secondRound ? (
                 <>
                   {dropped.length > 0 ? `${joinNames(dropped)} didn't accept. ` : ""}Totals updated, accept again in{" "}
@@ -55,7 +55,7 @@ export function AcceptView({ request, restaurant, pickup, onPay }: ViewProps & {
                 </>
               )}
             </p>
-            <div aria-hidden className="mt-3 h-1.5 overflow-hidden rounded-full bg-accent-ink/15">
+            <div aria-hidden className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-accent-ink/15">
               <div
                 className="h-full origin-left rounded-full bg-accent-ink transition-transform duration-1000 ease-linear motion-reduce:transition-none"
                 style={{ transform: `scaleX(${remaining / ACCEPT_WINDOW_MS})` }}
@@ -67,7 +67,7 @@ export function AcceptView({ request, restaurant, pickup, onPay }: ViewProps & {
           </div>
         </section>
 
-        <section aria-labelledby="order-title" className="flex flex-col gap-3">
+        <section aria-labelledby="order-title" className="flex flex-col gap-group">
           <SectionHeader id="order-title" title="Order" />
           <OrderSummary restaurant={restaurant} basket={me.basket} cost={cost} members={cost.members} mode="exact" />
         </section>
@@ -79,11 +79,11 @@ export function AcceptView({ request, restaurant, pickup, onPay }: ViewProps & {
 
       <BottomBar material={false}>
         {me.paid ? (
-          <div role="status" className="glass flex h-14 w-full items-center justify-center gap-2 rounded-full px-6">
+          <div role="status" className="glass flex h-13 w-full items-center justify-center gap-2 rounded-full px-5">
             <CircleCheck aria-hidden className="shrink-0 text-success" />
-            <span className="tnum truncate text-emphasis font-semibold text-ink">
+            <Marquee className="tnum text-emphasis font-semibold text-ink">
               {waitingOn > 0 ? `Paid, waiting for ${waitingOn} other${waitingOn === 1 ? "" : "s"}` : "Paid, placing the order…"}
-            </span>
+            </Marquee>
           </div>
         ) : (
           <Button

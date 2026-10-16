@@ -49,7 +49,7 @@ export function ImageFrame({
   ratio = "4/3",
   emoji,
   radius = "tile",
-  sizes = "(min-width: 431px) 430px, 100vw",
+  sizes = "(min-width: 500px) 402px, 100vw",
   priority = false,
   preload = false,
   className,

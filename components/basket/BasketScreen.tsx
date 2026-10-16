@@ -259,11 +259,11 @@ function BasketLayout({
         }
       />
 
-      <main className="px-4 pt-3">
+      <main className="px-gutter pt-2">
         <BasketSummary restaurant={restaurant} pickup={pickup} partyIcon={partyIcon} partyLine={partyLine} preview={preview} />
 
-        <Divider className="mt-7" />
-        <div className="py-6">
+        <Divider className="mt-section" />
+        <div className="py-section">
           <BasketLines
             restaurant={restaurant}
             basket={basket}
@@ -275,16 +275,16 @@ function BasketLayout({
         </div>
 
         <Divider />
-        <div className="py-6">
+        <div className="py-section">
           <AddOns restaurant={restaurant} basket={basket} locked={locked} onAdd={onAdd} onRemove={onRemove} />
         </div>
 
         <Divider />
-        <div className="py-2.5">
+        <div className="py-1.5">
           <Switch
             label={
-              <span className="flex items-center gap-2.5">
-                <UtensilsCrossed aria-hidden className="size-[18px] shrink-0 text-ink-3" />
+              <span className="flex items-center gap-2">
+                <UtensilsCrossed aria-hidden className="size-4 shrink-0 text-ink-3" />
                 Add disposable cutlery
               </span>
             }
@@ -297,7 +297,7 @@ function BasketLayout({
         <Divider />
 
         {!empty && (
-          <div className="pt-7 pb-4">
+          <div className="pt-section pb-group">
             <PriceBreakdown restaurant={restaurant} preview={preview} />
           </div>
         )}

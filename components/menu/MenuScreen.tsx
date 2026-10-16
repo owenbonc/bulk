@@ -4,7 +4,18 @@ import { ArrowLeft, Ellipsis, Search, X } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion, type Transition } from "motion/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import { EASE_OUT, IconButton, SearchField, TopBar, cn, toast } from "@/components/ui";
+import {
+  EASE_OUT,
+  IconButton,
+  SearchField,
+  TopBar,
+  cn,
+  getScrollTop,
+  scrollRootTo,
+  scrollTopOf,
+  toast,
+  useStatusBarTone,
+} from "@/components/ui";
 import { ME } from "@/lib/data";
 import { basketCount, basketTotal, draftPreview, progressOf } from "@/lib/requests";
 import { pickupById, useApp } from "@/lib/store";
@@ -14,8 +25,8 @@ import { CreateInfoBubble, JoinInfoBubble, type SettingsFocus } from "./InfoBubb
 import { MenuList, TopPicks, type ItemControls } from "./MenuSections";
 import { DealSheet, MoreSheet } from "./MenuSheets";
 import { PartySettingsSheet } from "./PartySettingsSheet";
-import { MenuHero, RestaurantHeader } from "./RestaurantHeader";
-import { useHeaderHeight, useScrolledPast } from "./useScrolledPast";
+import { HERO_OVERLAP, MenuHero, RestaurantHeader } from "./RestaurantHeader";
+import { useHeaderMetrics, useScrolledPast } from "./useScrolledPast";
 
 export type MenuScreenProps =
   /** W2/W3: browsing an open party's menu. Adding the first item joins the party. */
@@ -82,12 +93,16 @@ export function MenuScreen(props: MenuScreenProps) {
 
   // ---- Scroll-driven chrome --------------------------------------------------------------------
   // The top bar never draws a strip: its round buttons, the docked info bubble and the search field float
-  // over the photo and the menu as clear glass (W3/W8).
+  // below the status bar, over the photo and the menu, as clear glass (W3/W8).
   const barRef = useRef<HTMLDivElement>(null);
+  const heroRef = useRef<HTMLDivElement>(null);
   const bubbleRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
-  const barHeight = useHeaderHeight(barRef);
-  const docked = useScrolledPast(bubbleRef, barHeight);
+  const bar = useHeaderMetrics(barRef);
+  const docked = useScrolledPast(bubbleRef, bar.height);
+  // White status bar glyphs while the photo is under them; ink once the cream page reaches their middle.
+  const heroGone = useScrolledPast(heroRef, Math.round(bar.safeTop / 2) + HERO_OVERLAP);
+  useStatusBarTone(heroGone ? "dark" : "light");
 
   // ---- Search ----------------------------------------------------------------------------------
   const [searchOpen, setSearchOpen] = useState(false);
@@ -99,13 +114,18 @@ export function MenuScreen(props: MenuScreenProps) {
     setQuery("");
   };
 
-  /** Scroll so the top of the menu sits just under the top bar. */
-  const alignMenu = (behavior: ScrollBehavior, onlyIf: "below" | "above") => {
+  /** Scroll so the top of the menu sits just under the top bar, with the info bubble docked. */
+  const alignMenu = (behavior: ScrollBehavior, onlyIf: "below" | "above" | "always") => {
     const menu = menuRef.current;
+    const bubble = bubbleRef.current;
     const header = barRef.current?.querySelector("header");
-    if (!menu || !header) return;
-    const top = menu.getBoundingClientRect().top + window.scrollY - header.offsetHeight - 12;
-    if (onlyIf === "below" ? top > window.scrollY : top < window.scrollY) window.scrollTo({ top, behavior });
+    if (!menu || !bubble || !header) return;
+    const top = Math.max(
+      scrollTopOf(menu) - header.offsetHeight - 12,
+      scrollTopOf(bubble) + bubble.offsetHeight - header.offsetHeight + 1,
+    );
+    const current = getScrollTop();
+    if (onlyIf === "always" ? top !== current : onlyIf === "below" ? top > current : top < current) scrollRootTo({ top, behavior });
   };
 
   // Opening search brings the menu up under the bar so results appear where you're looking.
@@ -115,9 +135,9 @@ export function MenuScreen(props: MenuScreenProps) {
     return () => window.cancelAnimationFrame(id);
   }, [searchOpen, reduceMotion]);
 
-  // Top picks hide while a query is active, which pulls the list upwards; keep its top in view.
+  // Top picks hide while a query is active, which moves the menu; pin its top under the bar with the info bubble docked.
   useLayoutEffect(() => {
-    if (searching) alignMenu("auto", "above");
+    if (searching) alignMenu("auto", "always");
   }, [searching]);
 
   const back = () => {
@@ -137,13 +157,20 @@ export function MenuScreen(props: MenuScreenProps) {
   // ---- Info bubble (full on the page, compact when docked) -------------------------------------
   const infoBubble = (compact: boolean) =>
     props.mode === "join" ? (
-      <JoinInfoBubble progress={progress} pickupName={pickupName} expiresAt={props.party.expiresAt} now={now} compact={compact} />
+      <JoinInfoBubble
+        progress={progress}
+        mine={subtotal}
+        pickupName={pickupName}
+        expiresAt={props.party.expiresAt}
+        now={now}
+        compact={compact}
+      />
     ) : (
       <CreateInfoBubble durationMin={props.draft.durationMin} pickupName={pickupName} onEdit={editSettings} compact={compact} />
     );
 
   return (
-    <main className="relative pb-8">
+    <main className="relative pb-6">
       <div ref={barRef} className="contents">
         <TopBar
           position="fixed"
@@ -210,12 +237,20 @@ export function MenuScreen(props: MenuScreenProps) {
           ) : undefined}
         </TopBar>
       </div>
+      {/* Solid cream behind the status bar glyphs once the photo has scrolled away, fading out within the safe area; no strip below it. */}
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none fixed inset-x-0 top-0 z-20 mx-auto h-[var(--safe-top)] max-w-column bg-linear-to-b from-bg from-70% to-bg/0 transition-opacity duration-200 ease-out",
+          heroGone ? "opacity-100" : "opacity-0",
+        )}
+      />
 
-      <MenuHero restaurant={restaurant} />
+      <MenuHero ref={heroRef} restaurant={restaurant} />
 
-      {/* The page lifts over the photo like a sheet. */}
-      <div className="relative -mt-6 flex flex-col gap-8 rounded-t-sheet bg-bg px-4 pt-6">
-        <div className="flex flex-col gap-4">
+      {/* The page lifts over the photo like a sheet (by HERO_OVERLAP). */}
+      <div className="relative -mt-6 flex flex-col gap-section rounded-t-sheet bg-bg px-gutter pt-5">
+        <div className="flex flex-col gap-group">
           <RestaurantHeader restaurant={restaurant} />
           <div ref={bubbleRef} className={cn("transition-opacity duration-200 ease-out", docked ? "opacity-0" : "opacity-100")}>
             {infoBubble(false)}

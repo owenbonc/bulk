@@ -5,11 +5,14 @@ import { cn } from "./cn";
 import { SPRING_FILL } from "./motion";
 
 export interface ProgressPieProps {
-  /** Progress including any contribution, in the same unit as `max` (pence, or a 0–100 percentage). */
+  /** Progress including your contribution, in the same unit as `max` (pence, or a 0–100 percentage). */
   value: number;
   /** Defaults to 100, so `value` can be a percentage. */
   max?: number;
-  /** "Your contribution": the last part of `value`, drawn as an --offer slice. Same unit as `value`. */
+  /**
+   * Your contribution: the last part of `value` (your basket's share), drawn as a gently pulsing --mine
+   * yellow slice after the party's lime. Same unit as `value`.
+   */
   contribution?: number;
   /** Diameter in px. */
   size?: number;
@@ -21,20 +24,22 @@ export interface ProgressPieProps {
 const C = 16; // centre of the 32-unit viewBox
 
 /**
- * Pie chart of progress towards the deal. Filled in --accent from 12 o'clock, clockwise; an optional
- * --offer slice marks your contribution. Springs to new values, static on first paint.
+ * Pie chart of progress towards the deal: the party's spend in --accent from 12 o'clock, clockwise, then
+ * your contribution as a pulsing --mine slice (static under reduced motion). Springs to new values, static
+ * on first paint.
  */
 export function ProgressPie({ value, max = 100, contribution = 0, size = 28, label, className }: ProgressPieProps) {
   const reduce = useReducedMotion();
   const clamp = (n: number) => Math.min(1, Math.max(0, n));
-  const p = max > 0 ? clamp(value / max) : 0;
-  const c = max > 0 ? Math.min(p, clamp(contribution / max)) : 0;
+  const total = max > 0 ? clamp(value / max) : 0;
+  const others = max > 0 ? Math.min(total, clamp((value - contribution) / max)) : 0;
+  const mine = total - others;
   const transition = reduce ? { duration: 0 } : SPRING_FILL;
 
   return (
     <svg
       role="img"
-      aria-label={label ?? `${Math.round(p * 100)}% filled`}
+      aria-label={label ?? `${Math.round(total * 100)}% filled`}
       viewBox="0 0 32 32"
       width={size}
       height={size}
@@ -50,21 +55,45 @@ export function ProgressPie({ value, max = 100, contribution = 0, size = 28, lab
         stroke="var(--accent)"
         strokeWidth={16}
         initial={false}
-        animate={{ pathLength: p, opacity: p > 0 ? 1 : 0 }}
+        animate={{ pathLength: others, opacity: others > 0 ? 1 : 0 }}
         transition={transition}
       />
-      <motion.circle
-        cx={C}
-        cy={C}
-        r={8}
-        fill="none"
-        stroke="var(--offer)"
-        strokeWidth={16}
-        initial={false}
-        animate={{ pathLength: c, pathOffset: p - c, opacity: c > 0 ? 1 : 0 }}
-        transition={transition}
-      />
+      <g className="animate-mine">
+        <motion.circle
+          cx={C}
+          cy={C}
+          r={8}
+          fill="none"
+          stroke="var(--mine)"
+          strokeWidth={16}
+          initial={false}
+          animate={{ pathLength: mine, pathOffset: others, opacity: mine > 0 ? 1 : 0 }}
+          transition={transition}
+        />
+      </g>
       <circle cx={C} cy={C} r={15.5} fill="none" strokeWidth={1} className="stroke-ink/12" />
     </svg>
+  );
+}
+
+export interface LegendDotProps {
+  /** `mine` (your contribution, pulsing yellow), `accent` (the party's lime) or `track` (still to go). */
+  tone?: "mine" | "accent" | "track";
+  className?: string;
+}
+
+/** 8px legend dot matching a ProgressPie/ProgressBar segment, e.g. beside "Your basket £9.00". */
+export function LegendDot({ tone = "mine", className }: LegendDotProps) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        "inline-block size-2 shrink-0 rounded-full",
+        tone === "mine" && "animate-mine bg-mine",
+        tone === "accent" && "bg-accent",
+        tone === "track" && "bg-ink/8 ring-1 ring-ink/12 ring-inset",
+        className,
+      )}
+    />
   );
 }

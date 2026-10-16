@@ -13,14 +13,19 @@ function restaurantOf(r: OrderRequest) {
   return CATALOG.restaurants.find((x) => x.id === r.restaurantId);
 }
 
+/** The open party you've finalised in, which bots join; undefined while bots are paused. */
+export function botTarget(state: AppState): OrderRequest | undefined {
+  if (state.demo.botsPaused) return undefined;
+  return state.requests.find((x) => x.status === "open" && meIn(x)?.finalised);
+}
+
 /**
  * One bot joins an open party you've joined (your basket is finalised): it picks a main,
  * maybe a side or drink, and finalises. Parties where you're still choosing are left
  * alone, so the deal never locks you out mid-basket.
  */
 export function botJoinActions(state: AppState, now: number, rand: () => number): Action[] {
-  if (state.demo.botsPaused) return [];
-  const r = state.requests.find((x) => x.status === "open" && meIn(x)?.finalised);
+  const r = botTarget(state);
   const restaurant = r && restaurantOf(r);
   if (!r || !restaurant) return [];
   const name = freeBotName(r);

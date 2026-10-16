@@ -6,7 +6,10 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type Keyboard
 import { cn, positioned } from "./cn";
 import { SPRING_SNAPPY } from "./motion";
 
-/* Only one stepper is expanded at a time: tapping another item collapses the open one. */
+/*
+ * Only one stepper is expanded at a time. The shared slot holds the open stepper's id; adding a first item
+ * elsewhere writes a token that matches no stepper, which collapses whichever was open.
+ */
 let expandedId: string | null = null;
 const listeners = new Set<() => void>();
 function setExpanded(id: string | null) {
@@ -29,13 +32,34 @@ export type StepperSize = "sm" | "md";
 export type StepperVariant = "outline" | "glass";
 
 /*
- * sm: 32px tall over image tiles; md: 36px in menu rows. Collapsed ("+" or the count) the button is a circle
- * whose hit area extends to 44px all round. Expanded ("− n +") each button widens (40px sm, 44px md) and
- * extends vertically to 44px, with the outer two reaching 4px past the pill's ends, so every target is 44px.
+ * sm: 28px over image tiles; md: 32px in menu and basket rows. Collapsed ("+" or the count) the circle's hit
+ * area extends to 44px all round. Expanded ("− n +") each button is 36px (sm) or 40px (md) wide and its hit
+ * area reaches 44px tall; "−" and "+" also reach past the pill's ends to 44px wide.
  */
-const dims: Record<StepperSize, { box: string; btn: string; open: string; hitY: string; text: string }> = {
-  sm: { box: "size-8", btn: "size-8 [&_svg]:size-4", open: "h-8 w-10 [&_svg]:size-4", hitY: "before:-inset-y-1.5", text: "text-meta" },
-  md: { box: "size-9", btn: "size-9 [&_svg]:size-[18px]", open: "h-9 w-11 [&_svg]:size-[18px]", hitY: "before:-inset-y-1", text: "text-body" },
+const dims: Record<
+  StepperSize,
+  { box: string; btn: string; open: string; hitRound: string; hitY: string; hitStart: string; hitEnd: string; text: string }
+> = {
+  sm: {
+    box: "size-7",
+    btn: "size-7 [&_svg]:size-3.5",
+    open: "h-7 w-9 [&_svg]:size-3.5",
+    hitRound: "before:-inset-2",
+    hitY: "before:-inset-y-2",
+    hitStart: "before:-left-2 before:right-0",
+    hitEnd: "before:-right-2 before:left-0",
+    text: "text-meta",
+  },
+  md: {
+    box: "size-8",
+    btn: "size-8 [&_svg]:size-4",
+    open: "h-8 w-10 [&_svg]:size-4",
+    hitRound: "before:-inset-1.5",
+    hitY: "before:-inset-y-1.5",
+    hitStart: "before:-left-1 before:right-0",
+    hitEnd: "before:-right-1 before:left-0",
+    text: "text-body",
+  },
 };
 
 const idle: Record<StepperVariant, string> = {
@@ -62,24 +86,47 @@ export interface StepperProps {
   onRemove: () => void;
   /** Item name, used in accessible labels ("Add Margherita"). */
   label: string;
-  /** md (36px) for menu rows, sm (32px) over image tiles. */
+  /** md (32px) for menu and basket rows, sm (28px) over image tiles. */
   size?: StepperSize;
   /** Look of the empty "+": outline on the page, glass when floating over a photo. */
   variant?: StepperVariant;
+  /**
+   * Expanded ("− n +") state, controlled. Lets a screen open the stepper from a row tap. The stepper still
+   * asks to close (onOpenChange(false)) after 3s idle, when another stepper opens, on Escape, and when the
+   * last one is removed. Only takes effect while `qty` is above zero.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  /** Initial expanded state when uncontrolled. */
+  defaultOpen?: boolean;
   disabled?: boolean;
   className?: string;
 }
 
 /**
  * Item quantity control. "+" adds the first one and fills with the count; tapping the count expands
- * into "− n +" (trash at 1). Collapses after 3s idle or when another stepper is used. Grows leftward
- * from its right edge without moving surrounding layout. The pill does not clip, so focus rings and the
- * extended hit areas reach past its edge; only the count clips its rolling digit.
+ * into "− n +" (trash at 1). Collapses after 3s idle or when another stepper opens. Grows leftward from its
+ * right edge without moving surrounding layout. The pill does not clip, so focus rings and the extended hit
+ * areas reach past its edge; only the count clips its rolling digit.
  */
-export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "outline", disabled = false, className }: StepperProps) {
+export function Stepper({
+  qty,
+  onAdd,
+  onRemove,
+  label,
+  size = "md",
+  variant = "outline",
+  open: openProp,
+  onOpenChange,
+  defaultOpen = false,
+  disabled = false,
+  className,
+}: StepperProps) {
   const id = useId();
   const current = useSyncExternalStore(subscribe, getExpanded, getServerExpanded);
-  const state: "add" | "count" | "open" = qty <= 0 ? "add" : current === id ? "open" : "count";
+  const controlled = openProp !== undefined;
+  const expanded = qty > 0 && (controlled ? openProp : current === id);
+  const state: "add" | "count" | "open" = qty <= 0 ? "add" : expanded ? "open" : "count";
   const [dir, setDir] = useState<1 | -1>(1);
   const [activity, setActivity] = useState(0);
 
@@ -87,13 +134,42 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
   const addRef = useRef<HTMLButtonElement>(null);
   const countRef = useRef<HTMLButtonElement>(null);
   const prevState = useRef(state);
+  const onOpenChangeRef = useRef(onOpenChange);
+  useEffect(() => {
+    onOpenChangeRef.current = onOpenChange;
+  });
   const d = dims[size];
+
+  const setOpen = (next: boolean) => {
+    if (next) setExpanded(id);
+    else if (getExpanded() === id) setExpanded(null);
+    onOpenChangeRef.current?.(next);
+  };
+
+  // Uncontrolled: open on mount when asked to (defaultOpen is read once).
+  const openOnMount = useRef(!controlled && defaultOpen && qty > 0);
+  useEffect(() => {
+    if (openOnMount.current) setExpanded(id);
+  }, [id]);
+
+  // Controlled: claim the shared slot while open, so any other open stepper collapses.
+  useEffect(() => {
+    if (controlled && expanded) setExpanded(id);
+  }, [controlled, expanded, id]);
+
+  // Controlled: another stepper opened or a first item was added elsewhere, so ask to close. Reads the slot
+  // live, after the claim above has run.
+  useEffect(() => {
+    const holder = getExpanded();
+    if (controlled && expanded && holder !== null && holder !== id) onOpenChangeRef.current?.(false);
+  }, [controlled, expanded, current, id]);
 
   // Collapse after a few seconds without interaction.
   useEffect(() => {
     if (state !== "open") return;
     const timer = window.setTimeout(() => {
       if (getExpanded() === id) setExpanded(null);
+      onOpenChangeRef.current?.(false);
     }, IDLE_COLLAPSE_MS);
     return () => window.clearTimeout(timer);
   }, [state, activity, id]);
@@ -125,19 +201,19 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
   const remove = () => {
     setDir(-1);
     setActivity((n) => n + 1);
+    if (qty <= 1) setOpen(false);
     onRemove();
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === "Escape" && state === "open") {
       e.stopPropagation();
-      setExpanded(null);
+      setOpen(false);
     }
   };
 
-  const hit = cn("relative before:absolute", d.hitY);
   const press = "transition-[scale,background-color] duration-100 ease-out active:scale-[0.9]";
-  const open = state === "open";
+  const isOpen = state === "open";
 
   return (
     <div
@@ -166,24 +242,24 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
               disabled={disabled}
               aria-label={`Add ${label}`}
               onClick={() => {
-                setExpanded(null);
+                setExpanded(`add:${id}`);
                 add();
               }}
               {...pop}
-              className={cn(d.btn, "relative grid place-items-center rounded-full before:absolute before:-inset-1.5 disabled:opacity-40", press)}
+              className={cn(d.btn, "relative grid place-items-center rounded-full before:absolute disabled:opacity-40", d.hitRound, press)}
             >
               <Plus />
             </motion.button>
           )}
 
-          {state === "open" && (
+          {isOpen && (
             <motion.button
               key="minus"
               type="button"
               aria-label={qty === 1 ? `Remove ${label}` : `Remove one ${label}`}
               onClick={remove}
               {...pop}
-              className={cn(d.open, "grid place-items-center rounded-full before:right-0 before:-left-1 active:bg-ink/10", hit, press)}
+              className={cn(d.open, "relative grid place-items-center rounded-full before:absolute active:bg-ink/10", d.hitY, d.hitStart, press)}
             >
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.span
@@ -207,18 +283,18 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
               layout="position"
               type="button"
               disabled={disabled}
-              aria-expanded={state === "open"}
-              aria-label={`${qty} ${label} in basket. ${state === "open" ? "Done" : "Change quantity"}`}
+              aria-expanded={isOpen}
+              aria-label={`${qty} ${label} in basket. ${isOpen ? "Done" : "Change quantity"}`}
               onClick={() => {
                 setActivity((n) => n + 1);
-                setExpanded(state === "open" ? null : id);
+                setOpen(!isOpen);
               }}
               {...pop}
               className={cn(
-                open ? d.open : d.btn,
+                isOpen ? d.open : d.btn,
                 d.text,
                 "tnum relative grid place-items-center rounded-full font-semibold before:absolute",
-                open ? cn("before:inset-x-0", d.hitY) : "before:-inset-1.5",
+                isOpen ? cn("before:inset-x-0", d.hitY) : d.hitRound,
                 press,
               )}
             >
@@ -241,14 +317,14 @@ export function Stepper({ qty, onAdd, onRemove, label, size = "md", variant = "o
             </motion.button>
           )}
 
-          {state === "open" && (
+          {isOpen && (
             <motion.button
               key="plus"
               type="button"
               aria-label={`Add another ${label}`}
               onClick={add}
               {...pop}
-              className={cn(d.open, "grid place-items-center rounded-full before:-right-1 before:left-0 active:bg-ink/10", hit, press)}
+              className={cn(d.open, "relative grid place-items-center rounded-full before:absolute active:bg-ink/10", d.hitY, d.hitEnd, press)}
             >
               <Plus />
             </motion.button>

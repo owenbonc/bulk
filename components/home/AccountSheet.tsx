@@ -1,9 +1,10 @@
 "use client";
 
-import { Camera, FlaskConical, MapPin, Users, X } from "lucide-react";
+import { Camera, ChevronLeft, FlaskConical, MapPin, Users, X } from "lucide-react";
+import { useState } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { DemoControlsPanel } from "@/components/demo";
-import { Avatar, Divider, IconButton, Sheet } from "@/components/ui";
+import { Avatar, Divider, IconButton, Marquee, Sheet } from "@/components/ui";
 import { CATALOG, ME } from "@/lib/data";
 import { pickupById, useApp } from "@/lib/store";
 
@@ -12,28 +13,87 @@ export interface AccountSheetProps {
   onOpenChange: (open: boolean) => void;
 }
 
-/** The Bulk logo, you, your friends, the demo and photo credits, and the presenter's demo controls. */
+interface Credit {
+  file: string;
+  title: string;
+  author: string;
+  licence: string;
+}
+
+/** Turns the table rows of public/images/CREDITS.md into credits, with markdown links reduced to their text. */
+function parseCredits(md: string): Credit[] {
+  const unlink = (cell: string) => cell.replace(/\[([^\]]+)\]\([^)]+\)/g, "$1");
+  return md
+    .split("\n")
+    .filter((line) => line.startsWith("| `"))
+    .map((line) => {
+      const [file = "", source = "", author = "", licence = ""] = line
+        .split("|")
+        .map((cell) => cell.trim())
+        .slice(1, -1);
+      return { file: file.replace(/`/g, ""), title: unlink(source), author: unlink(author), licence: unlink(licence) };
+    });
+}
+
+/**
+ * The Bulk logo, you, your friends, the demo and photo credits, and the presenter's demo controls. The photo
+ * credits open inside the sheet as a second view (loaded from public/images/CREDITS.md) with a back button.
+ */
 export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
+  const [view, setView] = useState<"account" | "credits">("account");
+  const [credits, setCredits] = useState<Credit[] | null>(null);
+
+  const showCredits = () => {
+    setView("credits");
+    if (credits !== null) return;
+    fetch("/images/CREDITS.md")
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.text();
+      })
+      .then((md) => setCredits(parseCredits(md)))
+      .catch(() => setCredits([]));
+  };
+
+  return (
+    <Sheet
+      open={open}
+      onOpenChange={onOpenChange}
+      onClosed={() => setView("account")}
+      title={view === "credits" ? "Photo credits" : "Account"}
+      hideTitle
+      showClose={false}
+    >
+      {view === "credits" ? (
+        <CreditsView credits={credits} onBack={() => setView("account")} onClose={() => onOpenChange(false)} />
+      ) : (
+        <AccountView onShowCredits={showCredits} onClose={() => onOpenChange(false)} />
+      )}
+    </Sheet>
+  );
+}
+
+function AccountView({ onShowCredits, onClose }: { onShowCredits: () => void; onClose: () => void }) {
   const { state } = useApp();
   const friends = state.friends.length;
   const location = pickupById(state.location) ?? CATALOG.pickupPoints[0];
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange} title="Account" hideTitle showClose={false}>
+    <>
       <div className="flex items-center justify-between gap-3 pb-4">
         <Logo size={30} />
-        <IconButton aria-label="Close" size="sm" variant="soft" className="-mr-1.5" onClick={() => onOpenChange(false)}>
+        <IconButton aria-label="Close" size="sm" variant="soft" className="-mr-1.5" onClick={onClose}>
           <X />
         </IconButton>
       </div>
 
       <div className="flex items-center gap-4 pb-5">
         <Avatar name={ME.name} you size={56} />
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="font-display text-title font-semibold text-ink">{ME.name}</p>
-          <p className="flex items-center gap-1 truncate text-meta text-ink-2">
+          <p className="flex items-center gap-1 text-meta text-ink-2">
             <MapPin aria-hidden className="size-3.5 shrink-0" />
-            <span className="truncate">{location?.name}</span>
+            <Marquee>{location?.name}</Marquee>
           </p>
         </div>
       </div>
@@ -61,14 +121,13 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
           <Camera aria-hidden className="size-4 shrink-0" />
           <span>
             Photos:{" "}
-            <a
-              href="/images/CREDITS.md"
-              target="_blank"
-              rel="noopener"
+            <button
+              type="button"
+              onClick={onShowCredits}
               className="font-medium text-ink-2 underline decoration-line-strong hover:text-ink hover:decoration-ink-3"
             >
               Wikimedia Commons contributors
-            </a>
+            </button>
           </span>
         </p>
       </div>
@@ -86,6 +145,53 @@ export function AccountSheet({ open, onOpenChange }: AccountSheetProps) {
         </div>
         <DemoControlsPanel />
       </section>
-    </Sheet>
+    </>
+  );
+}
+
+function CreditsView({
+  credits,
+  onBack,
+  onClose,
+}: {
+  credits: Credit[] | null;
+  onBack: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2 pb-3">
+        <IconButton aria-label="Back" size="sm" variant="soft" className="-ml-1.5" onClick={onBack}>
+          <ChevronLeft />
+        </IconButton>
+        <h2 className="min-w-0 flex-1 font-display text-section font-semibold text-ink">Photo credits</h2>
+        <IconButton aria-label="Close" size="sm" variant="soft" className="-mr-1.5" onClick={onClose}>
+          <X />
+        </IconButton>
+      </div>
+
+      {credits === null ? (
+        <p className="text-meta text-ink-3">Loading…</p>
+      ) : credits.length === 0 ? (
+        <p className="text-meta text-ink-2">Photos from Wikimedia Commons under CC0, CC BY and CC BY-SA.</p>
+      ) : (
+        <>
+          <p className="text-meta text-ink-2">
+            Every photo comes from Wikimedia Commons under the licence listed, resized and recompressed with no other
+            changes.
+          </p>
+          <ul className="mt-2 flex flex-col divide-y divide-line">
+            {credits.map((c) => (
+              <li key={c.file} className="py-2">
+                <p className="text-body text-ink">{c.title}</p>
+                <p className="text-meta text-ink-2">
+                  {c.author} · {c.licence}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </>
   );
 }

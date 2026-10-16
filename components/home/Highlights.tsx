@@ -4,7 +4,7 @@ import { Check } from "lucide-react";
 import { useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { useRef } from "react";
-import { DealPill, ImageFrame, Pill, ProgressPie, Rating, SectionHeader, formatPrice } from "@/components/ui";
+import { DealPill, ImageFrame, Marquee, Pill, ProgressPie, Rating, SectionHeader, formatPrice } from "@/components/ui";
 import { Eta } from "./parts";
 import { partyHref } from "./PartyListCard";
 import type { HomeParty } from "./useHomeParties";
@@ -43,7 +43,7 @@ export function Highlights({ parties }: { parties: HomeParty[] }) {
         style={{ gap: GAP }}
       >
         {parties.map((p, i) => (
-          <li key={p.request.id} className="w-[72%] max-w-[310px] shrink-0 snap-start">
+          <li key={p.request.id} className="relative w-[72%] max-w-[310px] shrink-0 snap-start">
             <HighlightCard party={p} priority={i < PRIORITY_CARDS} />
           </li>
         ))}
@@ -83,8 +83,10 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
       </div>
 
       <div className="flex items-end justify-between gap-3 px-3.5 pt-3 pb-3.5">
-        <div className="min-w-0">
-          <h3 className="truncate text-emphasis font-semibold tracking-[-0.01em] text-ink">{restaurant.name}</h3>
+        <div className="min-w-0 flex-1">
+          <Marquee as="h3" className="text-emphasis font-semibold tracking-[-0.01em] text-ink">
+            {restaurant.name}
+          </Marquee>
           <p className="mt-0.5 flex">
             <Rating value={restaurant.rating} count={restaurant.ratingCount} />
           </p>

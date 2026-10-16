@@ -10,7 +10,7 @@ export interface SearchFieldProps
   onValueChange: (value: string) => void;
   /** Accessible name; defaults to the placeholder. */
   label?: string;
-  /** md 44px (default), lg 48px. */
+  /** md 40px (default, matches the round buttons beside it), lg 44px. */
   size?: "md" | "lg";
   /** Surface: white on the page, translucent white inside material bars, or clear glass (the Home search bar). */
   tone?: "surface" | "translucent" | "glass";
@@ -34,14 +34,14 @@ export function SearchField({
       className={cn(
         "relative flex min-w-0 items-center rounded-full transition-shadow duration-150",
         "focus-within:ring-2 focus-within:ring-accent-ink",
-        size === "lg" ? "h-12" : "h-11",
+        size === "lg" ? "h-11" : "h-10",
         tone === "glass" ? "glass" : "ring-1 ring-line ring-inset",
         tone === "surface" && "bg-surface",
         tone === "translucent" && "bg-surface/70",
         className,
       )}
     >
-      <Search aria-hidden className="pointer-events-none absolute left-3.5 size-[18px] text-ink-3" />
+      <Search aria-hidden className="pointer-events-none absolute left-3 size-[18px] text-ink-3" />
       <input
         {...rest}
         ref={inputRef}
@@ -63,7 +63,7 @@ export function SearchField({
           }
           rest.onKeyDown?.(e);
         }}
-        className="h-full w-full min-w-0 rounded-full bg-transparent pr-10 pl-10 text-ink outline-none focus-visible:outline-none"
+        className="h-full w-full min-w-0 rounded-full bg-transparent pr-9 pl-9 text-ink outline-none focus-visible:outline-none"
       />
       {value && (
         <button
@@ -73,9 +73,9 @@ export function SearchField({
             onValueChange("");
             inputRef.current?.focus();
           }}
-          className="absolute right-1.5 grid size-8 place-items-center rounded-full bg-surface-2 text-ink-2 transition-[scale,background-color] duration-100 ease-out before:absolute before:-inset-1.5 active:scale-[0.9] active:bg-line"
+          className="absolute right-1.5 grid size-7 place-items-center rounded-full bg-surface-2 text-ink-2 transition-[scale,background-color] duration-100 ease-out before:absolute before:-inset-2 active:scale-[0.9] active:bg-line"
         >
-          <X className="size-4" />
+          <X className="size-3.5" />
         </button>
       )}
     </div>

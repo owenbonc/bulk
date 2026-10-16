@@ -56,7 +56,7 @@ export function Switch({ checked, onCheckedChange, label, description, disabled 
 
   // The label forwards clicks on its text to the switch natively.
   return (
-    <label className={cn("flex min-h-11 items-center gap-4", disabled ? "cursor-not-allowed" : "cursor-pointer", className)}>
+    <label className={cn("flex min-h-11 items-center gap-3", disabled ? "cursor-not-allowed" : "cursor-pointer", className)}>
       <span className="min-w-0 flex-1 select-none">
         <span id={labelId} className="block text-body font-medium text-ink">
           {label}

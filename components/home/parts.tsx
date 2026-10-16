@@ -2,13 +2,6 @@ import { Clock } from "lucide-react";
 import { cn } from "@/components/ui";
 import type { Restaurant } from "@/lib/types";
 
-const clock = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit" });
-
-/** "19:40" */
-export function clockTime(ms: number): string {
-  return clock.format(ms);
-}
-
 /** "25–35 min" */
 export function etaText(restaurant: Restaurant): string {
   const [lo, hi] = restaurant.etaMin;
@@ -23,7 +16,7 @@ export function timeAgo(at: number, now: number): string {
   return `${Math.floor(min / 60)} h ago`;
 }
 
-/** Clock icon + delivery window, in the Rating's 13px secondary style. */
+/** Clock icon + delivery window, in the Rating's 12px secondary style. */
 export function Eta({ restaurant, className }: { restaurant: Restaurant; className?: string }) {
   return (
     <span className={cn("tnum inline-flex shrink-0 items-center gap-1 text-meta whitespace-nowrap text-ink-2", className)}>

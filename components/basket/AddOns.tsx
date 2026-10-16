@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageFrame, Price, SectionHeader, Stepper } from "@/components/ui";
+import { ImageFrame, Marquee, Price, SectionHeader, Stepper } from "@/components/ui";
 import type { BasketLine, Restaurant } from "@/lib/types";
 
 export interface AddOnsProps {
@@ -20,10 +20,10 @@ export function AddOns({ restaurant, basket, locked, onAdd, onRemove }: AddOnsPr
   return (
     <section aria-labelledby="addons-heading">
       <SectionHeader id="addons-heading" title="Add ons" />
-      <ul className="no-scrollbar -mx-4 mt-2 flex snap-x snap-mandatory scroll-px-4 gap-3 overflow-x-auto overscroll-x-contain px-4 pb-1 [touch-action:pan-x_pan-y]">
+      <ul className="no-scrollbar -mx-gutter mt-2 flex snap-x snap-mandatory scroll-px-gutter gap-group overflow-x-auto overscroll-x-contain px-gutter pb-1 [touch-action:pan-x_pan-y]">
         {items.map((item) => (
-          <li key={item.id} className="w-32 shrink-0 snap-start">
-            <ImageFrame src={item.image} alt={item.name} ratio="1/1" emoji={restaurant.emoji} sizes="128px">
+          <li key={item.id} className="w-30 shrink-0 snap-start">
+            <ImageFrame src={item.image} alt={item.name} ratio="1/1" emoji={restaurant.emoji} sizes="120px">
               <Stepper
                 qty={qtyOf(item.id)}
                 label={item.name}
@@ -35,7 +35,9 @@ export function AddOns({ restaurant, basket, locked, onAdd, onRemove }: AddOnsPr
                 className="absolute right-2 bottom-2"
               />
             </ImageFrame>
-            <p className="mt-2 text-body leading-snug font-medium text-ink">{item.name}</p>
+            <Marquee as="p" className="mt-1.5 text-body font-medium text-ink">
+              {item.name}
+            </Marquee>
             <Price pence={item.price} originalPence={item.originalPrice} className="text-meta text-ink-2" />
           </li>
         ))}

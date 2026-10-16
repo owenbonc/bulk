@@ -26,7 +26,7 @@ export function CreateScreen() {
   const [popup, setPopup] = useState<{ open: boolean; partyId?: string }>({ open: false });
 
   const q = normalise(query);
-  const featured = CATALOG.restaurants.filter((r) => r.featured && matchesQuery(r, q));
+  const featured = q ? [] : CATALOG.restaurants.filter((r) => r.featured);
   const deals = CATALOG.restaurants.filter((r) => matchesQuery(r, q)).sort(byBestDeal);
 
   const partyAt = (restaurantId: string): PartyMarker | undefined => {
@@ -94,18 +94,18 @@ export function CreateScreen() {
       />
 
       <main className="pb-safe">
-        <h1 className="px-4 pt-1 text-title font-semibold text-ink">Create a party</h1>
+        <h1 className="px-gutter pt-1 text-title font-semibold text-ink">Create a party</h1>
 
         {deals.length === 0 ? (
-          <div role="status" className="flex flex-col items-center px-8 pt-16 pb-8 text-center">
-            <p className="text-emphasis font-semibold text-pretty text-ink">No restaurants match &lsquo;{query.trim()}&rsquo;</p>
+          <div role="status" className="flex flex-col items-center px-8 pt-12 pb-8 text-center">
+            <p className="text-emphasis font-semibold text-pretty break-words text-ink">No restaurants match &lsquo;{query.trim()}&rsquo;</p>
             <p className="mt-1 text-body text-ink-2">Try a cuisine like ramen or curry, or a dish.</p>
-            <Button variant="secondary" className="mt-5" onClick={() => setQuery("")}>
+            <Button variant="secondary" className="mt-4" onClick={() => setQuery("")}>
               Clear search
             </Button>
           </div>
         ) : (
-          <div className="flex flex-col gap-6 pt-3 pb-6">
+          <div className="flex flex-col gap-section pt-2 pb-section">
             {featured.length > 0 && <FeaturedCarousel restaurants={featured} partyAt={partyAt} onChoose={choose} />}
             <BestDealsList restaurants={deals} count={q ? deals.length : undefined} partyAt={partyAt} onChoose={choose} />
           </div>

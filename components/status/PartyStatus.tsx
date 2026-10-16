@@ -3,7 +3,7 @@
 import { CircleSlash, CircleX, House, Info, SearchX, TimerOff, UserX } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { EASE_OUT, EXIT, IconButton, TopBar, formatPrice, toast } from "@/components/ui";
+import { EASE_OUT, EXIT, IconButton, Marquee, TopBar, formatPrice, scrollRootTo, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
 import { CANCEL_REASONS } from "@/lib/requests";
 import { pickupById, previewSplit, progressOf, restaurantById, useApp } from "@/lib/store";
@@ -19,8 +19,8 @@ type View = "filling" | "accept" | "delivery" | "closed" | "removed" | "missed";
 
 function viewFor(request: OrderRequest): View {
   const me = request.participants.find((p) => p.userId === ME.userId);
-  if (request.status === "expired" || request.status === "cancelled") return "closed";
   if (me?.declined || (!me && request.removedUserIds.includes(ME.userId))) return "removed";
+  if (request.status === "expired" || request.status === "cancelled") return "closed";
   if (request.status === "open") return "filling";
   if (!me) return "missed";
   return request.status === "deal_achieved" ? "accept" : "delivery";
@@ -49,7 +49,7 @@ export function PartyStatus({ id }: { id: string }) {
   useEffect(() => {
     if (lastView.current === view) return;
     lastView.current = view;
-    window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
+    scrollRootTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
   }, [view, reduce]);
 
   if (!request || !restaurant || !pickup) {
@@ -88,8 +88,8 @@ export function PartyStatus({ id }: { id: string }) {
           title="You're out of this order"
           reason={
             declinedHere || me?.declined
-              ? "You declined, so you're out of this order."
-              : "You didn't accept in time, so you're out of this order."
+              ? "You declined this order."
+              : "You didn't accept within 60 seconds."
           }
           reassurance="Nothing was charged."
         />
@@ -131,9 +131,11 @@ export function PartyStatus({ id }: { id: string }) {
     <>
       <TopBar
         left={
-          <div className="flex min-w-0 items-center gap-1">
+          <div className="flex min-w-0 items-center gap-2">
             <HomeButton />
-            <p className="truncate pr-2 font-display text-emphasis font-semibold tracking-[-0.01em] text-ink">{restaurant.name}</p>
+            <Marquee as="p" className="pr-2 font-display text-emphasis font-semibold tracking-[-0.01em] text-ink">
+              {restaurant.name}
+            </Marquee>
           </div>
         }
         right={
@@ -171,8 +173,12 @@ export function PartyStatus({ id }: { id: string }) {
             toast("This round has ended", { description: "Nothing was charged." });
             return;
           }
+          // Paying last with someone out ends the round: it either opens round 2 or cancels the party.
+          const others = request.participants.filter((p) => p.userId !== ME.userId);
+          const settles = others.every((p) => p.paid || p.declined);
+          const someoneOut = others.some((p) => p.declined);
           dispatch({ type: "ACCEPT_AND_PAY", requestId: request.id, userId: ME.userId, now: at });
-          toast.success(`Paid ${formatPrice(myCost?.total ?? 0)}`);
+          if (!(settles && someoneOut)) toast.success(`Paid ${formatPrice(myCost?.total ?? 0)}`);
         }}
         onDecline={() => {
           setDeclinedHere(true);

@@ -2,8 +2,8 @@
 
 import { Plus } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useEffectEvent, useRef, useState } from "react";
-import { Button, Card, EXIT, Price, SPRING, SectionHeader, Stepper, cn, formatPrice } from "@/components/ui";
+import { useEffect, useRef, useState } from "react";
+import { Button, Card, EXIT, Marquee, Price, SPRING, SectionHeader, Stepper, cn, formatPrice } from "@/components/ui";
 import type { BasketLine, MenuItem, Restaurant } from "@/lib/types";
 
 export interface BasketLinesProps {
@@ -18,7 +18,8 @@ export interface BasketLinesProps {
 
 /**
  * "Your basket": a card of `1×  Name ……… £9.00` rows in the status page's Order card style. Tapping a row
- * swaps its price for the shared stepper, already expanded; it folds back when the stepper collapses.
+ * swaps its price for the shared stepper, opened through its controlled `open` prop; the row folds back
+ * when the stepper asks to close (3s idle, "Done", Escape, another stepper used, last one removed).
  */
 export function BasketLines({ restaurant, basket, locked, onAdd, onRemove, menuHref }: BasketLinesProps) {
   const reduce = useReducedMotion();
@@ -43,7 +44,7 @@ export function BasketLines({ restaurant, basket, locked, onAdd, onRemove, menuH
       {rows.length === 0 ? (
         <p className="mt-1 text-body text-ink-2">Nothing in here yet. Pick something from the menu or an add on below.</p>
       ) : (
-        <Card padded={false} className="mt-2 overflow-hidden py-1.5">
+        <Card padded={false} className="mt-2 overflow-hidden py-1">
           <ul>
             <AnimatePresence initial={false}>
               {rows.map(({ item, qty }) => (
@@ -53,13 +54,11 @@ export function BasketLines({ restaurant, basket, locked, onAdd, onRemove, menuH
                     qty={qty}
                     locked={locked}
                     editing={!locked && editing === item.id}
-                    onEdit={() => setEditing(item.id)}
-                    onDone={() => setEditing((current) => (current === item.id ? null : current))}
+                    onEditingChange={(open) =>
+                      setEditing((current) => (open ? item.id : current === item.id ? null : current))
+                    }
                     onAdd={() => onAdd(item.id)}
-                    onRemove={() => {
-                      if (qty === 1) setEditing(null);
-                      onRemove(item.id);
-                    }}
+                    onRemove={() => onRemove(item.id)}
                   />
                 </motion.li>
               ))}
@@ -68,7 +67,7 @@ export function BasketLines({ restaurant, basket, locked, onAdd, onRemove, menuH
         </Card>
       )}
 
-      <div className="mt-3 flex justify-end">
+      <div className="mt-group flex justify-end">
         <Button variant="secondary" size="sm" icon={<Plus />} href={menuHref}>
           Add items
         </Button>
@@ -82,33 +81,46 @@ interface BasketRowProps {
   qty: number;
   locked: boolean;
   editing: boolean;
-  onEdit: () => void;
-  onDone: () => void;
+  onEditingChange: (open: boolean) => void;
   onAdd: () => void;
   onRemove: () => void;
 }
 
+const swap = {
+  initial: { opacity: 0, scale: 0.95 },
+  animate: { opacity: 1, scale: 1 },
+  exit: { opacity: 0, scale: 0.95, transition: { duration: 0.12 } },
+};
+
 /**
  * One basket line. At rest the whole row is a button ("2 × Margherita, £18.00. Change quantity") sitting
- * under the visual row; editing, the quantity prefix fades and the price slot holds the stepper.
+ * under the visual row; editing, the price slot holds the open stepper while the quantity prefix stays and
+ * counts live, with focus on its count so keyboard users land in it and return to the row when it folds.
  */
-function BasketRow({ item, qty, locked, editing, onEdit, onDone, onAdd, onRemove }: BasketRowProps) {
+function BasketRow({ item, qty, locked, editing, onEditingChange, onAdd, onRemove }: BasketRowProps) {
   const rowRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const refocus = useRef(false);
+  const slotRef = useRef<HTMLDivElement>(null);
+  const hadFocus = useRef(false);
   const lineTotal = item.price * qty;
   const tappable = !locked && !editing;
 
-  // Folding back while focus was in the stepper: put focus on the row so keyboard users keep their place.
+  // Opening from the row button: focus follows into the stepper. Folding back with focus inside it: focus
+  // returns to the row.
   useEffect(() => {
-    if (editing || !refocus.current) return;
-    refocus.current = false;
-    buttonRef.current?.focus({ preventScroll: true });
+    if (editing) {
+      if (!hadFocus.current) return;
+      hadFocus.current = false;
+      slotRef.current?.querySelector<HTMLButtonElement>("button[aria-expanded]")?.focus({ preventScroll: true });
+    } else if (hadFocus.current) {
+      hadFocus.current = false;
+      buttonRef.current?.focus({ preventScroll: true });
+    }
   }, [editing]);
 
-  const collapse = () => {
-    refocus.current = !!rowRef.current?.contains(document.activeElement);
-    onDone();
+  const setOpen = (open: boolean) => {
+    hadFocus.current = !!rowRef.current?.contains(document.activeElement);
+    onEditingChange(open);
   };
 
   return (
@@ -117,73 +129,34 @@ function BasketRow({ item, qty, locked, editing, onEdit, onDone, onAdd, onRemove
         <button
           ref={buttonRef}
           type="button"
-          onClick={onEdit}
+          onClick={() => setOpen(true)}
           aria-label={`${qty} × ${item.name}, ${formatPrice(lineTotal)}. Change quantity`}
           className="absolute inset-0 transition-colors duration-100 ease-out hover:bg-surface-hover focus-visible:outline-offset-[-2px] active:bg-surface-2"
         />
       )}
       <div
         aria-hidden={tappable || undefined}
-        className={cn("relative flex min-h-11 items-center gap-3 px-4 text-body", tappable && "pointer-events-none")}
+        className={cn("relative flex min-h-11 items-center gap-2.5 px-card text-body", tappable && "pointer-events-none")}
       >
         <span
           aria-hidden={editing || undefined}
-          className={cn("tnum w-6 shrink-0 text-ink-3 transition-opacity duration-150 ease-out", editing && "opacity-0")}
+          className={cn("tnum min-w-6 shrink-0 text-ink-3")}
         >
           {qty}×
         </span>
-        <span className="min-w-0 flex-1 py-2.5 text-ink">{item.name}</span>
-        {editing ? (
-          <QuantityEditor label={item.name} qty={qty} onAdd={onAdd} onRemove={onRemove} onCollapse={collapse} />
-        ) : (
-          <Price pence={lineTotal} className="shrink-0 text-ink" />
-        )}
+        <Marquee className="flex-1 py-2.5 text-ink">{item.name}</Marquee>
+        <AnimatePresence initial={false} mode="popLayout">
+          {editing ? (
+            <motion.div key="stepper" ref={slotRef} {...swap} className="flex w-30 shrink-0 justify-end">
+              <Stepper qty={qty} label={item.name} onAdd={onAdd} onRemove={onRemove} open onOpenChange={setOpen} />
+            </motion.div>
+          ) : (
+            <motion.div key="price" {...swap} className="shrink-0">
+              <Price pence={lineTotal} className="text-ink" />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-    </div>
-  );
-}
-
-/**
- * The shared Stepper in a slot as wide as its expanded pill (md: 132px), opened on arrival with focus on
- * its count. Reports `onCollapse` when the stepper folds (3s idle, "Done", Escape, or another stepper used).
- */
-function QuantityEditor({
-  label,
-  qty,
-  onAdd,
-  onRemove,
-  onCollapse,
-}: {
-  label: string;
-  qty: number;
-  onAdd: () => void;
-  onRemove: () => void;
-  onCollapse: () => void;
-}) {
-  const slotRef = useRef<HTMLDivElement>(null);
-  const collapsed = useEffectEvent(onCollapse);
-
-  useEffect(() => {
-    const slot = slotRef.current;
-    if (!slot) return;
-    const count = () => slot.querySelector<HTMLButtonElement>("button[aria-expanded]");
-
-    const button = count();
-    if (button?.getAttribute("aria-expanded") === "false") {
-      button.focus({ preventScroll: true });
-      button.click();
-    }
-
-    const observer = new MutationObserver(() => {
-      if (count()?.getAttribute("aria-expanded") === "false") collapsed();
-    });
-    observer.observe(slot, { subtree: true, attributes: true, attributeFilter: ["aria-expanded"] });
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={slotRef} className="flex w-[132px] shrink-0 justify-end">
-      <Stepper qty={qty} label={label} onAdd={onAdd} onRemove={onRemove} />
     </div>
   );
 }

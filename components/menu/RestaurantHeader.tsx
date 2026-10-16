@@ -1,16 +1,31 @@
 import { MapPin, Truck } from "lucide-react";
-import { ImageFrame, Rating } from "@/components/ui";
+import type { Ref } from "react";
+import { ImageFrame, Marquee, Rating } from "@/components/ui";
 import type { Restaurant } from "@/lib/types";
 
+/** How far the page lifts over the bottom of the hero photo (the rounded sheet edge), in px. */
+export const HERO_OVERLAP = 24;
+
 /**
- * Full-bleed 16:10 hero photo, loaded with priority. The floating glass buttons sit over its top edge, so
- * a short, light ink shade sits only there; the rest of the photo is untouched.
+ * Full-bleed hero photo from the very top of the phone, under the status bar: 16:10 of the photo stays
+ * visible below the status bar's safe area. A soft ink shade sits over the top edge only, so the white
+ * status bar glyphs and the floating glass buttons read over any photo.
  */
-export function MenuHero({ restaurant }: { restaurant: Restaurant }) {
+export function MenuHero({ restaurant, ref }: { restaurant: Restaurant; ref?: Ref<HTMLDivElement> }) {
   return (
-    <div className="relative">
-      <ImageFrame src={restaurant.image} alt={restaurant.name} ratio="16/10" radius="none" emoji={restaurant.emoji} priority />
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-linear-to-b from-ink/20 to-transparent" />
+    <div ref={ref} className="@container relative">
+      <ImageFrame
+        src={restaurant.image}
+        alt={restaurant.name}
+        radius="none"
+        emoji={restaurant.emoji}
+        priority
+        className="h-[calc(62.5cqw+var(--safe-top))] w-full"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 h-[calc(var(--safe-top)+64px)] bg-linear-to-b from-ink/35 via-ink/10 to-transparent"
+      />
     </div>
   );
 }
@@ -19,21 +34,23 @@ export function MenuHero({ restaurant }: { restaurant: Restaurant }) {
 export function RestaurantHeader({ restaurant }: { restaurant: Restaurant }) {
   const [min, max] = restaurant.etaMin;
   return (
-    <div className="flex flex-col gap-1.5">
+    <div className="flex flex-col gap-1">
       <h1 className="text-title font-semibold text-ink">{restaurant.name}</h1>
-      <p className="flex items-center gap-1 text-meta text-ink-2">
+      <p className="flex min-w-0 items-center gap-1 text-meta text-ink-2">
         <MapPin aria-hidden className="size-3.5 shrink-0" />
-        <span>
+        <Marquee>
           {restaurant.cuisine} · {restaurant.area} · <span className="tnum">{restaurant.distanceMiles} mi</span>
-        </span>
+        </Marquee>
       </p>
-      <Rating value={restaurant.rating} label={restaurant.ratingLabel} count={restaurant.ratingCount} className="self-start" />
-      <p className="flex items-center gap-1 text-meta text-ink-2">
-        <Truck aria-hidden className="size-3.5 shrink-0" />
-        <span>
-          Delivers in <span className="tnum">{min}–{max}</span> min
-        </span>
-      </p>
+      <div className="mt-0.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Rating value={restaurant.rating} label={restaurant.ratingLabel} count={restaurant.ratingCount} />
+        <p className="flex items-center gap-1 text-meta text-ink-2">
+          <Truck aria-hidden className="size-3.5 shrink-0" />
+          <span>
+            Delivers in <span className="tnum">{min}–{max}</span> min
+          </span>
+        </p>
+      </div>
     </div>
   );
 }

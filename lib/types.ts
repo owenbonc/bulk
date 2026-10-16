@@ -18,7 +18,7 @@ export interface MenuItem {
 }
 
 export interface Deal {
-  /** Long form: "20% off a £40 group order". */
+  /** Long form: "20% off when the party spends £40". */
   label: string;
   /** Pill form: "20% off". */
   short: string;

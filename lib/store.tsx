@@ -1,10 +1,10 @@
 "use client";
 
-import { createContext, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useReducer, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Logo } from "@/components/brand/Logo";
 import { CATALOG, ME, seedState } from "./data";
 import { type Action, isTerminal, notificationsFor, pendingAlerts, reduce } from "./requests";
-import { botAcceptActions, botJoinActions } from "./simulation";
+import { botAcceptActions, botJoinActions, botTarget } from "./simulation";
 import type { AppState, OrderRequest } from "./types";
 
 export {
@@ -26,11 +26,12 @@ export {
 
 const STORAGE_KEY = "bulk-demo-v2";
 const HEARTBEAT_MS = 1_000;
-const BOT_STEP_MS = [2_000, 4_000] as const;
+const FIRST_BOT_DELAY_MS = 6_000;
+const BOT_STEP_MS = [5_000, 9_000] as const;
 
 interface AppContext {
   state: AppState;
-  /** Wall clock, updated every second by the heartbeat. */
+  /** Wall clock, updated every second by the heartbeat and on every dispatched action. */
   now: number;
   dispatch: (action: Action) => void;
 }
@@ -55,25 +56,33 @@ const noopSubscribe = () => () => {};
 
 export function AppProvider({ children }: { children: ReactNode }) {
   // The app lives in localStorage and a live clock, so it only renders in the browser. Until then (the
-  // server render and first paint) a full-height cream splash with the logo holds the column.
+  // server render and first paint) a cream splash with the logo fills the screen (the phone, in the frame).
   const mounted = useSyncExternalStore(noopSubscribe, () => true, () => false);
   return mounted ? <ClientProvider>{children}</ClientProvider> : <Splash />;
 }
 
 function Splash() {
   return (
-    <div aria-busy="true" className="grid min-h-dvh place-items-center bg-bg">
+    <div aria-busy="true" className="grid min-h-app place-items-center bg-bg">
       <Logo size={40} />
     </div>
   );
 }
 
 function ClientProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer((s: AppState, a: Action) => reduce(s, a, CATALOG), undefined, loadState);
+  const [state, rawDispatch] = useReducer((s: AppState, a: Action) => reduce(s, a, CATALOG), undefined, loadState);
   const [now, setNow] = useState(() => Date.now());
+
+  // Moves the shared clock up to the moment of each UI action, so a deadline the action sets (from its own
+  // `now`) never reads as more time left than its full window.
+  const dispatch = useCallback((action: Action) => {
+    setNow(Date.now());
+    rawDispatch(action);
+  }, []);
 
   const stateRef = useRef(state);
   const nextBotAt = useRef(0);
+  const botParty = useRef<string | undefined>(undefined);
   useEffect(() => {
     stateRef.current = state;
     try {
@@ -84,20 +93,27 @@ function ClientProvider({ children }: { children: ReactNode }) {
   }, [state]);
 
   // One heartbeat drives the clock, timeouts, delivery stages and the simulated participants.
+  // Bots start joining a party about 6s after you finalise in it, then every 5–9s, so the filling
+  // state stays visible; 'Fill this party now' is the instant path.
   useEffect(() => {
     const id = window.setInterval(() => {
       const t = Date.now();
       setNow(t);
-      dispatch({ type: "TICK", now: t });
+      rawDispatch({ type: "TICK", now: t });
       const s = stateRef.current;
-      if (t >= nextBotAt.current) {
+      const target = botTarget(s)?.id;
+      if (target !== botParty.current) {
+        botParty.current = target;
+        nextBotAt.current = t + FIRST_BOT_DELAY_MS;
+      }
+      if (target && t >= nextBotAt.current) {
         const joins = botJoinActions(s, t, Math.random);
         if (joins.length) {
-          joins.forEach(dispatch);
+          joins.forEach(rawDispatch);
           nextBotAt.current = t + BOT_STEP_MS[0] + Math.random() * (BOT_STEP_MS[1] - BOT_STEP_MS[0]);
         }
       }
-      botAcceptActions(s, t, Math.random).forEach(dispatch);
+      botAcceptActions(s, t, Math.random).forEach(rawDispatch);
     }, HEARTBEAT_MS);
     return () => window.clearInterval(id);
   }, []);

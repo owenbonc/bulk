@@ -1,7 +1,8 @@
 "use client";
 
-import { Button, Countdown, Popup, ProgressBar, formatPrice } from "@/components/ui";
+import { Button, Countdown, LegendDot, Popup, ProgressBar, formatPrice } from "@/components/ui";
 import { ME } from "@/lib/data";
+import { basketTotal } from "@/lib/requests";
 import { progressOf, restaurantById, useApp } from "@/lib/store";
 
 /** A bold "!" in a lucide-style rounded stroke, matching the other popup illustrations. */
@@ -32,20 +33,19 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
   }
 
   const progress = progressOf(party, restaurant);
-  const mine = party.participants.some((p) => p.userId === ME.userId);
+  const me = party.participants.find((p) => p.userId === ME.userId);
+  const mine = Boolean(me);
+  // Your basket's share of the progress, once it counts toward the deal.
+  const contribution = me?.finalised ? Math.min(basketTotal(me.basket, restaurant), progress.total) : 0;
   const hosting = party.hostId === ME.userId;
   const host = party.participants.find((p) => p.userId === party.hostId)?.name;
   const people = party.participants.length;
   const isOpen = party.status === "open";
   const left = formatPrice(progress.left, { trim: true });
 
-  const lead = hosting
-    ? `You're already hosting a party at ${restaurant.name}.`
-    : mine
-      ? `You're already in this party at ${restaurant.name}.`
-      : host
-        ? `Join ${host}'s party at ${restaurant.name} instead.`
-        : `Join the party at ${restaurant.name} instead.`;
+  const title = hosting ? "You're already hosting here" : mine ? "You're already in this party" : "There's already a party here";
+  const reachable = isOpen && progress.left > 0;
+  const lead = host ? `Join ${host}'s party at ${restaurant.name} instead.` : `Join the party at ${restaurant.name} instead.`;
 
   return (
     <Popup
@@ -53,18 +53,28 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
       onOpenChange={onOpenChange}
       icon={<Exclamation />}
       iconTone="accent"
-      title="There's already a party here"
+      title={title}
       description={
-        <>
-          {lead}{" "}
-          {isOpen && progress.left > 0 ? (
+        mine ? (
+          reachable ? (
             <>
-              It&apos;s <span className="tnum font-semibold text-ink">{left}</span> from the deal.
+              Your party at {restaurant.name} is <span className="tnum font-semibold text-ink">{left}</span> from the deal.
             </>
           ) : (
-            "It's just reached the deal."
-          )}
-        </>
+            `Your party at ${restaurant.name} has just reached the deal.`
+          )
+        ) : (
+          <>
+            {lead}{" "}
+            {reachable ? (
+              <>
+                It&apos;s <span className="tnum font-semibold text-ink">{left}</span> from the deal.
+              </>
+            ) : (
+              "It's just reached the deal."
+            )}
+          </>
+        )
       }
       action={
         <Button block size="lg" href={mine ? `/party/${party.id}/status` : `/party/${party.id}`}>
@@ -72,7 +82,7 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
         </Button>
       }
     >
-      <div className="rounded-card bg-surface-2 px-4 pt-3 pb-3.5 text-left">
+      <div className="rounded-card bg-surface-2 p-card text-left">
         <div className="flex items-baseline justify-between gap-3 text-meta">
           <span className="tnum font-semibold text-ink">
             {formatPrice(progress.total, { trim: true })} / {formatPrice(progress.target, { trim: true })}
@@ -90,11 +100,18 @@ export function PartyExistsPopup({ open, onOpenChange, partyId }: PartyExistsPop
         <ProgressBar
           value={progress.total}
           max={progress.target}
+          contribution={contribution || undefined}
           size="sm"
           className="mt-2"
           label={`${restaurant.deal.short} deal progress`}
           valueText={`${formatPrice(progress.total, { trim: true })} of ${formatPrice(progress.target, { trim: true })}`}
         />
+        {contribution > 0 && (
+          <p className="mt-2 flex items-center gap-1.5 text-meta text-ink-2">
+            <LegendDot />
+            Your basket <span className="tnum">{formatPrice(contribution)}</span>
+          </p>
+        )}
       </div>
     </Popup>
   );

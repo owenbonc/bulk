@@ -19,18 +19,14 @@ export interface BasketCtaProps {
 }
 
 /**
- * Fixed bottom action for the basket: the 56px clear-glass button with the label on the left and the
- * estimated total on a lime chip, floating over a cream fade so scrolling content softens out beneath it.
+ * Floating bottom action for the basket: the 52px clear-glass button with the label on the left and the
+ * estimated total on a lime chip, on its own above the home indicator (no bar or band behind it).
  */
 export function BasketCta({ label, emptyLabel, total, empty, disabled = false, busy = false, onPress }: BasketCtaProps) {
   const price = formatPrice(total);
 
   return (
     <BottomBar material={false}>
-      <div
-        aria-hidden
-        className="pointer-events-none! absolute inset-x-0 -top-8 bottom-0 -z-10 bg-linear-to-t from-bg from-40% via-bg/85 via-65% to-bg/0"
-      />
       {empty ? (
         <Button variant="glass" block disabled>
           {emptyLabel}

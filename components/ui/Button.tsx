@@ -4,6 +4,7 @@ import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 import type { ComponentPropsWithRef, MouseEvent, ReactNode } from "react";
 import { cn, positioned } from "./cn";
+import { Marquee } from "./Marquee";
 
 export type ButtonVariant = "primary" | "secondary" | "ghost" | "danger" | "glass";
 export type ButtonSize = "sm" | "md" | "lg";
@@ -21,7 +22,7 @@ const variants: Record<ButtonVariant, string> = {
     "disabled:bg-surface-2 disabled:text-ink-3 aria-disabled:bg-surface-2 aria-disabled:text-ink-3",
   secondary:
     "font-semibold bg-surface text-ink ring-1 ring-line ring-inset active:bg-surface-2 hover:not-disabled:not-aria-disabled:bg-surface-hover " +
-    "disabled:text-ink-3 aria-disabled:text-ink-3",
+    "disabled:bg-surface-2 disabled:text-ink-3 disabled:ring-transparent aria-disabled:bg-surface-2 aria-disabled:text-ink-3 aria-disabled:ring-transparent",
   ghost:
     "font-semibold bg-transparent text-ink active:bg-ink/[0.06] hover:not-disabled:not-aria-disabled:bg-ink/[0.04] " +
     "disabled:text-ink-3 aria-disabled:text-ink-3",
@@ -33,10 +34,10 @@ const variants: Record<ButtonVariant, string> = {
 };
 
 const sizes: Record<ButtonSize, string> = {
-  // 36px visual with the hit area extended to 44px.
-  sm: "h-9 px-3.5 text-meta before:absolute before:-inset-y-1 before:inset-x-0 [&_svg]:size-4",
-  md: "h-12 px-5 text-body [&_svg]:size-[18px]",
-  lg: "h-14 px-6 text-emphasis",
+  // 32px visual with the hit area extended to 44px.
+  sm: "h-8 px-3 text-meta before:absolute before:-inset-y-1.5 before:inset-x-0 [&_svg]:size-4",
+  md: "h-11 px-4 text-body [&_svg]:size-[18px]",
+  lg: "h-13 px-5 text-emphasis",
 };
 
 export interface ButtonStyleOptions {
@@ -47,7 +48,7 @@ export interface ButtonStyleOptions {
 }
 
 function styleFor({ variant = "primary", size, block = false, chip = false }: ButtonStyleOptions & { chip?: boolean }): string {
-  // Glass actions default to the big 56px size; a chip tucks in 8px from the trailing edge.
+  // Glass actions default to the big 52px size; a chip tucks in 8px from the trailing edge.
   const resolved = size ?? (variant === "glass" ? "lg" : "md");
   return cn(base, variants[variant], sizes[resolved], chip && "pr-2", block && "w-full");
 }
@@ -65,8 +66,8 @@ interface OwnProps extends ButtonStyleOptions {
   /** Content pinned to the trailing edge, e.g. the price on a full-width CTA. */
   trailing?: ReactNode;
   /**
-   * Lime chip pinned to the trailing edge, e.g. `chip="£7.29"` on a glass action button. The label moves
-   * to the leading edge. Quiet sand while disabled.
+   * Lime chip pinned to the trailing edge, e.g. `chip="£7.29"` on a glass action button (36px, bold 15px).
+   * The label moves to the leading edge. Quiet sand while disabled.
    */
   chip?: ReactNode;
 }
@@ -97,13 +98,13 @@ function Content({
       >
         <span className="inline-flex min-w-0 items-center gap-2">
           {icon}
-          {children !== undefined && children !== null && <span className="truncate">{children}</span>}
+          {children !== undefined && children !== null && <Marquee>{children}</Marquee>}
         </span>
         {trailing !== undefined && <span className="tnum shrink-0">{trailing}</span>}
         {chip !== undefined && (
           <span
             className={cn(
-              "tnum inline-flex h-10 shrink-0 items-center rounded-full px-3.5 text-emphasis font-bold transition-colors duration-150",
+              "tnum inline-flex h-9 shrink-0 items-center rounded-full px-3 text-emphasis font-bold transition-colors duration-150",
               inert ? "bg-surface-2 text-ink-3" : "bg-accent text-on-accent",
             )}
           >
@@ -122,8 +123,9 @@ function Content({
 
 /**
  * Pill button. Primary is the lime action, secondary a white pill with a hairline, ghost text-only,
- * danger a quiet tomato text button, glass the clear-glass big action (56px, bold ink label, lime `chip`).
- * Pass `href` to render a Next.js Link with the same styling.
+ * danger a quiet tomato text button, glass the clear-glass big action (52px, bold ink label, lime `chip`).
+ * A label too long for the button scrolls (Marquee) instead of truncating. Pass `href` to render a Next.js
+ * Link with the same styling.
  */
 export function Button(props: ButtonProps) {
   if (props.href !== undefined) {

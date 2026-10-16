@@ -9,13 +9,23 @@
   }
 }
 
+/*
+ * Laptop demo: a wide window with a precise pointer renders the app inside the iPhone 16 Pro frame. Keep in
+ * sync with FRAME_QUERY in components/ui/frame.tsx.
+ */
+@custom-variant frame {
+  @media (min-width: 500px) and (pointer: fine) {
+    @slot;
+  }
+}
+
 /* ------------------------------------------------------------------ */
 /* Tokens                                                              */
 /* ------------------------------------------------------------------ */
 
 :root {
   --bg: #f7f5ec;
-  /* Page background around the phone column on wide screens. */
+  /* Page background around the phone (frame) or the phone column (wide touch screens). */
   --bg-desk: #ece9dc;
   --surface: #ffffff;
   /* Hover wash on white surfaces. */
@@ -51,10 +61,16 @@
   /* Offer-coloured icons on the ink toast. */
   --offer-on-ink: #ff8a73;
 
+  /* Your contribution: the pulsing yellow slice or segment of your basket's share of the deal progress. */
+  --mine: #f2b632;
+
   --success: #2f7d4f;
   --success-soft: #edf5ef;
 
   --scrim: rgb(27 29 20 / 0.38);
+
+  /* Glyphs drawn over photos (the status bar while a hero image is under it). */
+  --on-photo: #ffffff;
 
   /* Translucent chrome material. */
   --material: rgb(247 245 236 / 0.78);
@@ -83,7 +99,27 @@
   --tint-6-bg: #e1efe6;
   --tint-6-fg: #2c6a45;
 
+  /* iPhone 16 Pro hardware drawn around the frame: black glass bezel, titanium rim, Dynamic Island. */
+  --device: #0d0e0a;
+  --device-rim: #5b5d53;
+  --device-rim-highlight: #8a8c80;
+  --island: #000000;
+
   --column: 430px;
+
+  /*
+   * Safe areas and the app's viewport height. On a phone they come from the browser; inside the laptop
+   * frame `.device-screen` sets them to the iPhone 16 Pro values (62px status bar, 34px home indicator, 874px).
+   */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --app-height: 100dvh;
+
+  /* iPhone 16 Pro viewport and hardware, in CSS px. Keep in sync with FRAME in components/ui/frame.tsx. */
+  --frame-w: 402px;
+  --frame-h: 874px;
+  --frame-radius: 55px;
+  --frame-bezel: 11px;
 }
 
 @theme inline {
@@ -110,13 +146,18 @@
   --color-on-offer: var(--on-offer);
   --color-offer-soft: var(--offer-soft);
   --color-offer-ink: var(--offer-ink);
+  --color-mine: var(--mine);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-scrim: var(--scrim);
+  --color-on-photo: var(--on-photo);
+  --color-island: var(--island);
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-bricolage), var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", Menlo, monospace;
+  /* The iOS system face, for the fake status bar only (SF Pro on a Mac). */
+  --font-system: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 
   --container-column: var(--column);
 }
@@ -125,24 +166,34 @@
   /* Wider than the phone column: the page turns sand and the column gets side hairlines. */
   --breakpoint-desk: 26.9375rem;
 
-  /* Type scale: 12 caption, 13 meta, 15 body, 17 emphasis, 20 section, 26 title, 34 hero. */
-  --text-caption: 0.75rem;
-  --text-caption--line-height: 1.35;
-  --text-meta: 0.8125rem;
-  --text-meta--line-height: 1.4;
-  --text-body: 0.9375rem;
+  /*
+   * Compact, Deliveroo-like type scale: 11 caption, 12 meta, 14 body, 15 emphasis, 18 section, 24 title,
+   * 28 hero numbers. Display sizes carry their tracking; emphasise with weight before size.
+   */
+  --text-caption: 0.6875rem;
+  --text-caption--line-height: 1.3;
+  --text-caption--letter-spacing: 0.01em;
+  --text-meta: 0.75rem;
+  --text-meta--line-height: 1.35;
+  --text-body: 0.875rem;
   --text-body--line-height: 1.45;
-  --text-emphasis: 1.0625rem;
+  --text-emphasis: 0.9375rem;
   --text-emphasis--line-height: 1.35;
-  --text-section: 1.25rem;
-  --text-section--line-height: 1.15;
+  --text-section: 1.125rem;
+  --text-section--line-height: 1.2;
   --text-section--letter-spacing: -0.01em;
-  --text-title: 1.625rem;
+  --text-title: 1.5rem;
   --text-title--line-height: 1.1;
   --text-title--letter-spacing: -0.02em;
-  --text-hero: 2.125rem;
+  --text-hero: 1.75rem;
   --text-hero--line-height: 1.05;
   --text-hero--letter-spacing: -0.02em;
+
+  /* Spacing roles (4px grid): screen gutter 16, card padding 12, groups inside a section 12, sections 24. */
+  --spacing-gutter: 1rem;
+  --spacing-card: 0.75rem;
+  --spacing-group: 0.75rem;
+  --spacing-section: 1.5rem;
 
   --radius-chip: 12px;
   --radius-card: 18px;
@@ -156,6 +207,8 @@
   --shadow-thumb: 0 2px 5px -1px rgb(27 29 20 / 0.22), 0 0 0 0.5px rgb(27 29 20 / 0.08);
   /* 1px --line hairline on each side of the phone column. */
   --shadow-column: -1px 0 0 var(--line), 1px 0 0 var(--line);
+  /* The phone resting on the desk. */
+  --shadow-device: 0 40px 80px -24px rgb(27 29 20 / 0.35), 0 16px 32px -16px rgb(27 29 20 / 0.25);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
@@ -163,6 +216,8 @@
 
   /* The bell in the "Party filled!" popup rings once after the card lands. */
   --animate-ring: ring 600ms cubic-bezier(0.36, 0.07, 0.19, 0.97) 180ms both;
+  /* Your contribution breathes gently (static 0.8 under reduced motion). */
+  --animate-mine: mine-pulse 1.6s ease-in-out infinite;
 
   @keyframes ring {
     0%,
@@ -185,6 +240,29 @@
       transform: rotate(3deg);
     }
   }
+
+  @keyframes mine-pulse {
+    0%,
+    100% {
+      opacity: 0.55;
+    }
+    50% {
+      opacity: 0.9;
+    }
+  }
+}
+
+/* Marquee edge fades, animated in step with the scroll (registered so they interpolate). */
+@property --marquee-fade-start {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --marquee-fade-end {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
 }
 
 /* ------------------------------------------------------------------ */
@@ -203,8 +281,14 @@
     scrollbar-color: rgb(27 29 20 / 0.22) transparent;
   }
 
-  /* On wide screens the phone column sits on a slightly deeper sand (same breakpoint as the column hairlines). */
+  /* Around the phone column (wide touch screens) and around the phone frame, the desk is sand. */
   @variant desk {
+    html {
+      background: var(--bg-desk);
+    }
+  }
+
+  @variant frame {
     html {
       background: var(--bg-desk);
     }
@@ -307,6 +391,137 @@
 }
 
 /* ------------------------------------------------------------------ */
+/* Device: phone column on phones, iPhone 16 Pro frame on the laptop   */
+/* ------------------------------------------------------------------ */
+
+/*
+ * On a phone the app is the page: the document scrolls and fixed layers sit on the viewport. Wider touch
+ * screens centre a phone-width column on sand. In frame mode the stage fills the window, the phone is
+ * scaled to fit, `.device-screen` is the containing block for every fixed layer (so bars, sheets, popups
+ * and toasts stay inside the phone) and `.device-scroll` is the app's scroll container.
+ */
+.device-screen {
+  position: relative;
+  width: 100%;
+  max-width: var(--column);
+  min-height: 100dvh;
+  margin-inline: auto;
+  background: var(--bg);
+}
+
+@variant desk {
+  .device-screen {
+    box-shadow: var(--shadow-column);
+  }
+}
+
+@variant frame {
+  .device-stage {
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    background: var(--bg-desk);
+  }
+
+  /* Centred by its own box, so it stays centred while its unscaled layout box is taller than the window. */
+  .device-phone {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: var(--frame-w);
+    height: var(--frame-h);
+    border-radius: var(--frame-radius);
+    /* Fit the whole device (screen and bezel) with 24px margins; the script refines this on resize. */
+    --frame-scale: min(
+      1,
+      tan(atan2(calc(100dvh - 48px), calc(var(--frame-h) + 2 * var(--frame-bezel)))),
+      tan(atan2(calc(100vw - 48px), calc(var(--frame-w) + 2 * var(--frame-bezel))))
+    );
+    transform: translate(-50%, -50%) scale(var(--frame-scale));
+    box-shadow:
+      0 0 0 var(--frame-bezel) var(--device),
+      0 0 0 calc(var(--frame-bezel) + 1.5px) var(--device-rim),
+      0 0 0 calc(var(--frame-bezel) + 2px) var(--device-rim-highlight),
+      var(--shadow-device);
+  }
+
+  /* Side buttons on the titanium rim: action button and volume (left), side button and camera control (right). */
+  .device-phone::before,
+  .device-phone::after {
+    content: "";
+    position: absolute;
+    width: 3px;
+    pointer-events: none;
+  }
+
+  .device-phone::before {
+    top: 112px;
+    height: 182px;
+    left: calc(-1 * var(--frame-bezel) - 4.5px);
+    border-radius: 2px 0 0 2px;
+    background: linear-gradient(
+      to bottom,
+      var(--device-rim) 0 30px,
+      transparent 30px 62px,
+      var(--device-rim) 62px 120px,
+      transparent 120px 128px,
+      var(--device-rim) 128px 182px
+    );
+  }
+
+  .device-phone::after {
+    top: 196px;
+    height: 330px;
+    right: calc(-1 * var(--frame-bezel) - 4.5px);
+    border-radius: 0 2px 2px 0;
+    background: linear-gradient(
+      to bottom,
+      var(--device-rim) 0 92px,
+      transparent 92px 272px,
+      var(--device-rim-highlight) 272px 330px
+    );
+  }
+
+  .device-screen {
+    position: absolute;
+    inset: 0;
+    max-width: none;
+    min-height: 0;
+    margin: 0;
+    border-radius: inherit;
+    overflow: hidden;
+    contain: layout paint;
+    isolation: isolate;
+    box-shadow: none;
+    --safe-top: 62px;
+    --safe-bottom: 34px;
+    --app-height: var(--frame-h);
+  }
+
+  .device-scroll {
+    position: absolute;
+    inset: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+  }
+
+  .device-scroll::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Full-height screens fill the phone, not the laptop window. */
+  .device-screen .min-h-dvh {
+    min-height: var(--app-height);
+  }
+
+  .device-screen .h-dvh {
+    height: var(--app-height);
+  }
+}
+
+/* ------------------------------------------------------------------ */
 /* Utilities                                                           */
 /* ------------------------------------------------------------------ */
 
@@ -392,31 +607,65 @@
   }
 }
 
-/* Bottom padding that clears the home indicator. */
-@utility pb-safe {
-  padding-bottom: max(12px, env(safe-area-inset-bottom));
+/* Top padding that clears the status bar (62px in the laptop frame, the notch inset on a phone). */
+@utility pt-safe {
+  padding-top: var(--safe-top);
 }
 
-@utility pt-safe {
-  padding-top: env(safe-area-inset-top);
+/* Bottom padding that clears the home indicator, for bars that sit on the bottom edge. */
+@utility pb-safe {
+  padding-bottom: max(12px, var(--safe-bottom));
+}
+
+/* Bottom padding for controls floating just above the home indicator. */
+@utility pb-safe-float {
+  padding-bottom: max(12px, calc(var(--safe-bottom) - 6px));
+}
+
+/* The app's viewport height: the phone's 874px in the laptop frame, 100dvh on a phone. */
+@utility min-h-app {
+  min-height: var(--app-height);
+}
+
+@utility h-app {
+  height: var(--app-height);
+}
+
+/* Soft edge fades on an overflowing Marquee; the fade widths animate with the scroll. */
+@utility marquee-mask {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--marquee-fade-start),
+    #000 calc(100% - var(--marquee-fade-end)),
+    transparent
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    #000 var(--marquee-fade-start),
+    #000 calc(100% - var(--marquee-fade-end)),
+    transparent
+  );
 }
 
 /* ------------------------------------------------------------------ */
 /* Third-party surfaces                                                */
 /* ------------------------------------------------------------------ */
 
-/* Sonner toasts: ink capsule with lime icons, matching the brand. */
+/* Sonner toasts: ink capsule with lime icons, under the top bar; above sheets, below popups. */
 .bulk-toaster[data-sonner-toaster] {
+  z-index: 55;
   font-family: var(--font-sans);
   --width: 358px;
-  --border-radius: 18px;
+  --border-radius: 16px;
 }
 
 .bulk-toaster [data-sonner-toast][data-styled="true"] {
   gap: 10px;
-  padding: 12px 16px;
+  padding: 10px 14px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--ink);
   color: var(--bg);
   box-shadow: var(--shadow-float);
@@ -442,7 +691,7 @@
 }
 
 .bulk-toaster [data-sonner-toast][data-styled="true"] [data-button] {
-  height: 30px;
+  height: 28px;
   padding: 0 12px;
   border-radius: 999px;
   background: var(--accent);
@@ -470,6 +719,11 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-ring {
     animation: none;
+  }
+
+  .animate-mine {
+    animation: none;
+    opacity: 0.8;
   }
 
   /* Sheets cross-fade instead of sliding. */
