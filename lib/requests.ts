@@ -1,4 +1,5 @@
 import { BOT_NAMES, CATALOG, DEFAULT_DURATION_MIN, ME } from "./data";
+import { deliveryEta } from "./geo";
 import {
   basketCount,
   basketTotal,
@@ -123,9 +124,9 @@ export function isActiveFor(request: OrderRequest, now: number, userId = ME.user
   return !isTerminal(status);
 }
 
-/** The open party at a restaurant (there is at most one), if any. */
-export function openPartyFor(state: AppState, restaurantId: string): OrderRequest | undefined {
-  return state.requests.find((r) => r.restaurantId === restaurantId && r.status === "open");
+/** The open party at a restaurant collecting at a collection point (there is at most one per pair), if any. */
+export function openPartyFor(state: AppState, restaurantId: string, pickupPointId: string): OrderRequest | undefined {
+  return state.requests.find((r) => r.restaurantId === restaurantId && r.pickupPointId === pickupPointId && r.status === "open");
 }
 
 /** Open and at least 75% of the way to the deal. */
@@ -151,10 +152,11 @@ export function deliveryProgress(request: OrderRequest, now: number): number {
   return Math.min(1, Math.max(0, (now - start) / (end - start)));
 }
 
-/** User-facing arrival estimate ("Arrives ~19:40"): payment time plus the middle of the restaurant's ETA window. */
-export function arrivesAt(request: OrderRequest, restaurant: Restaurant): number | undefined {
-  if (request.confirmedAt === undefined) return undefined;
-  const [lo, hi] = restaurant.etaMin;
+/** User-facing arrival estimate ("Arrives ~19:40"): payment time plus the middle of the delivery window to the party's collection point. */
+export function arrivesAt(request: OrderRequest, restaurant: Restaurant, catalog: Catalog = CATALOG): number | undefined {
+  const point = catalog.pickupPoints.find((p) => p.id === request.pickupPointId);
+  if (request.confirmedAt === undefined || !point) return undefined;
+  const [lo, hi] = deliveryEta(restaurant, point);
   return request.confirmedAt + Math.round((lo + hi) / 2) * 60_000;
 }
 
@@ -441,7 +443,7 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
       return { ...state, demo: { ...state.demo, ...action.patch } };
 
     case "CREATE_REQUEST": {
-      if (!restaurantOf(action.restaurantId) || openPartyFor(state, action.restaurantId)) return state;
+      if (!restaurantOf(action.restaurantId) || openPartyFor(state, action.restaurantId, action.pickupPointId)) return state;
       if (state.requests.some((r) => r.id === action.id)) return state;
       const host = newParticipant(action.user);
       const request = newRequest(action.id, action.restaurantId, action.pickupPointId, action.durationMin, host, action.now);
@@ -484,7 +486,7 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
       const draft = state.draft;
       const restaurant = draft && restaurantOf(draft.restaurantId);
       if (!draft || !restaurant || draft.basket.length === 0) return state;
-      if (openPartyFor(state, draft.restaurantId) || state.requests.some((r) => r.id === action.id)) return state;
+      if (openPartyFor(state, draft.restaurantId, draft.pickupPointId) || state.requests.some((r) => r.id === action.id)) return state;
       const host: Participant = { ...newParticipant(action.user), basket: draft.basket, finalised: true, cutlery: draft.cutlery };
       const request = lockDealIfReached(
         newRequest(action.id, draft.restaurantId, draft.pickupPointId, draft.durationMin, host, action.now),
@@ -507,9 +509,12 @@ export function reduce(state: AppState, action: Action, catalog: Catalog): AppSt
       return unread.length ? { ...state, readNotifications: [...state.readNotifications, ...unread] } : state;
     }
 
-    case "SET_LOCATION":
+    case "SET_LOCATION": {
       if (state.location === action.pickupPointId || !catalog.pickupPoints.some((p) => p.id === action.pickupPointId)) return state;
-      return { ...state, location: action.pickupPointId };
+      // A draft collects where you are, so it moves with you.
+      const draft = state.draft && { ...state.draft, pickupPointId: action.pickupPointId };
+      return { ...state, location: action.pickupPointId, ...(draft && { draft }) };
+    }
 
     case "FILL_PARTY": {
       const target = state.requests.find((r) => r.id === action.requestId);

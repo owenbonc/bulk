@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useId, useRef } from "react";
 import { DealPill, ImageFrame, Marquee, Pill, ProgressPie, Rating, SectionHeader, formatPrice } from "@/components/ui";
 import { useApp } from "@/lib/store";
-import { Eta } from "./parts";
+import { Eta, PartyPlaceLine, placeText } from "./parts";
 import { partyHref } from "./PartyListCard";
 import type { HomeParty } from "./useHomeParties";
 
@@ -15,7 +15,7 @@ const GAP = 12;
 /** Cards at the start of the carousel whose images load eagerly (in view on first paint). */
 const PRIORITY_CARDS = 2;
 
-/** "Highlights · n": parties at 75%+ of their deal in a horizontal snap carousel. */
+/** "Highlights · n": nearby parties at 75%+ of their deal in a horizontal snap carousel. */
 export function Highlights({ parties }: { parties: HomeParty[] }) {
   const scroller = useRef<HTMLUListElement>(null);
   const reduceMotion = useReducedMotion();
@@ -57,7 +57,7 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
   const { now } = useApp();
   const nameId = useId();
   const descId = useId();
-  const { request, restaurant, progress, me } = party;
+  const { request, restaurant, progress, place, me } = party;
   const left = formatPrice(progress.left, { trim: true });
   const closesIn = Math.max(1, Math.ceil((request.expiresAt - now) / 60_000));
 
@@ -97,9 +97,8 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
           <p className="mt-0.5 flex">
             <Rating value={restaurant.rating} count={restaurant.ratingCount} />
           </p>
-          <p className="flex">
-            <Eta restaurant={restaurant} />
-          </p>
+          <p className="flex">{place.point && <Eta restaurant={restaurant} point={place.point} />}</p>
+          <PartyPlaceLine place={place} />
         </div>
         <div className="flex shrink-0 flex-col items-end gap-1.5 pt-3">
           <span className="tnum text-emphasis leading-none font-bold text-ink">
@@ -115,7 +114,7 @@ function HighlightCard({ party, priority }: { party: HomeParty; priority: boolea
         </div>
       </div>
       <span id={descId} className="sr-only">
-        {`${restaurant.deal.short}, ${left} left, ${request.participants.length} in party${me ? ", you're in" : ""}, closes in ${closesIn} min`}
+        {`${restaurant.deal.short}, ${left} left, ${request.participants.length} in party, ${placeText(place)}${me ? ", you're in" : ""}, closes in ${closesIn} min`}
       </span>
     </Link>
   );

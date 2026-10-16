@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useId, useState } from "react";
 import { Button, Divider, Switch, cn, toast } from "@/components/ui";
 import { ME } from "@/lib/data";
-import { isTerminal, resetDemo, restaurantById, useApp } from "@/lib/store";
+import { isTerminal, partiesNear, pickupById, resetDemo, restaurantById, useApp } from "@/lib/store";
 import type { OrderRequest, RequestStatus } from "@/lib/types";
 
 const PARTY_PATH = /^\/party\/([^/]+)/;
@@ -34,9 +34,10 @@ const isMine = (r: OrderRequest) => r.participants.some((p) => p.userId === ME.u
 /**
  * The party the controls act on when nobody has picked one: the party in the URL, else the most urgent
  * party you're in (an open one closing soonest, since fill and expire only act on open parties; then pay
- * now, on its way, preparing, placed), else the first open party.
+ * now, on its way, preparing, placed), else the first party Home lists near your location, else the first
+ * open party.
  */
-function defaultParty(parties: OrderRequest[], urlId: string | undefined): OrderRequest | undefined {
+function defaultParty(parties: OrderRequest[], urlId: string | undefined, locationId: string): OrderRequest | undefined {
   const fromUrl = urlId ? parties.find((r) => r.id === urlId) : undefined;
   if (fromUrl) return fromUrl;
   const mine = parties.filter(isMine);
@@ -44,7 +45,7 @@ function defaultParty(parties: OrderRequest[], urlId: string | undefined): Order
   if (mineOpen[0]) return mineOpen[0];
   const mineOther = [...mine].sort((a, b) => (IN_PARTY_RANK[a.status] ?? 9) - (IN_PARTY_RANK[b.status] ?? 9));
   if (mineOther[0]) return mineOther[0];
-  return parties.find((r) => r.status === "open");
+  return partiesNear(parties, locationId)[0]?.request ?? parties.find((r) => r.status === "open");
 }
 
 /**
@@ -65,7 +66,7 @@ export function DemoControlsPanel({ className }: { className?: string }) {
   // A pick lasts until you open a different page; it is dropped if that party ends.
   const [pick, setPick] = useState<{ id: string; path: string } | null>(null);
   const picked = pick && pick.path === pathname ? parties.find((r) => r.id === pick.id) : undefined;
-  const party = picked ?? defaultParty(parties, urlId);
+  const party = picked ?? defaultParty(parties, urlId, state.location);
   const restaurant = party ? restaurantById(party.restaurantId) : undefined;
   const canSteer = party?.status === "open";
 
@@ -109,7 +110,7 @@ export function DemoControlsPanel({ className }: { className?: string }) {
                 return (
                   <option key={r.id} value={r.id}>
                     {isMine(r) ? "• " : ""}
-                    {name} · {STATUS_LABEL[r.status]}
+                    {name} · {pickupById(r.pickupPointId)?.name ?? r.pickupPointId} · {STATUS_LABEL[r.status]}
                   </option>
                 );
               })}

@@ -1,6 +1,7 @@
 "use client";
 
 import { CATALOG, ME } from "@/lib/data";
+import { byNearest, placeOf, type PartyPlace } from "@/lib/geo";
 import { hasCollected, isActiveFor, isHighlight, progressOf, useApp } from "@/lib/store";
 import type { Progress } from "@/lib/requests";
 import type { OrderRequest, Participant, Restaurant } from "@/lib/types";
@@ -10,6 +11,8 @@ export interface HomeParty {
   request: OrderRequest;
   restaurant: Restaurant;
   progress: Progress;
+  /** Where it collects, seen from your location. */
+  place: PartyPlace;
   /** Your entry, when you're in this party. */
   me?: Participant;
 }
@@ -35,15 +38,18 @@ function urgency(p: HomeParty): number {
 }
 
 export interface HomeParties {
-  /** Open parties at 75% or more of their deal, closest to the deal first. */
+  /** Nearby open parties at 75% or more of their deal: at your collection point first, then by walk. */
   highlights: HomeParty[];
-  /** Every other visible party: yours that have moved past filling (including delivered ones you haven't collected), then those at your collection point, then closing soonest. */
+  /**
+   * Every other visible party: yours that have moved past filling (including delivered ones you haven't
+   * collected), then nearby open ones at your collection point, then by walk, then closing soonest.
+   */
   others: HomeParty[];
   /** Parties you're in that still need you (including delivered ones you haven't collected), most urgent first. Not filtered by search. */
   mine: HomeParty[];
   /** Delivered parties you've collected, so the your-party card can see one off. */
   collected: HomeParty[];
-  /** Visible parties before the search filter. */
+  /** Visible parties before the search filter: open ones near your location plus every party you're in. */
   totalCount: number;
 }
 
@@ -55,27 +61,20 @@ export function useHomeParties(query: string): HomeParties {
     const restaurant = CATALOG.restaurants.find((r) => r.id === request.restaurantId);
     if (!restaurant) continue;
     const me = request.participants.find((p) => p.userId === ME.userId && !p.declined);
-    all.push({ request, restaurant, progress: progressOf(request, restaurant), me });
+    all.push({ request, restaurant, progress: progressOf(request, restaurant), place: placeOf(request, state.location), me });
   }
 
   const isOpen = (p: HomeParty) => p.request.status === "open" && p.request.expiresAt > now;
   const stillYours = (p: HomeParty) => isActiveFor(p.request, now);
-  const listed = all.filter((p) => isOpen(p) || stillYours(p));
+  // Parties you're in always show, wherever they collect.
+  const listed = all.filter((p) => (isOpen(p) && p.place.nearby) || stillYours(p));
   const matching = listed.filter((p) => matchesQuery(p.restaurant, query));
 
-  const highlights = matching
-    .filter((p) => isOpen(p) && isHighlight(p.request, p.restaurant))
-    .sort((a, b) => b.progress.pct - a.progress.pct || a.request.expiresAt - b.request.expiresAt);
+  const highlights = matching.filter((p) => isOpen(p) && isHighlight(p.request, p.restaurant)).sort(byNearest);
 
-  const nearby = (p: HomeParty) => p.request.pickupPointId === state.location;
   const others = matching
     .filter((p) => !highlights.includes(p))
-    .sort(
-      (a, b) =>
-        Number(isOpen(a)) - Number(isOpen(b)) ||
-        Number(nearby(b)) - Number(nearby(a)) ||
-        a.request.expiresAt - b.request.expiresAt,
-    );
+    .sort((a, b) => Number(isOpen(a)) - Number(isOpen(b)) || byNearest(a, b));
 
   const mine = all
     .filter(stillYours)

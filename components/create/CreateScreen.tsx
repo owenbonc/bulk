@@ -3,12 +3,12 @@
 import { Search, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type MouseEvent } from "react";
-import { LocationButton } from "@/components/shared/LocationSheet";
-import { Button, EASE_OUT, EXIT, IconButton, SearchField, TopBar } from "@/components/ui";
+import { LocationButton, useLocationSwitch } from "@/components/shared/LocationSheet";
+import { Button, EASE_OUT, EXIT, IconButton, SearchField, TopBar, announce } from "@/components/ui";
 import { CATALOG, ME } from "@/lib/data";
-import { openPartyFor, useApp } from "@/lib/store";
+import { byBestDealFrom, openPartyFor, useApp, useLocation } from "@/lib/store";
 import { BestDealsList } from "./BestDealsList";
-import { byBestDeal, matchesQuery, normalise } from "./bits";
+import { matchesQuery, normalise } from "./bits";
 import { FeaturedCarousel, type PartyMarker } from "./FeaturedCarousel";
 import { PartyExistsPopup } from "./PartyExistsPopup";
 
@@ -18,9 +18,14 @@ const swap = {
   exit: { opacity: 0, transition: EXIT },
 };
 
-/** W6 Create a party: choose a restaurant. Restaurants with an open party show the W13 popup instead. */
+/**
+ * W6 Create a party: choose a restaurant. Distances, delivery times and the "Best deals near you" order are
+ * measured from your location; a restaurant with an open party at your location shows the W13 popup instead.
+ */
 export function CreateScreen() {
   const { state } = useApp();
+  const point = useLocation();
+  useLocationSwitch(() => announce(`Distances and delivery times from ${point.name}`));
   const [searching, setSearching] = useState(false);
   const [query, setQuery] = useState("");
   const [popup, setPopup] = useState<{ open: boolean; partyId?: string; key: number }>({ open: false, key: 0 });
@@ -30,16 +35,16 @@ export function CreateScreen() {
 
   const q = normalise(query);
   const featured = q ? [] : CATALOG.restaurants.filter((r) => r.featured);
-  const deals = CATALOG.restaurants.filter((r) => matchesQuery(r, q)).sort(byBestDeal);
+  const deals = CATALOG.restaurants.filter((r) => matchesQuery(r, q)).sort(byBestDealFrom(point));
 
   const partyAt = (restaurantId: string): PartyMarker | undefined => {
-    const party = openPartyFor(state, restaurantId);
+    const party = openPartyFor(state, restaurantId, state.location);
     return party && { mine: party.participants.some((p) => p.userId === ME.userId) };
   };
 
-  // Restaurants are links to their host menu; one with an open party opens the popup instead.
+  // Restaurants are links to their host menu; one with an open party at your location opens the popup instead.
   const choose = (event: MouseEvent<HTMLAnchorElement>, restaurantId: string) => {
-    const party = openPartyFor(state, restaurantId);
+    const party = openPartyFor(state, restaurantId, state.location);
     if (!party) return;
     event.preventDefault();
     setPopup((p) => ({ ...p, open: true, partyId: party.id }));
@@ -118,8 +123,8 @@ export function CreateScreen() {
           </div>
         ) : (
           <div className="flex flex-col gap-section pt-2 pb-section">
-            {featured.length > 0 && <FeaturedCarousel restaurants={featured} partyAt={partyAt} onChoose={choose} />}
-            <BestDealsList restaurants={deals} count={q ? deals.length : undefined} partyAt={partyAt} onChoose={choose} />
+            {featured.length > 0 && <FeaturedCarousel restaurants={featured} point={point} partyAt={partyAt} onChoose={choose} />}
+            <BestDealsList restaurants={deals} point={point} count={q ? deals.length : undefined} partyAt={partyAt} onChoose={choose} />
           </div>
         )}
       </main>

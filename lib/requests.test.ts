@@ -121,18 +121,28 @@ describe("CREATE_REQUEST", () => {
   });
 });
 
-describe("one party per restaurant", () => {
-  it("openPartyFor finds the open party and nothing once it has ended", () => {
+describe("one party per restaurant per collection point", () => {
+  it("openPartyFor finds the open party at that point only, and nothing once it has ended", () => {
     let s = run(emptyState(), create);
-    expect(openPartyFor(s, "slice-house")?.id).toBe("r1");
-    expect(openPartyFor(s, "burger-yard")).toBeUndefined();
+    expect(openPartyFor(s, "slice-house", "student-centre")?.id).toBe("r1");
+    expect(openPartyFor(s, "slice-house", "main-library")).toBeUndefined();
+    expect(openPartyFor(s, "burger-yard", "student-centre")).toBeUndefined();
     s = run(s, { type: "TICK", now: T0 + 15 * 60_000 });
-    expect(openPartyFor(s, "slice-house")).toBeUndefined();
+    expect(openPartyFor(s, "slice-house", "student-centre")).toBeUndefined();
   });
 
-  it("refuses a second party at a restaurant that already has an open one", () => {
+  it("refuses a second party at a restaurant that already has an open one at the same point", () => {
     const s = run(emptyState(), create, { ...create, id: "r2", user: bob } as Action);
     expect(s.requests.map((r) => r.id)).toEqual(["r1"]);
+  });
+
+  it("allows a party at the same restaurant at another collection point", () => {
+    const s = run(emptyState(), create, { ...create, id: "r2", user: bob, pickupPointId: "ramsay-hall" } as Action);
+    expect(s.requests.map((r) => [r.id, r.pickupPointId])).toEqual([
+      ["r1", "student-centre"],
+      ["r2", "ramsay-hall"],
+    ]);
+    expect(openPartyFor(s, "slice-house", "ramsay-hall")?.id).toBe("r2");
   });
 
   it("allows a new party once the previous one is no longer open", () => {
@@ -140,7 +150,7 @@ describe("one party per restaurant", () => {
     expect(s.requests.map((r) => r.id)).toEqual(["r1", "r2"]);
   });
 
-  it("CREATE_FROM_DRAFT is a no-op while the restaurant has an open party, and keeps the draft", () => {
+  it("CREATE_FROM_DRAFT is a no-op while the restaurant has an open party at the draft's point, and keeps the draft", () => {
     const s = run(
       emptyState(),
       { ...create, user: bob } as Action,
@@ -152,12 +162,45 @@ describe("one party per restaurant", () => {
     expect(s.draft?.basket).toEqual([{ itemId: "sh-margherita", qty: 1 }]);
   });
 
-  it("the seed has one open party per restaurant, with six restaurants free", () => {
-    const s = seedState(T0);
-    const withParty = s.requests.filter((r) => r.status === "open").map((r) => r.restaurantId);
-    expect(new Set(withParty).size).toBe(withParty.length);
-    expect(withParty).toHaveLength(6);
-    expect(CATALOG.restaurants.filter((r) => !openPartyFor(s, r.id))).toHaveLength(6);
+  it("creates at a point without a party even when the restaurant has one elsewhere", () => {
+    // Kumo Ramen collects at Ramsay Hall in the seed, but not at the Student Centre (your default location).
+    const seeded = seedState(T0);
+    expect(openPartyFor(seeded, "kumo-ramen", "ramsay-hall")?.id).toBe("seed-kumo-ramen-ramsay-hall");
+    expect(openPartyFor(seeded, "kumo-ramen", "student-centre")).toBeUndefined();
+    const s = run(
+      seeded,
+      { type: "DRAFT_START", restaurantId: "kumo-ramen" },
+      { type: "DRAFT_ITEM", itemId: "kr-tonkotsu", delta: 1 },
+      { type: "CREATE_FROM_DRAFT", id: "mine", user: me, now: T0 },
+    );
+    expect(req(s, "mine")).toMatchObject({ restaurantId: "kumo-ramen", pickupPointId: "student-centre", hostId: "me" });
+    expect(openPartyFor(s, "kumo-ramen", "ramsay-hall")?.id).toBe("seed-kumo-ramen-ramsay-hall");
+  });
+
+  it("refuses to create at a point that already has a party for the restaurant, keeping the draft to move", () => {
+    let s = run(
+      seedState(T0),
+      { type: "DRAFT_START", restaurantId: "kumo-ramen" },
+      { type: "DRAFT_ITEM", itemId: "kr-tonkotsu", delta: 1 },
+      { type: "DRAFT_SET", pickupPointId: "ramsay-hall" },
+      { type: "CREATE_FROM_DRAFT", id: "mine", user: me, now: T0 },
+    );
+    expect(s.requests.some((r) => r.id === "mine")).toBe(false);
+    expect(s.draft).toMatchObject({ pickupPointId: "ramsay-hall", basket: [{ itemId: "kr-tonkotsu", qty: 1 }] });
+    s = run(s, { type: "DRAFT_SET", pickupPointId: "main-library" }, { type: "CREATE_FROM_DRAFT", id: "mine", user: me, now: T0 });
+    expect(req(s, "mine").pickupPointId).toBe("main-library");
+  });
+
+  it("CREATE_REQUEST also follows the per-point rule", () => {
+    const at = (pickupPointId: string, id: string): Action => ({ ...create, id, restaurantId: "kumo-ramen", pickupPointId } as Action);
+    const s = run(seedState(T0), at("ramsay-hall", "x1"), at("student-centre", "x2"));
+    expect(s.requests.some((r) => r.id === "x1")).toBe(false);
+    expect(req(s, "x2").pickupPointId).toBe("student-centre");
+  });
+
+  it("the seed has at most one open party per restaurant at each point", () => {
+    const keys = seedState(T0).requests.map((r) => `${r.restaurantId}@${r.pickupPointId}`);
+    expect(new Set(keys).size).toBe(keys.length);
   });
 });
 
@@ -210,7 +253,7 @@ describe("draft → CREATE_FROM_DRAFT", () => {
     expect(r.participants).toEqual([
       { userId: "me", name: "You", isBot: false, basket: [{ itemId: "kr-tonkotsu", qty: 1 }], finalised: true, paid: false, cutlery: true },
     ]);
-    expect(openPartyFor(s, "kumo-ramen")?.id).toBe("p1");
+    expect(openPartyFor(s, "kumo-ramen", "ioe-bedford-way")?.id).toBe("p1");
   });
 
   it("refuses an empty draft basket", () => {
@@ -500,18 +543,18 @@ describe("FILL_PARTY", () => {
   it("locks in your basket if you're still choosing, so the deal includes you", () => {
     const s = run(
       seedState(T0),
-      { type: "JOIN", requestId: "seed-slice-house", user: me },
-      { type: "ADD_ITEM", requestId: "seed-slice-house", userId: "me", itemId: "sh-margherita" },
-      { type: "FILL_PARTY", requestId: "seed-slice-house", now: T0 },
+      { type: "JOIN", requestId: "seed-slice-house-student-centre", user: me },
+      { type: "ADD_ITEM", requestId: "seed-slice-house-student-centre", userId: "me", itemId: "sh-margherita" },
+      { type: "FILL_PARTY", requestId: "seed-slice-house-student-centre", now: T0 },
     );
-    const r = req(s, "seed-slice-house");
+    const r = req(s, "seed-slice-house-student-centre");
     expect(r.status).toBe("deal_achieved");
     expect(r.participants.find((p) => p.userId === "me")).toMatchObject({ finalised: true, basket: [{ itemId: "sh-margherita", qty: 1 }] });
   });
 
   it("fills a seeded party you're not in", () => {
-    const s = run(seedState(T0), { type: "FILL_PARTY", requestId: "seed-taqueria-verde", now: T0 });
-    expect(req(s, "seed-taqueria-verde").status).toBe("deal_achieved");
+    const s = run(seedState(T0), { type: "FILL_PARTY", requestId: "seed-taqueria-verde-ioe-bedford-way", now: T0 });
+    expect(req(s, "seed-taqueria-verde-ioe-bedford-way").status).toBe("deal_achieved");
   });
 
   it("with 'a bot won't accept' on, the deal survives the stubborn bot dropping out", () => {
@@ -535,11 +578,11 @@ describe("FILL_PARTY", () => {
   it("with 'a bot won't accept' on, the stubborn bot is never a bot host", () => {
     const s = run(
       { ...seedState(T0), demo: { ...seedState(T0).demo, botWontAccept: true } },
-      { type: "JOIN", requestId: "seed-slice-house", user: me },
-      { type: "ADD_ITEM", requestId: "seed-slice-house", userId: "me", itemId: "sh-margherita" },
-      { type: "FILL_PARTY", requestId: "seed-slice-house", now: T0 },
+      { type: "JOIN", requestId: "seed-slice-house-student-centre", user: me },
+      { type: "ADD_ITEM", requestId: "seed-slice-house-student-centre", userId: "me", itemId: "sh-margherita" },
+      { type: "FILL_PARTY", requestId: "seed-slice-house-student-centre", now: T0 },
     );
-    const r = req(s, "seed-slice-house");
+    const r = req(s, "seed-slice-house-student-centre");
     expect(r.participants.find((p) => p.userId === r.hostId)?.isBot).toBe(true);
     expect(stubbornBot(r, pizza)?.userId).not.toBe(r.hostId);
   });
@@ -704,20 +747,24 @@ describe("pendingAlerts", () => {
 });
 
 describe("seed and selectors", () => {
-  it("has two highlights at 75%+ and four other parties between 25% and 70%", () => {
-    const s = seedState(T0);
-    const pcts = s.requests.map((r) => {
+  it.each(CATALOG.pickupPoints)("$name: 2–4 open parties, at least one highlight at 75%+, the rest 25–70%", (point) => {
+    const parties = seedState(T0).requests.filter((r) => r.pickupPointId === point.id);
+    expect(parties.length).toBeGreaterThanOrEqual(2);
+    expect(parties.length).toBeLessThanOrEqual(4);
+    expect(parties.every((r) => r.status === "open")).toBe(true);
+    const pcts = parties.map((r) => {
       const restaurant = CATALOG.restaurants.find((x) => x.id === r.restaurantId)!;
       return { highlight: isHighlight(r, restaurant), pct: progressOf(r, restaurant).pct };
     });
-    expect(pcts.filter((p) => p.highlight)).toHaveLength(2);
+    expect(pcts.filter((p) => p.highlight).length).toBeGreaterThanOrEqual(1);
     expect(pcts.filter((p) => !p.highlight).every((p) => p.pct >= 25 && p.pct <= 70)).toBe(true);
+    expect(new Set(parties.map((r) => r.restaurantId)).size).toBe(parties.length);
   });
 
-  it("seed timers run 9–50 minutes", () => {
+  it("seed timers run 8–50 minutes", () => {
     for (const r of seedState(T0).requests) {
       const mins = (r.expiresAt - T0) / 60_000;
-      expect(mins).toBeGreaterThanOrEqual(9);
+      expect(mins).toBeGreaterThanOrEqual(8);
       expect(mins).toBeLessThanOrEqual(50);
     }
   });
@@ -732,5 +779,15 @@ describe("seed and selectors", () => {
     );
     expect(s.friends).toEqual(["bot-aisha"]);
     expect(s.location).toBe("main-library");
+  });
+
+  it("SET_LOCATION moves a draft's collection point with you", () => {
+    const s = run(
+      emptyState(),
+      { type: "DRAFT_START", restaurantId: "kumo-ramen" },
+      { type: "DRAFT_ITEM", itemId: "kr-miso", delta: 1 },
+      { type: "SET_LOCATION", pickupPointId: "ioe-bedford-way" },
+    );
+    expect(s.draft).toMatchObject({ pickupPointId: "ioe-bedford-way", basket: [{ itemId: "kr-miso", qty: 1 }] });
   });
 });
