@@ -15,6 +15,8 @@ Bulk is group food ordering for students who'd otherwise eat alone. Ordering by 
 
 **Website:** https://bulk-landing-red.vercel.app/
 
+**Promo video:** [docs/video/bulk-promo.mp4](docs/video/bulk-promo.mp4) (1:28)
+
 ## The problem
 
 Ordering alone is the most expensive way to get food delivered, and students do it all the time.
